@@ -39,6 +39,7 @@
   *, *::before, *::after { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
+    overflow-x: hidden;
     font-family: 'DM Sans', -apple-system, sans-serif;
     background: var(--bg);
     color: var(--text);
@@ -162,7 +163,10 @@
     display: flex; gap: 4px; margin-bottom: 24px;
     border-bottom: 2px solid var(--border);
     padding-bottom: 0;
+    overflow-x: auto; scrollbar-width: none; /* tabs scroll on narrow phones instead of the page */
   }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-btn { flex-shrink: 0; white-space: nowrap; }
   .tab-btn {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 9px 16px; border-radius: 8px 8px 0 0;
@@ -792,16 +796,16 @@
     <div class="danger-item">
       <div class="danger-item-info">
         <div class="danger-label">Export my data</div>
-        <div class="danger-desc">Download a copy of your account and portfolio data.</div>
+        <div class="danger-desc">Download a copy of your account and portfolio data (a JSON file).</div>
       </div>
-      <button class="btn-secondary" id="dangerExport">Request export</button>
+      <button class="btn-secondary" id="dangerExport">Download my data</button>
     </div>
     <div class="danger-item">
       <div class="danger-item-info">
         <div class="danger-label">Delete account</div>
-        <div class="danger-desc">Permanently removes your account and all associated data. This cannot be undone.</div>
+        <div class="danger-desc">Permanently removes your account and all associated data. Download your data first: this cannot be undone. Deletion is handled by our team; contact us to request it.</div>
       </div>
-      <button class="btn-danger" id="dangerDelete">Delete account</button>
+      <button class="btn-danger" id="dangerDelete">Request deletion</button>
     </div>
   </div>
 
@@ -1104,14 +1108,39 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
   });
 
   /* ── Export data ── */
-  document.getElementById('dangerExport').addEventListener('click',function(){
-    showAlert('success','Export requested. You will receive an email when your data is ready.');
+  // Everything this account can read; row-level security limits each table to the user's workspaces.
+  var EXPORT_TABLES=['companies','company_members','properties','leases','rent_log','expenses','maintenance_requests',
+    'tenant_messages','tenant_documents','reimbursement_requests','incoming_rent_payments','tenant_payer_aliases',
+    'payment_settings','property_tax_history','property_insurance_history','property_finance_history',
+    'property_mortgage_activity','property_hoa','hoa_history'];
+  document.getElementById('dangerExport').addEventListener('click',async function(){
+    var btn=this; btn.disabled=true; btn.textContent='Preparing…';
+    try{
+      var results=await Promise.all(EXPORT_TABLES.map(function(t){
+        return client.from(t).select('*').then(function(r){ return {table:t,rows:r.data||[],error:r.error?r.error.message:null}; });
+      }));
+      var out={exported_at:new Date().toISOString(),account:{id:user.id,email:user.email},tables:{}};
+      var failed=[];
+      results.forEach(function(r){ out.tables[r.table]=r.rows; if(r.error) failed.push(r.table); });
+      var blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');
+      a.href=url; a.download='rental-genie-export-'+new Date().toISOString().slice(0,10)+'.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); },2000);
+      if(failed.length) showAlert('error','Downloaded, but these could not be read: '+failed.join(', ')+'.');
+      else showAlert('success','Your data was downloaded.');
+    }catch(e){
+      showAlert('error','Export failed: '+((e&&e.message)||'please try again.'));
+    }
+    btn.disabled=false; btn.textContent='Download my data';
   });
 
   /* ── Delete account ── */
   document.getElementById('dangerDelete').addEventListener('click',function(){
-    if(confirm('Are you sure? This permanently deletes your account and all data. This cannot be undone.')){
-      showAlert('error','Account deletion request submitted. Our team will process it within 30 days.');
+    // Deleting an account needs the service role, so it can't run from this page. Send the request to support.
+    if(confirm('Account deletion is done by our team. Open the contact page to request it? Download your data first if you want a copy.')){
+      location.href='contact-us.html';
     }
   });
 

@@ -591,8 +591,9 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
       <label class="filter-label" for="urgencyFilter">Urgency</label>
       <select class="filter-select" id="urgencyFilter">
         <option value="">All Urgencies</option>
+        <option value="emergency">Emergency</option>
         <option value="high">High</option>
-        <option value="medium">Medium</option>
+        <option value="normal">Normal</option>
         <option value="low">Low</option>
       </select>
     </div>
@@ -918,7 +919,8 @@ function updateKPIs(rows) {
     if (s === 'open')                                    open++;
     else if (s.includes('progress'))                     prog++;
     else if (s.includes('complet') || s.includes('closed')) done++;
-    if ((r.urgency_level || '').toLowerCase() === 'high') high++;
+    var ul = (r.urgency_level || '').toLowerCase();
+    if (ul === 'high' || ul === 'emergency') high++;
   });
 
   $('kpiTotal').textContent    = rows.length;
@@ -951,12 +953,12 @@ function renderTable(rows) {
     var ageLabel = ageDays === 0 ? 'Today' : ageDays + 'd';
 
     var uc = (r.urgency_level || '').toLowerCase();
-    var urgCls = uc === 'high' ? 'chip-high' : uc === 'medium' ? 'chip-medium' : 'chip-low';
+    var urgCls = (uc === 'high' || uc === 'emergency') ? 'chip-high' : uc === 'normal' ? 'chip-medium' : 'chip-low';
     var urgLabel = r.urgency_level || '—';
 
     var sc = (r.status || '').toLowerCase();
     var stCls = sc.includes('progress') ? 'chip-progress'
-      : (sc.includes('complet') || sc.includes('closed')) ? 'chip-done'
+      : (sc.includes('resolv') || sc.includes('complet') || sc.includes('closed')) ? 'chip-done'
       : 'chip-open';
     var stLabel = r.status || '—';
 

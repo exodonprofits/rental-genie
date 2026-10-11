@@ -477,7 +477,7 @@ function setPortalLinks(url){
 
 function loadProperty(){
   if(!propertyId){document.getElementById('propertyHero').style.display='none';return Promise.resolve();}
-  return client.from('properties').select('id,name,address,property_type,unit_type').eq('id',propertyId).single()
+  return client.from('properties').select('id,name,address,property_type').eq('id',propertyId).single()
     .then(function(res){
       if(res.error||!res.data)return;
       currentPropertyData=res.data;

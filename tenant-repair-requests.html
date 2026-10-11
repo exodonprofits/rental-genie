@@ -179,8 +179,8 @@
 
   @media(max-width:880px) {
     .nav-links { display: none; }
-    .umd-wrap { display: none; }
-    .nav-bell { display: none; }
+    .umd-wrap { display: none !important; } /* boot sets display:flex inline */
+    .nav-bell { display: none !important; } /* boot sets display inline */
     .hamburger { display: block; }
   }
 

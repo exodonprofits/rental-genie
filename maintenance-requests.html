@@ -1605,8 +1605,9 @@ window.rgFiles = (function () {
             <label for="prioritySelect">Priority</label>
             <select id="prioritySelect">
               <option value="">All Priorities</option>
+              <option value="Emergency">Emergency</option>
               <option value="High">High</option>
-              <option value="Medium">Medium</option>
+              <option value="Normal">Normal</option>
               <option value="Low">Low</option>
             </select>
           </div>
@@ -1699,8 +1700,9 @@ window.rgFiles = (function () {
           <div class="field">
             <label>🚦 Priority</label>
             <select id="edit_urgency_level">
+              <option value="Emergency">Emergency</option>
               <option value="High">High</option>
-              <option value="Medium">Medium</option>
+              <option value="Normal">Normal</option>
               <option value="Low">Low</option>
             </select>
           </div>
@@ -2146,6 +2148,11 @@ if (hamburgerBtn && mobileDrawer) {
         .replace(/'/g, "&#039;");
     }
 
+    // urgency_level allows Low | Normal | High | Emergency (table constraint)
+    function isHighPriority(r){
+      const u = r.urgency_level || r.priority || "";
+      return u === "High" || u === "Emergency";
+    }
     function normalizeStatus(s){
       const v = String(s||"").trim();
       const low = v.toLowerCase();
@@ -2194,7 +2201,7 @@ if (hamburgerBtn && mobileDrawer) {
             <button class="btn-mini" onclick="toggleMenu('${menuId}')">⋯</button>
             <div class="menu" id="${menuId}">
               <button onclick="openEditModal(${id})">✏️ Edit details</button>
-              <button onclick="confirmDelete(${id})" style="color:#b91c1c;">🗑 Delete request</button>
+              <button onclick="confirmDelete(${id})" style="color:#b91c1c;">🗑 Archive request</button>
             </div>
           </div>
         </div>
@@ -2367,7 +2374,7 @@ if (hamburgerBtn && mobileDrawer) {
         if (el) el.textContent = "0";
       });
 
-      let query = client.from("maintenance_requests").select("*");
+      let query = client.from("maintenance_requests").select("*").is("archived_at", null);
 
       // Scope to the active landlord/company (multi-landlord)
       if (activeCompanyId) {
@@ -2428,7 +2435,7 @@ if (hamburgerBtn && mobileDrawer) {
 
       if (currentFilters.quick === "open") rows = rows.filter(r => normalizeStatus(r.status) === "Open");
       if (currentFilters.quick === "inprogress") rows = rows.filter(r => normalizeStatus(r.status) === "In Progress");
-      if (currentFilters.quick === "high") rows = rows.filter(r => (r.urgency_level || r.priority || "") === "High" && normalizeStatus(r.status) === "Open");
+      if (currentFilters.quick === "high") rows = rows.filter(r => isHighPriority(r) && normalizeStatus(r.status) === "Open");
       if (currentFilters.quick === "overdue") {
         const now = new Date();
         rows = rows.filter(r => {
@@ -2455,7 +2462,7 @@ if (hamburgerBtn && mobileDrawer) {
           const st = normalizeStatus(r.status);
           if (st === "Open") {
             openCount++;
-            if ((r.urgency_level || r.priority) === "High") highPriorityCount++;
+            if (isHighPriority(r)) highPriorityCount++;
           } else if (st === "In Progress") {
             inProgressCount++;
           }
@@ -2676,7 +2683,7 @@ if (hamburgerBtn && mobileDrawer) {
 
       document.getElementById("edit_tenant_email").value = r.tenant_email || "";
       document.getElementById("edit_issue_description").value = r.issue_description || "";
-      document.getElementById("edit_urgency_level").value = r.urgency_level || "Medium";
+      document.getElementById("edit_urgency_level").value = r.urgency_level || "Normal";
       document.getElementById("edit_status").value = normalizeStatus(r.status) || "Open";
       document.getElementById("edit_notes").value = r.notes || "";
 
@@ -2758,16 +2765,10 @@ if (hamburgerBtn && mobileDrawer) {
     async function confirmDelete(id){
       // Enterprise safety: archive instead of hard delete
       try {
+        if (!confirm("Archive this request? It will be removed from this list.")) return;
         const { error: rpcErr } = await client.rpc("archive_maintenance_request", { p_request_id: id });
-
-        // Fallback if RPC isn't installed yet
-        if (rpcErr) {
-          const r1 = await client.from("maintenance_requests").update({ archived: true }).eq("id", id);
-          const r2 = r1.error ? await client.from("maintenance_requests").update({ is_archived: true }).eq("id", id) : { error: null };
-          if (r2.error && r1.error) throw rpcErr;
-        }
-
-        closeModal();
+        if (rpcErr) throw rpcErr;
+        showToast("Request archived");
         await loadRequests();
       } catch (err) {
         alert("Failed to archive request.");

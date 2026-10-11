@@ -348,8 +348,9 @@ function setProgress(pct, statusText, activeStep) {
         <div class="field full">
           <label>🚦 Priority *</label>
           <div class="priority-row" id="priorityPills">
+            <button type="button" class="priority-pill" data-val="Emergency">🚨 Emergency</button>
             <button type="button" class="priority-pill selected-high" data-val="High">🔴 High</button>
-            <button type="button" class="priority-pill" data-val="Medium">🟡 Medium</button>
+            <button type="button" class="priority-pill" data-val="Normal">🟡 Normal</button>
             <button type="button" class="priority-pill" data-val="Low">🟢 Low</button>
           </div>
           <input type="hidden" id="urgency_level" value="High" />
@@ -361,7 +362,6 @@ function setProgress(pct, statusText, activeStep) {
           <select id="statusSelect">
             <option value="Open" selected>Open</option>
             <option value="In Progress">In Progress</option>
-            <option value="Pending Quote">Pending Quote</option>
           </select>
         </div>
 
@@ -505,8 +505,8 @@ function initPriorityPills(){
       // Clear all
       pills.forEach(function(p){ p.className='priority-pill'; });
       // Set selected style
-      if(val==='High')     this.classList.add('selected-high');
-      else if(val==='Medium') this.classList.add('selected-medium');
+      if(val==='High'||val==='Emergency') this.classList.add('selected-high');
+      else if(val==='Normal') this.classList.add('selected-medium');
       else                 this.classList.add('selected-low');
       $('urgency_level').value=val;
     });

@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>✏️ Edit HOA – Rental Genie</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
 :root{--navy:#0c1e3a;--mid:#1a3a6b;--lt:#1e5799;--accent:#2d8cf0;--bg:#f1f4f8;--surface:#fff;--border:#e2e8f0;--text:#0c1e3a;--muted:#64748b;--danger:#dc2626;--radius:14px;--shadow:0 2px 12px rgba(12,30,58,0.07);--shadow-md:0 6px 24px rgba(12,30,58,0.12)}
@@ -233,7 +232,6 @@ textarea{min-height:80px;resize:vertical}
     <div class="footer-section">
       <h4>Support &amp; Legal</h4>
       <a href="contact-us.html">Contact Us</a>
-      <a href="help-center.html">Help Center</a>
       <a href="terms.html">Terms of Service</a>
       <a href="privacy.html">Privacy Policy</a>
     </div>
@@ -246,6 +244,7 @@ textarea{min-height:80px;resize:vertical}
   <div class="footer-bottom">© <span id="footerYear"></span> Rental Genie. All rights reserved.</div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ---- Supabase + safeStorage ---- */
 (function(){
@@ -262,13 +261,15 @@ function setStatus(msg,kind){var e=$('statusMsg');e.className='status-msg'+(kind
 
 /* ---- URL context ---- */
 var _params=new URLSearchParams(location.search);
-var _property=decodeURIComponent(_params.get('property')||'');
+var _propertyId=_params.get('property_id')||_params.get('id')||'';
+var _companyId=_params.get('company_id')||'';
+var _property=_params.get('property')||'';
 
 /* ---- Auth ---- */
 function setupAuth(){
   db.auth.getUser().then(function(r){
     var u=r.data&&r.data.user;
-    if(!u)return;
+    if(!u){location.replace('login.html?returnTo='+encodeURIComponent(location.pathname+location.search));return}
     var name=(u.user_metadata&&(u.user_metadata.full_name||u.user_metadata.name))||(u.email?u.email.split('@')[0]:'User');
     var nl=$('nav-login');if(nl)nl.style.display='none';
     var um=$('userMenu');if(um)um.style.display='inline-block';
@@ -289,22 +290,40 @@ $('hamburgerBtn').addEventListener('click',function(){var d=$('mobileDrawer');d.
 document.addEventListener('click',function(e){var d=$('mobileDrawer'),h=$('hamburgerBtn');if(d&&d.style.display==='block'&&!d.contains(e.target)&&!h.contains(e.target))d.style.display='none'});
 
 /* ---- Init property context ---- */
+// Resolve the property by id (hoa-info links with property_id); older links pass only the name.
+function resolveProperty(){
+  var q=db.from('properties').select('id,name');
+  q=_propertyId?q.eq('id',_propertyId):q.eq('name',_property);
+  if(!_propertyId&&!_property)return Promise.resolve();
+  return q.limit(1).then(function(r){
+    if(r.error){console.error('Property load error:',r.error);return}
+    var p=r.data&&r.data[0];
+    if(p){_propertyId=p.id;_property=p.name||_property}
+    else _propertyId='';
+  });
+}
+function backUrl(){
+  var u=new URL('hoa-info.html',location.href);
+  if(_propertyId)u.searchParams.set('property_id',_propertyId);
+  if(_companyId)u.searchParams.set('company_id',_companyId);
+  return u.pathname+u.search;
+}
 function initContext(){
-  $('propertyPill').textContent='🏠 '+(  _property||'(No property specified)');
+  $('propertyPill').textContent='🏠 '+(_property||'(No property specified)');
   var cl=$('cancelLink');
-  if(cl)cl.href='hoa-info.html'+(_property?'?property='+encodeURIComponent(_property):'');
+  if(cl)cl.href=backUrl();
 }
 
 /* ---- Load existing HOA record ---- */
 function loadHOA(){
-  if(!_property)return Promise.resolve();
-  return db.from('property_hoa').select('*').eq('property_name',_property).order('created_at',{ascending:false}).limit(1).then(function(r){
+  if(!_propertyId)return Promise.resolve();
+  return db.from('property_hoa').select('*').eq('property_id',_propertyId).order('created_at',{ascending:false}).limit(1).then(function(r){
     if(r.error){console.error('HOA load error:',r.error);return}
     if(!r.data||!r.data.length){$('recordPill').textContent='🏘️ New HOA Record';return}
     var info=r.data[0];
     $('hoaRecordId').value=info.id||'';
     $('hoaName').value=info.hoa_name||'';
-    $('feeAmount').value=info.fee_amount||'';
+    $('feeAmount').value=info.fee_amount==null?'':info.fee_amount;
     $('dueDay').value=info.due_day||'';
     $('contactName').value=info.contact_name||'';
     $('contactPhone').value=info.contact_phone||'';
@@ -323,6 +342,7 @@ $('hoaForm').addEventListener('submit',function(e){
   var dueRaw=$('dueDay').value;
 
   var hoaData={
+    property_id:_propertyId,
     property_name:_property,
     hoa_name:($('hoaName').value||'').trim(),
     fee_amount:feeRaw?parseFloat(feeRaw):null,
@@ -334,7 +354,7 @@ $('hoaForm').addEventListener('submit',function(e){
     notes:($('notes').value||'').trim()
   };
 
-  if(!_property){setStatus('No property specified in URL.','err');return}
+  if(!_propertyId){setStatus('No property found for this link. Open HOA from the property page and try again.','err');return}
 
   var btn=$('saveBtn');btn.disabled=true;btn.textContent='Saving…';
   setStatus('Saving…','info');
@@ -347,6 +367,7 @@ $('hoaForm').addEventListener('submit',function(e){
     if(r.error)throw r.error;
     // Write history record
     var history={
+      property_id:_propertyId,
       property_name:_property,
       hoa_name:hoaData.hoa_name,
       fee_amount:hoaData.fee_amount,
@@ -360,11 +381,20 @@ $('hoaForm').addEventListener('submit',function(e){
   }).then(function(){
     setStatus('✅ HOA info saved!','ok');
     btn.disabled=false;btn.textContent='💾 Save Changes';
-    setTimeout(function(){location.href='hoa-info.html?property='+encodeURIComponent(_property)},900);
+    setTimeout(function(){location.href=backUrl()},900);
   }).catch(function(err){
     setStatus('❌ Save failed: '+(err&&err.message||'Unexpected error.'),'err');
     btn.disabled=false;btn.textContent='💾 Save Changes';
   });
 });
 
-/* ---- Init ---
+/* ---- Init ---- */
+var fy=$('footerYear');if(fy)fy.textContent=new Date().getFullYear();
+setupAuth();
+resolveProperty().then(function(){
+  initContext();
+  return loadHOA();
+}).catch(function(e){console.error('HOA init:',e)});
+</script>
+</body>
+</html>

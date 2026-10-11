@@ -298,7 +298,7 @@ body.auth-guest #mobileLogin{display:block!important;}body.auth-guest #mobileAcc
 .umd-section{display:flex;flex-direction:column;padding:6px;border-bottom:1px solid #f1f5f9;}.umd-section:last-child{border-bottom:none;}
 .umd-link{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;font-size:.84rem;font-weight:600;color:#0c1e3a;text-decoration:none;background:none;border:none;cursor:pointer;width:100%;font-family:"DM Sans",sans-serif;transition:background .15s;}
 .umd-link:hover{background:#f8faff;}.umd-link.danger{color:#dc2626;}.umd-link.danger:hover{background:#fef2f2;}
-@media(max-width:860px){.umd-wrap{display:none!important;}}
+@media(max-width:860px){.umd-wrap,body.auth-ready .umd-wrap{display:none!important;}}
 .drawer{display:none;position:fixed;top:70px;left:12px;right:12px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:10px 10px 6px;z-index:1300;box-shadow:0 16px 40px rgba(12,30,58,.18);max-height:calc(100vh - 90px);overflow-y:auto;}
 .drawer-user-row{display:flex!important;align-items:center;gap:10px;padding:10px 12px 12px!important;border-bottom:1px solid #f1f5f9!important;font-weight:700!important;color:#0c1e3a!important;font-size:0.95rem!important;text-decoration:none;}
 .drawer-avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#1a3a6b,#1e5799);color:#fff;font-weight:700;font-size:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-transform:uppercase;}
@@ -934,12 +934,10 @@ async function requireAuth() {
 
   // Init
   (async function init() {
-    document.getElementById("footerYear").textContent = new Date().getFullYear();
+    const fy = document.getElementById("footerYear");
+    if (fy) fy.textContent = new Date().getFullYear();
     await waitForClientReady();
     await rgSetupAuth();
-    if (!SUPABASE_ANON_KEY || SUPABASE_ANON_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxbW5hZXVqd3VtbGNveWhnenVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NTU0NzIsImV4cCI6MjEwNjEzMTQ3Mn0.GbOKbMKaFO79esF2hx9dCNe8oSIZuMrx6W5p7kfPgXQ') {
-      console.warn('Set window.SUPABASE_ANON_KEY to your anon key (or replace in this file).');
-    }
 
     await loadProperty();
     await loadHistory();

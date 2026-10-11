@@ -3756,7 +3756,7 @@ async function fetchDashboardData(user) {
   let propQuery      = sb.from("properties").select("id, name, occupancy_status", { count: "exact" }).order("created_at", { ascending: false });
   let rentYTDQuery   = sb.from("rent_log").select("amount, date_paid").gte("date_paid", yearStart);
   let expYTDQuery    = sb.from("expenses").select("amount, date_paid").is("archived_at", null).gte("date_paid", yearStart);
-  let maintQuery     = sb.from("maintenance_requests").select("status, urgency_level");
+  let maintQuery     = sb.from("maintenance_requests").select("status, urgency_level").is("archived_at", null);
   let rent30Query    = sb.from("rent_log").select("amount, date_paid").gte("date_paid", days30Ago);
   let maintExp30Query = sb.from("expenses").select("amount, date_paid, category").is("archived_at", null)
     .in("category", ["Maintenance", "Repairs & Maintenance"]).gte("date_paid", days30Ago);
@@ -4010,7 +4010,7 @@ async function fetchDashboardData(user) {
   const openTotal = openOnly + inProgress;
   const openHigh = maintenanceRequests.filter(
     (r) => (r.status === "Open" || r.status === "In Progress") &&
-           String(r.urgency_level || "").toLowerCase() === "high"
+           ["high", "emergency"].includes(String(r.urgency_level || "").toLowerCase())
   ).length;
   const pendingQuotes = maintenanceRequests.filter(
     (r) => r.status === "Pending Quote"

@@ -2024,9 +2024,9 @@ async function loadMaintReport(months) {
         var stCls = st.toLowerCase() === 'completed' || st.toLowerCase() === 'resolved' ? 'badge-green'
                   : st.toLowerCase() === 'in progress' ? 'badge-yellow'
                   : 'badge-red';
-        var pri = r.priority || r.urgency || '';
-        var priCls = pri.toLowerCase() === 'high' || pri.toLowerCase() === 'urgent' ? 'badge-red'
-                   : pri.toLowerCase() === 'medium' ? 'badge-yellow' : 'badge-muted';
+        var pri = r.urgency_level || '';
+        var priCls = pri === 'High' || pri === 'Emergency' ? 'badge-red'
+                   : pri === 'Normal' ? 'badge-yellow' : 'badge-muted';
         var cost = Number(r.cost || r.repair_cost || r.amount || 0);
         return '<tr>' +
           '<td>' + fmtDate(r.created_at ? r.created_at.split('T')[0] : (r.date_submitted || r.date || '')) + '</td>' +

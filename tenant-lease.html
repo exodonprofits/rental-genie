@@ -9,7 +9,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap">
   <link rel="dns-prefetch" href="https://xqmnaeujwumlcoyhgzuk.supabase.co">
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
   /* ── Design Tokens ──────────────────────────────────────────── */
@@ -163,7 +162,7 @@
   .hamburger:hover { background: rgba(255,255,255,.2); }
   @media(max-width:880px) {
     .nav-links { display: none; }
-    .umd-wrap { display: none; }
+    .umd-wrap { display: none !important; } /* boot sets display:flex inline */
     .hamburger { display: block; }
   }
 
@@ -673,6 +672,7 @@
   </div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function () {
   /* ── safeStorage bootstrap ──────────────────────────────── */

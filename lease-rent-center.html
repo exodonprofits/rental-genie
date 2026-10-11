@@ -3580,7 +3580,17 @@ function setLeaseActionLinks() {
   wireBtn(create, `lease-form.html?${q}`,          'Select a property to create a lease.',       '➕');
   wireBtn(renew,  `lease-form.html?${q}&renew=true`,'Select a property to renew a lease.',       '🔄');
   wireBtn(invite, `invite-tenant.html?${q}`,       'Select a property to invite a tenant.',      '✉️');
-  wireBtn(edit,   `lease-form.html?${q}&edit=1`,   'Select a property to edit the lease.',       '✏️');
+  // Edit needs the lease's id: lease-form opens in create mode without one, and saving would add a second lease.
+  const editLease = prop ? getLedgerLease() : null;
+  if (prop && !(editLease && editLease.id)) {
+    if (edit) {
+      edit.href = "#";
+      edit.setAttribute('aria-disabled', 'true');
+      edit.onclick = function(e) { e.preventDefault(); e.stopPropagation(); showToast('There is no lease to edit yet. Use Create Lease.', '✏️'); };
+    }
+  } else {
+    wireBtn(edit, `lease-form.html?${q}${editLease ? `&lease_id=${encodeURIComponent(editLease.id)}` : ""}`, 'Select a property to edit the lease.', '✏️');
+  }
   wireBtn(sign,   `view-lease.html?${q}&send=1`,   'Select a property to send for signature.',   '🖊️');
 
 }
@@ -3799,6 +3809,7 @@ async function updateLeasePanel() {
         await updateQuickPeek();
         await renderDueLedger();
         updateLedgerLeaseContext();
+        setLeaseActionLinks();
         try { setActiveTab("rent"); } catch (e) {}
       });
     });

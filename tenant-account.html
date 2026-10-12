@@ -547,10 +547,16 @@
     btn.disabled = true; btn.textContent = 'Saving…';
     setStatus('phoneStatus', '', '');
 
-    sb.from('tenants').update({ phone: phone || null }).eq('id', tenant.id).then(function (res) {
+    // .select() returns the updated rows: 0 rows means the update was refused (the tenant record
+    // isn't linked to this login yet; tenants_update_self matches auth_user_id), not saved.
+    sb.from('tenants').update({ phone: phone || null }).eq('id', tenant.id).select('id').then(function (res) {
       btn.disabled = false; btn.textContent = '💾 Save Phone';
       if (res.error) {
         setStatus('phoneStatus', 'err', 'Could not save: ' + res.error.message);
+        return;
+      }
+      if (!res.data || !res.data.length) {
+        setStatus('phoneStatus', 'err', "Your phone number wasn't saved: your tenant record isn't linked to this login yet. Ask your landlord to update it, or contact them with the new number.");
         return;
       }
       tenant.phone = phone;

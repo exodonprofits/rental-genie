@@ -1062,21 +1062,24 @@
   function loadRepairsSnapshot(user, tenant, propName) {
     var q = tenant
       ? sb.from('maintenance_requests')
-          .select('id, property_name, issue_summary, status, date_submitted, inserted_at')
+          .select('id, property_name, issue_description, status, created_at')
           .eq('tenant_id', tenant.id)
-          .order('date_submitted', { ascending: false })
+          .neq('status', 'Resolved')
+          .order('created_at', { ascending: false })
           .limit(5)
       : sb.from('maintenance_requests')
-          .select('id, property_name, issue_summary, status, date_submitted, inserted_at')
+          .select('id, property_name, issue_description, status, created_at')
           .eq('tenant_email', user.email)
-          .order('date_submitted', { ascending: false })
+          .neq('status', 'Resolved')
+          .order('created_at', { ascending: false })
           .limit(5);
     if (propName) q = q.eq('property_name', propName);
 
     q.then(function (res) {
       if (res.error) throw res.error;
+      // status is Open | In Progress | Resolved
       var open = (res.data || []).filter(function (r) {
-        return !String(r.status || '').toLowerCase().includes('complete');
+        return String(r.status || '') !== 'Resolved';
       });
       if (!open.length) { var rc = $('repairsCard'); if (rc) rc.style.display = 'none'; return; }
 
@@ -1089,10 +1092,10 @@
       if (sub) sub.textContent = open.length + ' open request' + (open.length !== 1 ? 's' : '') + ' pending or in progress';
 
       list.innerHTML = open.map(function (r) {
-        var isDone = String(r.status || '').toLowerCase().includes('complete');
+        var isDone = String(r.status || '') === 'Resolved';
         return '<div class="repairs-row">'
           + '<div class="repairs-dot ' + (isDone ? 'done' : 'open') + '"></div>'
-          + '<div class="repairs-issue">' + escapeHtml(r.issue_summary || 'No description') + '</div>'
+          + '<div class="repairs-issue">' + escapeHtml(r.issue_description || 'No description') + '</div>'
           + '<div class="repairs-status">' + escapeHtml(r.status || '—') + '</div>'
           + '</div>';
       }).join('');

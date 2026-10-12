@@ -2925,7 +2925,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   <div class="card" id="setupCard" aria-label="Finish setting up Rental Genie">
     <div class="card-header">
       <h2 class="card-title"><span aria-hidden="true">🧭</span> Finish setting up</h2>
-      <span class="tag-pill" id="setupProgress">0 of 3</span>
+      <span class="tag-pill" id="setupProgress">0 of 4</span>
     </div>
     <div class="setup-steps" id="setupSteps"></div>
   </div>
@@ -4065,6 +4065,11 @@ async function fetchDashboardData(user) {
     leasedPropertyCount,
 
     // Setup state — drives the first-run checklist
+    companyId: activeCompanyId,
+    leaseTargetProperty: (function () {
+      const leased = new Set((leaseRows || []).map(l => l.property_name));
+      return (properties || []).find(pr => !leased.has(pr.name)) || (properties || [])[0] || null;
+    })(),
     hasProperties: Number(propertyCount || 0) > 0,
     hasLease: (leaseRows || []).length > 0,
     hasRentLog: (rentYTDRows || []).length > 0,
@@ -4450,6 +4455,51 @@ function refreshAfterPayInbox() {
 }
 
 /* -------------------------------------------------------------
+   Create a workspace for a landlord who has none (new sign-ups)
+------------------------------------------------------------- */
+var _creatingWorkspace = false;
+async function createWorkspace(el) {
+  if (_creatingWorkspace) return;
+  _creatingWorkspace = true;
+  const titleEl = el && el.querySelector(".setup-title");
+  const oldTitle = titleEl ? titleEl.textContent : "";
+  if (titleEl) titleEl.textContent = "Creating your workspace…";
+  try {
+    const { data: ud } = await sb.auth.getUser();
+    const user = ud && ud.user;
+    if (!user) { location.href = "login.html?returnTo=" + encodeURIComponent("dashboard.html"); return; }
+
+    // Don't create a second one if a workspace appeared meanwhile (another tab, a slow load)
+    let companyId = null;
+    const { data: mem } = await sb.from("company_members").select("company_id").eq("user_id", user.id).limit(1).maybeSingle();
+    if (mem && mem.company_id) companyId = mem.company_id;
+    if (!companyId) {
+      const { data: own } = await sb.from("companies").select("id").eq("owner_user_id", user.id).limit(1).maybeSingle();
+      if (own && own.id) companyId = own.id;
+    }
+    if (!companyId) {
+      const { data: comp, error: compErr } = await sb.from("companies")
+        .insert({ name: "My Rentals", owner_user_id: user.id }).select("id").single();
+      if (compErr) throw compErr;
+      companyId = comp.id;
+      const { error: memErr } = await sb.from("company_members")
+        .insert({ company_id: companyId, user_id: user.id, role: "owner" });
+      if (memErr) throw memErr;
+    }
+    try { localStorage.setItem("rg_active_company_id", companyId); } catch (_) {}
+
+    const data = await fetchDashboardData(user);
+    updateDashboard(data);
+  } catch (e) {
+    console.error("Create workspace failed:", e);
+    if (titleEl) titleEl.textContent = oldTitle;
+    alert("Couldn't create your workspace. Please refresh and try again.");
+  } finally {
+    _creatingWorkspace = false;
+  }
+}
+
+/* -------------------------------------------------------------
    First-run setup checklist
    Shows until a landlord has a property, a lease, and a logged payment.
 ------------------------------------------------------------- */
@@ -4458,11 +4508,21 @@ function renderSetupChecklist(data){
   const list = document.getElementById("setupSteps");
   if (!card || !list) return;
 
+  // lease-form needs a property and workspace to save, so link it with both, or let the
+  // landlord pick a property in Lease & Rent.
+  const lp = data.leaseTargetProperty;
+  const leaseHref = (lp && lp.id && data.companyId)
+    ? "lease-form.html?property=" + encodeURIComponent(lp.name || "") +
+      "&property_id=" + encodeURIComponent(lp.id) + "&company_id=" + encodeURIComponent(data.companyId)
+    : "lease-rent-center.html";
+
   const steps = [
+    { done: !!data.companyId, title: "Create your workspace",
+      desc: "One click. It holds your properties, leases and rent records.", action: createWorkspace },
     { done: !!data.hasProperties, title: "Add your first property",
       desc: "Address, rent, and mortgage details.", href: "add-property.html" },
     { done: !!data.hasLease, title: "Add a lease and tenant",
-      desc: "Rent amount, due day, and lease dates.", href: "lease-form.html" },
+      desc: "Rent amount, due day, and lease dates.", href: leaseHref },
     { done: !!data.hasRentLog, title: "Log a rent payment",
       desc: "Record what you've been paid so far.", href: "lease-rent-center.html?action=log" }
   ];
@@ -4474,7 +4534,14 @@ function renderSetupChecklist(data){
   steps.forEach(function (s) {
     const a = document.createElement("a");
     a.className = "setup-step" + (s.done ? " done" : "");
-    a.href = s.href;
+    if (s.action) {
+      a.href = "#";
+      a.setAttribute("role", "button");
+      if (!s.done) a.addEventListener("click", function (e) { e.preventDefault(); s.action(a); });
+      else a.addEventListener("click", function (e) { e.preventDefault(); });
+    } else {
+      a.href = s.href;
+    }
 
     const mark = document.createElement("div");
     mark.className = "setup-mark";

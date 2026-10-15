@@ -737,9 +737,15 @@ function esc(s) {
 function fmtMoney(v) {
   return '$' + Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+// 'YYYY-MM-DD' is a local calendar date; new Date('YYYY-MM-DD') reads it as UTC midnight, which is the
+// previous day in US time zones (an expense on the 1st landed in the prior month).
+function parseDay(s) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+  return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(s);
+}
 function fmtDate(iso) {
   if (!iso) return '—';
-  var d = new Date(iso);
+  var d = parseDay(iso);
   return isNaN(d) ? '—' : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
 }
 function hideOverlay() {
@@ -893,7 +899,7 @@ function getFilteredExpenses() {
   var propertyFilter = propertySelect.value;
   var range = getDateRange();
   var filtered = allExpenses.filter(function (item) {
-    var d = new Date(item.date_paid);
+    var d = parseDay(item.date_paid);
     if (isNaN(d)) return false;
     var inRange   = d >= range.startDate && d <= range.endDate;
     var inProp    = propertyFilter === 'all' || item.property_name === propertyFilter;
@@ -923,7 +929,7 @@ function updateAll() {
   /* Highest month */
   var monthlyTotals = {};
   filtered.forEach(function (r) {
-    var d = new Date(r.date_paid);
+    var d = parseDay(r.date_paid);
     if (isNaN(d)) return;
     var key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     monthlyTotals[key] = (monthlyTotals[key] || 0) + (r.amount || 0);
@@ -1003,7 +1009,7 @@ function renderMonthlyChart(expenses, startDate, endDate) {
     cursor.setMonth(cursor.getMonth() + 1);
   }
   expenses.forEach(function (r) {
-    var d = new Date(r.date_paid);
+    var d = parseDay(r.date_paid);
     if (isNaN(d)) return;
     var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
     if (monthlyTotals[k] !== undefined) monthlyTotals[k] += (r.amount || 0);
@@ -1192,7 +1198,7 @@ function downloadCSV() {
   var rows = [['Date','Property','Category','Vendor','Amount','Note']].concat(
     filtered.map(function (r) {
       return [
-        r.date_paid ? new Date(r.date_paid).toLocaleDateString() : '',
+        r.date_paid ? parseDay(r.date_paid).toLocaleDateString() : '',
         r.property_name || '',
         r.category || '',
         r.vendor || '',

@@ -937,15 +937,24 @@ function renderTable(rows, maxAbsNet) {
 }
 
 function escapeHtml(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+// Month (0-11) of a 'YYYY-MM-DD' date. new Date() would read it as UTC midnight, the previous
+// evening in US time zones, moving rent paid on the 1st into the prior month.
+function monthIndex(dateStr) {
+  var m = /^\d{4}-(\d{2})/.exec(String(dateStr || ''));
+  return m ? Number(m[1]) - 1 : null;
+}
+var MORTGAGE_CATS = ['Mortgage Payment', 'Mortgage Principal', 'Mortgage Interest'];
 
 /* ============================================================
    LOAD PORTFOLIO DATA
 ============================================================ */
 function loadPortfolio(user) {
   var now          = new Date();
-  var firstDayYear = new Date(now.getFullYear(), 0, 1).toISOString();
+  var firstDayYear = now.getFullYear() + '-01-01';
+  var monthsElapsed = now.getMonth() + 1;  // months of this year so far, counting the current one
   var yearStr      = String(now.getFullYear());
 
   var yearEl = $('currentYear'); if (yearEl) yearEl.textContent = yearStr;
@@ -971,7 +980,7 @@ function loadPortfolio(user) {
     if (cid) { activeCompanyId = cid; try { localStorage.setItem('rg_active_company_id', cid); } catch(e) {} }
 
     /* ── Properties query — with leases fallback ── */
-    var propQ = sb.from('properties').select('*').order('name');
+    var propQ = sb.from('properties').select('*').is('archived_at', null).order('name');
     if (activeCompanyId) propQ = propQ.eq('company_id', activeCompanyId);
     else if (userId)     propQ = propQ.eq('user_id', userId);
 
@@ -1009,10 +1018,10 @@ function loadPortfolio(user) {
       var monthlyRent     = new Array(12).fill(0);
       var monthlyExpenses = new Array(12).fill(0);
       var expenseByCategory = {};
-      var rentYTD = 0, expenseYTD = 0, mortgageTotal = 0;
+      var rentYTD = 0, expenseYTD = 0, mortgageTotal = 0, mortgageYTDTotal = 0;
 
       var propPromises = properties.map(function (prop) {
-        var rentQ = sb.from('rent_log').select('amount, date_paid')
+        var rentQ = sb.from('rent_log').select('amount, date_paid').is('archived_at', null)
           .eq('property_name', prop.name).gte('date_paid', firstDayYear);
         var expQ  = sb.from('expenses').select('amount, date_paid, category').is('archived_at', null)
           .eq('property_name', prop.name).gte('date_paid', firstDayYear);
@@ -1026,19 +1035,17 @@ function loadPortfolio(user) {
 
           var rentSum = rent.reduce(function (sum, r) {
             var amt = Number(r.amount || 0);
-            if (r.date_paid) {
-              var d = new Date(r.date_paid);
-              if (!isNaN(d)) monthlyRent[d.getMonth()] += amt;
-            }
+            var mi = monthIndex(r.date_paid);
+            if (mi !== null) monthlyRent[mi] += amt;
             return sum + amt;
           }, 0);
 
+          var mortgageLoggedMonths = {};  // months where a mortgage payment was logged as an expense
           var expSum = exp.reduce(function (sum, e) {
             var amt = Number(e.amount || 0);
-            if (e.date_paid) {
-              var d = new Date(e.date_paid);
-              if (!isNaN(d)) monthlyExpenses[d.getMonth()] += amt;
-            }
+            var mi = monthIndex(e.date_paid);
+            if (mi !== null) monthlyExpenses[mi] += amt;
+            if (mi !== null && MORTGAGE_CATS.indexOf(e.category) !== -1) mortgageLoggedMonths[mi] = true;
             var cat = e.category || 'Other';
             expenseByCategory[cat] = (expenseByCategory[cat] || 0) + amt;
             return sum + amt;
@@ -1046,7 +1053,12 @@ function loadPortfolio(user) {
 
           var mortgage = Number(prop.monthly_payment || prop.mortgage_pi || 0);
           mortgageTotal += mortgage;
-          var net = rentSum - (expSum + mortgage * 12);
+          // Mortgage for the months elapsed this year, skipping months it was already logged as an
+          // expense (add-expense's mortgage split), so it isn't counted twice.
+          var mortgageYTD = 0;
+          for (var m = 0; m < monthsElapsed; m++) if (!mortgageLoggedMonths[m]) mortgageYTD += mortgage;
+          mortgageYTDTotal += mortgageYTD;
+          var net = rentSum - expSum - mortgageYTD;
           rentYTD     += rentSum;
           expenseYTD  += expSum;
 
@@ -1060,7 +1072,7 @@ function loadPortfolio(user) {
         var expEl   = $('expenseYTD'); if (expEl)   expEl.textContent   = money(expenseYTD);
         var mortEl  = $('mortgageMonthly'); if (mortEl) mortEl.textContent = money(mortgageTotal);
 
-        var netVal  = rentYTD - (expenseYTD + mortgageTotal * 12);
+        var netVal  = rentYTD - expenseYTD - mortgageYTDTotal;
         var netEl   = $('netYTD');
         if (netEl) {
           netEl.textContent = (netVal >= 0 ? '+' : '') + money(netVal);
@@ -1081,7 +1093,7 @@ function loadPortfolio(user) {
         var mortSub = $('mortgageSub');
         if (mortSub) mortSub.textContent = 'Annualized: ' + money(mortgageTotal * 12);
         var netSub = $('netYTDSub');
-        if (netSub) netSub.textContent = 'Rent − Expenses − Mortgage × 12';
+        if (netSub) netSub.textContent = 'Rent − Expenses − Mortgage to date (' + money(mortgageYTDTotal) + ')';
 
         /* ── Charts ── */
         renderTrendChart(monthlyRent, monthlyExpenses);

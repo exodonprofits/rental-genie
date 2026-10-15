@@ -3427,7 +3427,7 @@ function renderGenieInsights(items){
     const actionsHtml = (it.actions || []).length
       ? `<div class="actions">${it.actions.map(a => `<a href="${a.href}">${a.label}</a>`).join("")}</div>`
       : "";
-    const metaHtml = it.meta ? `<div class="meta">${it.meta}</div>` : "";
+    const metaHtml = it.meta ? `<div class="meta">${escapeGenieText(it.meta)}</div>` : "";  // meta can hold property names
     return `
       <div class="genie-insight ${it.level}">
         <div class="top">
@@ -3645,7 +3645,7 @@ function renderAssignments(items){
       ? `<div class="assistant-card-meta">${it.meta.map(m => `<span class="assistant-meta-pill">${escapeGenieText(m)}</span>`).join("")}</div>`
       : "";
     const factsHtml = Array.isArray(it.facts) && it.facts.length
-      ? `<ul class="assistant-card-facts">${it.facts.map(f => `<li><span aria-hidden="true">•</span><span>${f}</span></li>`).join("")}</ul>`
+      ? `<ul class="assistant-card-facts">${it.facts.map(f => `<li><span aria-hidden="true">•</span><span>${escapeGenieText(f)}</span></li>`).join("")}</ul>`
       : "";
     const actions = (it.actions || []).map(a => {
       const isSecondary = a.secondary || false;
@@ -4752,21 +4752,21 @@ function updateDashboard(data) {
   // Recent property activity
   const propertyList = document.getElementById("propertyList");
   if (data.recentProperties && data.recentProperties.length > 0) {
-    propertyList.innerHTML = data.recentProperties.slice(0, 4).map((prop) => {
-      // Bake href into the attribute value at render time so onclick has no closure dependency
-      const _href = 'property-overview.html?property=' + encodeURIComponent(prop.name || '') + '&id=' + (prop.id || '');
-      return `
-        <li class="prop-item">
-          <div class="prop-main">
-            <div class="prop-name">${prop.name || "N/A"}</div>
-            <div class="prop-meta">Property</div>
-          </div>
-          <span class="pill-status">—</span>
-          <button class="tiny-btn" onclick="window.location.href='${_href}'">
-            View
-          </button>
-        </li>`;
-    }).join("");
+    // createElement: property names are user text (a quote used to break out of the old inline onclick)
+    propertyList.textContent = "";
+    data.recentProperties.slice(0, 4).forEach((prop) => {
+      const href = 'property-overview.html?property=' + encodeURIComponent(prop.name || '') + '&id=' + encodeURIComponent(prop.id || '');
+      const li = document.createElement("li"); li.className = "prop-item";
+      const main = document.createElement("div"); main.className = "prop-main";
+      const nm = document.createElement("div"); nm.className = "prop-name"; nm.textContent = prop.name || "N/A";
+      const meta = document.createElement("div"); meta.className = "prop-meta"; meta.textContent = "Property";
+      main.appendChild(nm); main.appendChild(meta);
+      const pill = document.createElement("span"); pill.className = "pill-status"; pill.textContent = "—";
+      const btn = document.createElement("button"); btn.className = "tiny-btn"; btn.type = "button"; btn.textContent = "View";
+      btn.addEventListener("click", () => { window.location.href = href; });
+      li.appendChild(main); li.appendChild(pill); li.appendChild(btn);
+      propertyList.appendChild(li);
+    });
   } else {
     propertyList.innerHTML =`<div class="empty-state">No properties found. Add one to get started!</div>`;
   }

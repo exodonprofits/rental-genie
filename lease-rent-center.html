@@ -4275,13 +4275,13 @@ async function renderDueLedger() {
     return `
       <tr>
         <td>${formatDate(dueISO)}</td>
-        <td>${tenant}</td>
+        <td>${escapeHtml(tenant)}</td>
         <td>${formatMoney(rent)}</td>
         <td>${formatMoney(lateFeeDue)}</td>
         <td>${formatMoney(totalDue)}</td>
         <td><span class="badge ${status.cls}">${status.label}</span></td>
         <td>${paidDateISO ? formatDate(paidDateISO) : "—"}</td>
-        <td>${methodLabel}</td>
+        <td>${escapeHtml(methodLabel)}</td>
         <td>${formatMoney(paidTotal)}</td>
         <td>${formatMoney(balance)}</td>
         <td><div class="row-actions">${actions}</div></td>
@@ -4408,7 +4408,7 @@ function openPaymentsListModal(dueISO) {
       <tr>
         <td>${r.date_paid ? formatDate(toISODateOnly(r.date_paid)) : "—"}</td>
         <td>${formatMoney(Number(r.amount||0)||0)}</td>
-        <td>${r.method || "—"}</td>
+        <td>${escapeHtml(r.method || "—")}</td>
         <td style="max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(r.note || "")}</td>
         <td style="white-space:nowrap;">
           <button class="mini" data-pl-action="edit" data-id="${r.id}">✏️</button>

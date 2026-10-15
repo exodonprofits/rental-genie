@@ -676,12 +676,17 @@ var expYTDMap     = {};
    HELPERS
 ============================================================ */
 function money(v)  { return '$' + Number(v||0).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0}); }
-function esc(s)    { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function esc(s)    { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+// Date-only strings are local calendar dates; new Date('YYYY-MM-DD') reads them as UTC (a day early in the US).
 function fmtDate(iso) {
   if (!iso) return '—';
-  var d = new Date(iso);
+  var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso));
+  var d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
   return isNaN(d) ? '—' : d.toLocaleDateString(undefined,{month:'short',day:'2-digit',year:'numeric'});
 }
+function ymdLocal(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+var MORTGAGE_CATS = ['Mortgage Payment', 'Mortgage Principal', 'Mortgage Interest'];
+var mortgageLoggedMonths = {};  // property name -> { month index: true } where a mortgage payment was logged
 function initials(name) {
   var parts = String(name||'').trim().split(' ').filter(Boolean);
   if (!parts.length) return '?';
@@ -706,7 +711,7 @@ function occupancyLabel(prop) {
 }
 function leaseStatusChip(lease) {
   if (!lease) return '<span class="chip chip-ghost" style="margin-left:auto">No Lease</span>';
-  var today = new Date().toISOString().slice(0,10);
+  var today = ymdLocal(new Date());
   var end   = lease.lease_end   || '';
   var start = lease.lease_start || '';
   var st    = (lease.status || '').toLowerCase();
@@ -752,7 +757,7 @@ async function loadPortfolio(sb, user) {
   if (cid) { try { localStorage.setItem('rg_active_company_id', cid); } catch(e) {} }
 
   /* Properties — with leases fallback if properties table is empty/missing */
-  var propQ = sb.from('properties').select('*').order('name');
+  var propQ = sb.from('properties').select('*').is('archived_at', null).order('name');
   if (cid) propQ = propQ.eq('company_id', cid);
   else     propQ = propQ.eq('user_id', user.id);
   var propRes = await propQ;
@@ -782,19 +787,23 @@ async function loadPortfolio(sb, user) {
   var names = allProperties.map(function(p){ return p.name; });
 
   /* Latest lease per property */
-  var leaseRes = await sb.from('leases').select('*').in('property_name', names).order('lease_start',{ascending:false});
+  var leaseRes = await sb.from('leases').select('*').is('archived_at', null).in('property_name', names).order('lease_start',{ascending:false});
   (leaseRes.data || []).forEach(function(l) {
     if (!leaseMap[l.property_name]) leaseMap[l.property_name] = l;
   });
 
   /* Rent YTD + Expenses YTD (parallel) */
-  var rentQ = sb.from('rent_log').select('property_name,amount').in('property_name',names).gte('date_paid',yearStart);
-  var expQ  = sb.from('expenses').select('property_name,amount').is('archived_at', null).in('property_name',names).gte('date_paid',yearStart);
+  var rentQ = sb.from('rent_log').select('property_name,amount').is('archived_at', null).in('property_name',names).gte('date_paid',yearStart);
+  var expQ  = sb.from('expenses').select('property_name,amount,category,date_paid').is('archived_at', null).in('property_name',names).gte('date_paid',yearStart);
   if (cid) { rentQ=rentQ.eq('company_id',cid); expQ=expQ.eq('company_id',cid); }
 
   var pResults = await Promise.all([rentQ, expQ]);
   (pResults[0].data||[]).forEach(function(r){ rentYTDMap[r.property_name]=(rentYTDMap[r.property_name]||0)+Number(r.amount||0); });
-  (pResults[1].data||[]).forEach(function(r){ expYTDMap[r.property_name] =(expYTDMap[r.property_name] ||0)+Number(r.amount||0); });
+  (pResults[1].data||[]).forEach(function(r){
+    expYTDMap[r.property_name] =(expYTDMap[r.property_name] ||0)+Number(r.amount||0);
+    var mm = /^\d{4}-(\d{2})/.exec(String(r.date_paid || ''));
+    if (mm && MORTGAGE_CATS.indexOf(r.category) !== -1) (mortgageLoggedMonths[r.property_name] = mortgageLoggedMonths[r.property_name] || {})[Number(mm[1]) - 1] = true;
+  });
 
   /* Portfolio hero KPIs */
   var occupied  = allProperties.filter(function(p){ return occupancyClass(p)==='occupied'; }).length;
@@ -853,7 +862,11 @@ function buildCard(p) {
   var rentYTD  = rentYTDMap[p.name] || 0;
   var expYTD   = expYTDMap[p.name]  || 0;
   var mortgage = Number(p.monthly_payment || p.mortgage_pi || 0);
-  var netYTD   = rentYTD - expYTD - (mortgage * 12);
+  // Mortgage for the months elapsed this year (not 12), skipping months it was logged as an expense
+  var logged   = mortgageLoggedMonths[p.name] || {};
+  var mortYTD  = 0;
+  for (var mi = 0; mi <= new Date().getMonth(); mi++) if (!logged[mi]) mortYTD += mortgage;
+  var netYTD   = rentYTD - expYTD - mortYTD;
   var netCls   = netYTD >= 0 ? 'green' : 'red';
   var netLabel = (netYTD >= 0 ? '+' : '') + money(netYTD);
 
@@ -861,7 +874,7 @@ function buildCard(p) {
   var occLabel = occupancyLabel(p);
   var typeLabel= p.property_type || 'Property';
   var enc      = encodeURIComponent(p.name);
-  var pidParam = p.id ? '&property_id=' + p.id : '';
+  var pidParam = p.id ? '&property_id=' + encodeURIComponent(p.id) : '';
 
   var tenantName = lease ? (lease.tenant_name || '') : '';
   var leaseStart = lease ? (lease.lease_start || '') : '';

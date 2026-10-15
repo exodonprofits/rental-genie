@@ -723,52 +723,6 @@ body.embedded main.page { padding-top: 16px !important; }
       const [y,m,d] = iso.split("-").map(Number);
       return new Date(y, m-1, d);
     }
-    function getLeaseDueDay(lease) {
-      if (!lease) return 1;
-      const v = lease.rent_due_day ?? lease.due_day ?? null;
-      const n = Number(v);
-      if (Number.isFinite(n) && n >= 1 && n <= 31) return n;
-      const ls = new Date(lease.lease_start);
-      if (!isNaN(ls)) return ls.getDate();
-      return 1;
-    }
-    function isLeaseM2M(lease) {
-      if (!lease) return false;
-      const lt = String(lease.lease_type || '').toLowerCase();
-      const st = String(lease.status    || '').toLowerCase();
-      return lt.includes('month') || lt === 'm2m' ||
-             st === 'month_to_month' || st === 'holdover';
-    }
-    function buildMonthlyDueDates(lease) {
-      if (!lease?.lease_start) return [];
-      const start = new Date(lease.lease_start);
-      if (isNaN(start)) return [];
-      const dueDay = getLeaseDueDay(lease) || 1;
-      const m2m = isLeaseM2M(lease);
-      let end;
-      if (m2m || !lease.lease_end) {
-        const now = new Date();
-        end = new Date(now.getFullYear(), now.getMonth() + 1, 28);
-      } else {
-        end = new Date(lease.lease_end);
-        if (isNaN(end)) return [];
-        const today = new Date();
-        if (end < today) end = new Date(today.getFullYear(), today.getMonth(), 28);
-      }
-      let year = start.getFullYear();
-      let month = start.getMonth();
-      const out = [];
-      while (true) {
-        const lastDay = new Date(year, month + 1, 0).getDate();
-        const day = Math.min(dueDay, lastDay);
-        const due = new Date(year, month, day);
-        if (due >= start && due <= end) out.push(toISODateOnly(due));
-        if (year > end.getFullYear() || (year === end.getFullYear() && month >= end.getMonth())) break;
-        month += 1;
-        if (month > 11) { month = 0; year += 1; }
-      }
-      return out;
-    }
     function guessAppliedDueDate(paidISO) {
       if (!paidISO || !dueDateOptions.length) return "";
       const paid = parseISODateOnly(paidISO);
@@ -873,15 +827,23 @@ body.embedded main.page { padding-top: 16px !important; }
         }
       }
 
-      // Populate due-date options from latest lease
-      if (latestLease) {
-        dueDateOptions = buildMonthlyDueDates(latestLease);
-        for (const iso of dueDateOptions) {
-          const opt = document.createElement('option');
-          opt.value = iso;
-          opt.textContent = iso; // keep ISO so it matches Rent Center keys exactly
-          dueSelect.appendChild(opt);
-        }
+      // Due dates come from the database rent schedule (rg_rent_schedule), the same dates the
+      // Rent Center ledger uses. As-of is the end of next month so the next due date is listed too.
+      const optEl = propertySelect.selectedOptions?.[0] || null;
+      const companyId = optEl?.dataset?.companyId || activeCompanyId || null;
+      const now = new Date();
+      const asOf = toISODateOnly(new Date(now.getFullYear(), now.getMonth() + 2, 0));
+      const { data: schedRows, error: schedErr } = await client.rpc('rg_rent_schedule', { p_company_id: companyId, p_as_of: asOf });
+      if (schedErr) console.error('Error loading rent schedule:', schedErr);
+      const rows = (schedRows || []).filter(r => r.property_name === propertyName)
+        .sort((x, y) => x.due_date < y.due_date ? -1 : 1);
+      dueDateOptions = rows.map(r => r.due_date);
+      for (const r of rows) {
+        const opt = document.createElement('option');
+        opt.value = r.due_date; // ISO, so it matches the Rent Center ledger exactly
+        const bal = Number(r.balance || 0);
+        opt.textContent = r.due_date + (bal > 0 ? ' · $' + bal.toFixed(2) + ' due' : ' · paid');
+        dueSelect.appendChild(opt);
       }
     }
 

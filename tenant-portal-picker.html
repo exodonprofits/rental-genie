@@ -329,7 +329,7 @@ main {
       return '<span class="meta-chip inactive">Vacant</span>';
     if (s === 'pending')
       return '<span class="meta-chip warn">Pending</span>';
-    return '<span class="meta-chip plain">' + (status || 'Unknown') + '</span>';
+    return '<span class="meta-chip plain">' + escHtml(status || 'Unknown') + '</span>';
   }
 
   function renderProperties(props) {

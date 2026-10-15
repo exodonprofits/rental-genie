@@ -1264,7 +1264,8 @@ async function loadCompanyDropdown() {
     group.style.display = 'flex';
     var stored = resolveActiveCompanyId();
     var preferred = companies.some(function (c) { return c.id === stored; }) ? stored : companies[0].id;
-    sel.innerHTML = companies.map(function (c) { return '<option value="' + c.id + '">' + (c.name || 'Company') + '</option>'; }).join('');
+    sel.textContent = '';
+    companies.forEach(function (c) { var o = document.createElement('option'); o.value = c.id; o.textContent = c.name || 'Company'; sel.appendChild(o); });
     sel.value = preferred;
     activeCompanyId = preferred;
     try { localStorage.setItem(ACTIVE_COMPANY_KEY, activeCompanyId); } catch(e) {}
@@ -1389,7 +1390,7 @@ async function loadReportsQuickPeek() {
 
   /* Load property row + lease + rent_log + expenses all in parallel */
   var today = new Date();
-  var firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+  var firstOfMonth = ymdLocal(new Date(today.getFullYear(), today.getMonth(), 1));
 
   var propQ = safeSelect('properties', '*', function (q) {
     if (activeCompanyId) q = q.eq('company_id', activeCompanyId);
@@ -1397,12 +1398,12 @@ async function loadReportsQuickPeek() {
   });
   var leaseQ = safeSelect('leases', '*', function (q) {
     if (activeCompanyId) q = q.eq('company_id', activeCompanyId);
-    return q;
+    return q.is('archived_at', null).order('lease_start', { ascending: false });
   });
-  var rentQ = sb.from('rent_log').select('amount, date_paid')
+  var rentQ = sb.from('rent_log').select('amount, date_paid').is('archived_at', null)
     .eq('property_name', currentProperty).gte('date_paid', firstOfMonth);
   if (activeCompanyId) rentQ = rentQ.eq('company_id', activeCompanyId);
-  var expQ = sb.from('expenses').select('amount, date_paid').is('archived_at', null)
+  var expQ = sb.from('expenses').select('amount, date_paid, category').is('archived_at', null)
     .eq('property_name', currentProperty).gte('date_paid', firstOfMonth);
   if (activeCompanyId) expQ = expQ.eq('company_id', activeCompanyId);
 
@@ -1419,16 +1420,16 @@ async function loadReportsQuickPeek() {
       var insMonthly  = Number(propRow.insurance_monthly || 0);
       var hoaMonthly  = Number(propRow.hoa_monthly || 0);
       var pmiMonthly  = Number(propRow.pmi_monthly || 0);
-      var fixedMonthly = mortgagePI + taxMonthly + insMonthly + hoaMonthly + pmiMonthly;
+      var fixedMonthly = mortgagePI + taxMonthly + insMonthly + hoaMonthly + pmiMonthly;  // full profile amount, for the breakdown line
       var cashInvested = Number(propRow.down_payment || 0) + Number(propRow.closing_costs || 0) + Number(propRow.rehab_cost || 0);
       var purchasePrice = Number(propRow.purchase_price || 0);
 
       setText('snap-fixed', money(fixedMonthly));
       setText('snap-fixed-breakdown', 'PI ' + money(mortgagePI) + ' · Tax ' + money(taxMonthly) + ' · Ins ' + money(insMonthly) + ' · HOA ' + money(hoaMonthly) + ' · PMI ' + money(pmiMonthly));
       setText('snap-invested', cashInvested > 0 ? money(cashInvested) : '$0');
-      window.__rg_propSnapshot = { fixedMonthly: fixedMonthly, cashInvested: cashInvested, purchasePrice: purchasePrice };
+      window.__rg_propSnapshot = { fixedMonthly: fixedMonthly, cashInvested: cashInvested, purchasePrice: purchasePrice, prop: propRow };
     } else {
-      window.__rg_propSnapshot = { fixedMonthly: 0, cashInvested: 0, purchasePrice: 0 };
+      window.__rg_propSnapshot = { fixedMonthly: 0, cashInvested: 0, purchasePrice: 0, prop: null };
     }
 
     /* ── Lease ── */
@@ -1438,12 +1439,12 @@ async function loadReportsQuickPeek() {
       setText('qp-tenant', lease.tenant_name || 'No tenant');
       var s = lease.lease_start || lease.start_date, e2 = lease.lease_end || lease.end_date;
       setText('qp-lease-dates', (s || e2) ? (s || '?') + ' → ' + (e2 || '?') : '—');
-      monthlyRent = Number(lease.rent_amount || lease.monthly_rent || lease.rent || 0) || null;
+      monthlyRent = Number(lease.rent_amount || 0) || null;
       var lsEl = $('qp-lease-status');
       if (lsEl) {
         var st = lease.status || '';
         if (!st && (s || e2)) {
-          var todayStr = new Date().toISOString().split('T')[0];
+          var todayStr = ymdLocal(new Date());
           st = e2 && e2 < todayStr ? 'Expired' : (s && s > todayStr ? 'Upcoming' : 'Active');
         }
         if (st) { lsEl.textContent = st; lsEl.style.display = 'inline-flex'; }
@@ -1458,10 +1459,10 @@ async function loadReportsQuickPeek() {
     (rentRes.data || []).forEach(function (p) {
       var amt = Number(p.amount || 0);
       totalThisMonth += amt;
-      if (p.date_paid) { var t = Date.parse(p.date_paid); if (!isNaN(t) && (!latestPayDate || t > latestPayDate)) latestPayDate = t; }
+      if (p.date_paid && (!latestPayDate || p.date_paid > latestPayDate)) latestPayDate = p.date_paid;
     });
     setText('qp-month-paid', 'Collected: ' + money(totalThisMonth));
-    setText('qp-last-payment', latestPayDate ? 'Last payment: ' + new Date(latestPayDate).toLocaleDateString() : 'Last payment: none this month');
+    setText('qp-last-payment', latestPayDate ? 'Last payment: ' + fmtDate(String(latestPayDate).slice(0, 10)) : 'Last payment: none this month');
 
     if (monthlyRent !== null) {
       var balance = monthlyRent - totalThisMonth;
@@ -1473,18 +1474,25 @@ async function loadReportsQuickPeek() {
     }
 
     /* ── Expenses this month ── */
-    var expTotal = (expRes.data || []).reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
-    var snap = window.__rg_propSnapshot || { fixedMonthly: 0, cashInvested: 0, purchasePrice: 0 };
-    var netThisMonth = totalThisMonth - expTotal - snap.fixedMonthly;
+    var expRows = expRes.data || [];
+    var expTotal = expRows.reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
+    var snap = window.__rg_propSnapshot || { fixedMonthly: 0, cashInvested: 0, purchasePrice: 0, prop: null };
+    var loggedCats = new Set(expRows.map(function (r) { return r.category; }));
+    // Profile fixed costs not already logged as expenses this month (no double counting)
+    var fixedUnlogged = fixedNotLogged(snap.prop, loggedCats, false);
+    var netThisMonth = totalThisMonth - expTotal - fixedUnlogged;
 
     setText('snap-expenses', money(expTotal));
-    setText('snap-expenses-meta', (expRes.data || []).length ? (expRes.data.length + ' expense item(s) this month') : 'No expenses logged this month');
+    setText('snap-expenses-meta', expRows.length ? (expRows.length + ' expense item(s) this month') : 'No expenses logged this month');
     setText('snap-net', (netThisMonth >= 0 ? '+' : '') + money(netThisMonth));
-    setText('snap-net-meta', 'Rent ' + money(totalThisMonth) + ' − Exp ' + money(expTotal) + ' − Fixed ' + money(snap.fixedMonthly));
+    setText('snap-net-meta', 'Rent ' + money(totalThisMonth) + ' − Exp ' + money(expTotal) + ' − Fixed not logged ' + money(fixedUnlogged));
 
     var annualNet = netThisMonth * 12;
     if (snap.cashInvested > 0) { setText('snap-coc', (annualNet / snap.cashInvested * 100).toFixed(1) + '%'); } else { setText('snap-coc', '—%'); }
-    if (snap.purchasePrice > 0) { setText('snap-caprate', (annualNet / snap.purchasePrice * 100).toFixed(1) + '%'); } else { setText('snap-caprate', '—%'); }
+    // Cap rate uses NOI: before debt service (mortgage P&I, PMI), whether logged or from the profile
+    var opExp = expRows.reduce(function (s, r) { return DEBT_CATS.indexOf(r.category) === -1 ? s + Number(r.amount || 0) : s; }, 0);
+    var annualNoi = (totalThisMonth - opExp - fixedNotLogged(snap.prop, loggedCats, true)) * 12;
+    if (snap.purchasePrice > 0) { setText('snap-caprate', (annualNoi / snap.purchasePrice * 100).toFixed(1) + '%'); } else { setText('snap-caprate', '—%'); }
 
     /* Update net card colour */
     var netEl = $('snap-net');
@@ -1528,11 +1536,36 @@ function monthLabel(key) {
   var p = key.split('-');
   return new Date(Number(p[0]), Number(p[1]) - 1, 1).toLocaleString(undefined, { month: 'short', year: '2-digit' });
 }
+// Date-only strings ('YYYY-MM-DD') are calendar dates. new Date('2026-03-01') reads them as UTC
+// midnight, which is the previous evening in US time zones, so rent paid on the 1st landed in
+// the prior month. Take the month straight from the string, and format "today" locally.
 function monthKey(dateStr) {
-  if (!dateStr) return null;
-  var d = new Date(dateStr);
-  if (isNaN(d)) return null;
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  var m = /^(\d{4})-(\d{2})/.exec(String(dateStr || ''));
+  return m ? m[1] + '-' + m[2] : null;
+}
+function ymdLocal(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+// Fixed monthly costs on the property profile, and the expense categories that log the same cost
+// (add-expense's mortgage split logs Principal / Interest / Tax / Insurance / PMI lines).
+var FIXED_PARTS = [
+  { col: 'mortgage_pi',       cats: ['Mortgage Payment', 'Mortgage Principal', 'Mortgage Interest'], debt: true },
+  { col: 'pmi_monthly',       cats: ['PMI'], debt: true },
+  { col: 'tax_monthly',       cats: ['Property Tax'] },
+  { col: 'insurance_monthly', cats: ['Insurance'] },
+  { col: 'hoa_monthly',       cats: ['HOA'] }
+];
+var DEBT_CATS = ['Mortgage Payment', 'Mortgage Principal', 'Mortgage Interest', 'PMI'];
+// Profile fixed costs that weren't logged as an expense in the period, so nothing is counted twice.
+// operatingOnly leaves out debt service (for NOI / cap rate).
+function fixedNotLogged(prop, loggedCats, operatingOnly) {
+  if (!prop) return 0;
+  return FIXED_PARTS.reduce(function (t, f) {
+    if (operatingOnly && f.debt) return t;
+    var logged = f.cats.some(function (c) { return loggedCats.has(c); });
+    return logged ? t : t + Number(prop[f.col] || 0);
+  }, 0);
 }
 
 async function loadTrend12Months(propertyName) {
@@ -1542,24 +1575,24 @@ async function loadTrend12Months(propertyName) {
   var keys = last12Keys();
   var labels = keys.map(monthLabel);
   var now = new Date();
-  var startStr = new Date(now.getFullYear(), now.getMonth() - 11, 1).toISOString().split('T')[0];
-  var endStr   = new Date(now.getFullYear(), now.getMonth() + 1,  1).toISOString().split('T')[0];
+  var startStr = ymdLocal(new Date(now.getFullYear(), now.getMonth() - 11, 1));
+  var endStr   = ymdLocal(new Date(now.getFullYear(), now.getMonth() + 1,  1));
 
   var rentByMonth = {}, expByMonth = {};
   keys.forEach(function (k) { rentByMonth[k] = 0; expByMonth[k] = 0; });
 
-  var rentQ = sb.from('rent_log').select('amount, date_paid').gte('date_paid', startStr).lt('date_paid', endStr);
+  var rentQ = sb.from('rent_log').select('amount, date_paid').is('archived_at', null).gte('date_paid', startStr).lt('date_paid', endStr);
   if (activeCompanyId)   rentQ = rentQ.eq('company_id', activeCompanyId);
   if (!isPortfolio && propertyName) rentQ = rentQ.eq('property_name', propertyName);
 
-  var expQ = sb.from('expenses').select('amount, date_paid').is('archived_at', null).gte('date_paid', startStr).lt('date_paid', endStr);
+  var expQ = sb.from('expenses').select('amount, date_paid, category, property_name').is('archived_at', null).gte('date_paid', startStr).lt('date_paid', endStr);
   if (activeCompanyId)  expQ = expQ.eq('company_id', activeCompanyId);
   if (!isPortfolio && propertyName) expQ = expQ.eq('property_name', propertyName);
 
   var fixedQ = isPortfolio
-    ? safeSelect('properties', 'mortgage_pi, tax_monthly, insurance_monthly, hoa_monthly, pmi_monthly', function (q) {
+    ? safeSelect('properties', 'name, mortgage_pi, tax_monthly, insurance_monthly, hoa_monthly, pmi_monthly', function (q) {
         if (activeCompanyId) q = q.eq('company_id', activeCompanyId);
-        return q;
+        return q.is('archived_at', null);
       })
     : Promise.resolve({ data: null });
 
@@ -1569,22 +1602,24 @@ async function loadTrend12Months(propertyName) {
     (rentRes.data || []).forEach(function (r) {
       var k = monthKey(r.date_paid); if (k && rentByMonth[k] !== undefined) rentByMonth[k] += Number(r.amount || 0);
     });
+    var catsByPropMonth = {};  // 'property|YYYY-MM' -> Set of logged categories
     (expRes.data || []).forEach(function (r) {
       var k = monthKey(r.date_paid); if (k && expByMonth[k] !== undefined) expByMonth[k] += Number(r.amount || 0);
+      if (k) { var ck = (r.property_name || '') + '|' + k; (catsByPropMonth[ck] = catsByPropMonth[ck] || new Set()).add(r.category); }
     });
 
-    var fixedMonthly = 0;
-    if (isPortfolio && fixedRes.data) {
-      fixedRes.data.forEach(function (p) {
-        fixedMonthly += Number(p.mortgage_pi || 0) + Number(p.tax_monthly || 0) + Number(p.insurance_monthly || 0) + Number(p.hoa_monthly || 0) + Number(p.pmi_monthly || 0);
-      });
-    } else {
-      fixedMonthly = Number((window.__rg_propSnapshot || {}).fixedMonthly || 0);
-    }
+    // Fixed costs per month, leaving out any part already logged as an expense that month
+    var props = isPortfolio ? (fixedRes.data || []) : [(window.__rg_propSnapshot || {}).prop].filter(Boolean);
+    var none = new Set();
+    var fixed = keys.map(function (k) {
+      return props.reduce(function (t, p) {
+        var nm = isPortfolio ? p.name : propertyName;
+        return t + fixedNotLogged(p, catsByPropMonth[(nm || '') + '|' + k] || none, false);
+      }, 0);
+    });
 
     var rent     = keys.map(function (k) { return rentByMonth[k]; });
     var expenses = keys.map(function (k) { return expByMonth[k]; });
-    var fixed    = keys.map(function () { return fixedMonthly; });
     var net      = keys.map(function (_, i) { return rent[i] - expenses[i] - fixed[i]; });
 
     if (trendMetaEl) trendMetaEl.textContent = (isPortfolio ? 'Portfolio (All Properties)' : propertyName) + ' — ' + labels[0] + ' → ' + labels[labels.length - 1];
@@ -1652,12 +1687,10 @@ function exportTableCSV(type) {
   var rows, filename, headers;
 
   if (type === 'rent') {
-    headers  = ['Date Paid', 'Property', 'Tenant', 'Amount', 'Status', 'Notes'];
+    headers  = ['Date Paid', 'Property', 'Tenant', 'Amount', 'Applied To', 'Status', 'Method', 'Note'];
     rows     = _rentRows.map(function(p) {
-      var amt = Number(p.amount || 0);
-      var exp = _leaseMapForExport[p.property_name] || 0;
-      var status = p.status || (amt >= exp && exp > 0 ? 'Paid' : amt > 0 ? 'Partial' : 'Pending');
-      return [p.date_paid, p.property_name, p.tenant_name || p.payer_name, amt.toFixed(2), status, p.notes || ''];
+      return [p.date_paid, p.property_name, p.tenant_name || '', Number(p.amount || 0).toFixed(2),
+        p.applied_to_due_date || '', paymentStatus(p), p.method || '', p.note || ''];
     });
     filename = 'rent-report-' + _csvDateStamp() + '.csv';
 
@@ -1665,21 +1698,20 @@ function exportTableCSV(type) {
     headers  = ['Date', 'Property', 'Category', 'Description', 'Amount'];
     rows     = _expRows.map(function(e) {
       return [
-        e.date_paid || e.date,
+        e.date_paid,
         e.property_name,
-        e.category || e.expense_category || 'Other',
-        e.description || e.notes || '',
+        e.category || 'Other',
+        expDesc(e),
         Number(e.amount || 0).toFixed(2)
       ];
     });
     filename = 'expense-report-' + _csvDateStamp() + '.csv';
 
   } else if (type === 'maint') {
-    headers  = ['Date', 'Property', 'Issue', 'Status', 'Priority', 'Cost'];
+    headers  = ['Date', 'Property', 'Issue', 'Status', 'Urgency', 'Estimated Cost'];
     rows     = _maintRows.map(function(r) {
-      var d = r.created_at ? r.created_at.split('T')[0] : (r.date_submitted || r.date || '');
-      var cost = Number(r.cost || r.repair_cost || r.amount || 0);
-      return [d, r.name || r.property_name, r.issue_description || r.issue || '', r.status || '', r.priority || r.urgency || '', cost > 0 ? cost.toFixed(2) : ''];
+      var cost = Number(r.estimated_cost || 0);
+      return [localDay(r.created_at), r.property_name, r.issue_description || '', r.status || '', r.urgency_level || '', cost > 0 ? cost.toFixed(2) : ''];
     });
     filename = 'maintenance-report-' + _csvDateStamp() + '.csv';
 
@@ -1721,11 +1753,18 @@ function _csvCell(v) {
 }
 
 function _csvDateStamp() {
-  return new Date().toISOString().slice(0, 10);
+  return ymdLocal(new Date());
 }
 
-// Lease map cache used by rent export (populated by loadRentReport)
-var _leaseMapForExport = {};
+// Rent schedule rows for the report period (populated by loadRentReport), keyed property|due_date
+var _schedByDue = {};
+function paymentStatus(p) {
+  var row = p.applied_to_due_date ? _schedByDue[(p.property_name || '') + '|' + p.applied_to_due_date] : null;
+  if (!row) return 'Recorded';
+  return Number(row.balance || 0) <= 0 ? 'Paid' : 'Partial';
+}
+// created_at is a timestamp: show the landlord's local calendar day
+function localDay(ts) { if (!ts) return ''; var d = new Date(ts); return isNaN(d) ? String(ts).slice(0, 10) : ymdLocal(d); }
 /* ============================================================ */
 
 document.addEventListener('DOMContentLoaded', async function () {
@@ -1770,8 +1809,7 @@ var maintPeriodMonths = 1;
 
 function periodStart(months) {
   var now = new Date();
-  if (months === 1) return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-  return new Date(now.getFullYear(), now.getMonth() - months + 1, 1).toISOString().split('T')[0];
+  return ymdLocal(new Date(now.getFullYear(), now.getMonth() - months + 1, 1));
 }
 
 function wirePeriodTabs(tabsId, onChangeFn) {
@@ -1788,6 +1826,9 @@ function wirePeriodTabs(tabsId, onChangeFn) {
 }
 
 function fmt(v) { return '$' + Number(v||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+// Database text going into an HTML string goes through escHtml (names, notes, vendors, categories).
+function escHtml(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function expDesc(e) { return [e.vendor, e.note].filter(Boolean).join(' · '); }
 function fmtDate(s) { if (!s) return '—'; try { return new Date(s + 'T00:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}); } catch(e){ return s; } }
 
 /* ============================================================
@@ -1802,34 +1843,31 @@ async function loadRentReport(months) {
   var meta = document.getElementById('rentReportMeta');
   if (meta) meta.textContent = 'Loading…';
 
-  /* Parallel: rent_log + leases */
-  var rQ = sb.from('rent_log').select('*').gte('date_paid', start).order('date_paid', {ascending: false});
+  /* Payments in the period, and the database rent schedule (rg_rent_schedule is the single source
+     of truth for what was due; CLAUDE.md: don't recompute rent in the page) */
+  var rQ = sb.from('rent_log').select('date_paid, property_name, tenant_name, amount, method, note, applied_to_due_date')
+    .is('archived_at', null).gte('date_paid', start).order('date_paid', {ascending: false});
   if (activeCompanyId) rQ = rQ.eq('company_id', activeCompanyId);
   if (!isPortfolio) rQ = rQ.eq('property_name', currentProperty);
-
-  var lQ = sb.from('leases').select('property_name, tenant_name, rent_amount, monthly_rent, rent, status');
-  if (activeCompanyId) lQ = lQ.eq('company_id', activeCompanyId);
-  if (!isPortfolio) lQ = lQ.eq('property_name', currentProperty);
+  var today = ymdLocal(new Date());
+  var sQ = sb.rpc('rg_rent_schedule', { p_company_id: activeCompanyId || null, p_as_of: today });
 
   try {
-    var results = await Promise.all([rQ, lQ]);
+    var results = await Promise.all([rQ, sQ]);
+    if (results[0].error) throw results[0].error;
+    if (results[1].error) console.warn('Rent schedule error:', results[1].error);
     var payments = results[0].data || [];
-    var leases   = results[1].data || [];
-    _rentRows = payments; // cache for CSV export
-
-    /* Build lease map: property_name → monthly rent */
-    var leaseMap = {};
-    leases.forEach(function(l) {
-      leaseMap[l.property_name] = Number(l.rent_amount || l.monthly_rent || l.rent || 0);
+    var sched = (results[1].data || []).filter(function (r) {
+      return r.due_date >= start && r.due_date <= today && (isPortfolio || r.property_name === currentProperty);
     });
-    _leaseMapForExport = leaseMap; // cache for CSV export
+    _rentRows = payments; // cache for CSV export
+    _schedByDue = {};
+    sched.forEach(function (r) { _schedByDue[(r.property_name || '') + '|' + r.due_date] = r; });
 
-    /* Total expected = months × monthly rent (per property in range) */
-    var totalExpected = 0, totalCollected = 0;
-    Object.keys(leaseMap).forEach(function(p) { totalExpected += leaseMap[p] * rentPeriodMonths; });
-    payments.forEach(function(p) { totalCollected += Number(p.amount || 0); });
-    var outstanding = Math.max(0, totalExpected - totalCollected);
-    var rate = totalExpected > 0 ? Math.round(totalCollected / totalExpected * 100) : 0;
+    var totalExpected = sched.reduce(function (t, r) { return t + Number(r.rent_amount || 0); }, 0);
+    var outstanding   = sched.reduce(function (t, r) { return t + Math.max(0, Number(r.balance || 0)); }, 0);
+    var totalCollected = payments.reduce(function (t, p) { return t + Number(p.amount || 0); }, 0);
+    var rate = totalExpected > 0 ? Math.round((totalExpected - outstanding) / totalExpected * 100) : 0;
 
     /* KPIs */
     setText('rpt-rent-expected',  totalExpected > 0 ? fmt(totalExpected) : '—');
@@ -1850,17 +1888,16 @@ async function loadRentReport(months) {
       if (tfoot) tfoot.style.display = 'none';
     } else {
       tbody.innerHTML = payments.map(function(p) {
-        var amt = Number(p.amount || 0);
-        var exp = leaseMap[p.property_name] || 0;
-        var status = p.status || (amt >= exp && exp > 0 ? 'Paid' : amt > 0 ? 'Partial' : 'Pending');
-        var badgeCls = status === 'Paid' || status === 'paid' ? 'badge-green' : status === 'Partial' || status === 'partial' ? 'badge-yellow' : 'badge-red';
+        var status = paymentStatus(p);
+        var badgeCls = status === 'Paid' ? 'badge-green' : status === 'Partial' ? 'badge-yellow' : 'badge-muted';
+        var noteBits = [p.method, p.note].filter(Boolean).join(' · ');
         return '<tr>' +
           '<td>' + fmtDate(p.date_paid) + '</td>' +
-          '<td>' + (p.property_name || '—') + '</td>' +
-          '<td>' + (p.tenant_name || p.payer_name || '—') + '</td>' +
-          '<td class="text-right mono">' + fmt(amt) + '</td>' +
+          '<td>' + escHtml(p.property_name || '—') + '</td>' +
+          '<td>' + escHtml(p.tenant_name || '—') + '</td>' +
+          '<td class="text-right mono">' + fmt(p.amount) + '</td>' +
           '<td class="text-center"><span class="badge ' + badgeCls + '">' + status + '</span></td>' +
-          '<td style="color:var(--muted);font-size:.8rem">' + (p.notes || '') + '</td>' +
+          '<td style="color:var(--muted);font-size:.8rem">' + escHtml(noteBits) + '</td>' +
         '</tr>';
       }).join('');
       if (tfoot) {
@@ -1897,7 +1934,7 @@ async function loadExpReport(months) {
     /* Category aggregation */
     var catMap = {};
     expenses.forEach(function(e) {
-      var cat = e.category || e.expense_category || 'Other';
+      var cat = e.category || 'Other';
       catMap[cat] = (catMap[cat] || 0) + Number(e.amount || 0);
     });
     var cats = Object.keys(catMap).sort(function(a,b){ return catMap[b] - catMap[a]; });
@@ -1937,7 +1974,7 @@ async function loadExpReport(months) {
           var pct = total > 0 ? Math.round(catMap[c] / total * 100) : 0;
           return '<div class="exp-cat-row">' +
             '<div class="exp-cat-dot" style="background:' + EXP_COLORS[i % EXP_COLORS.length] + '"></div>' +
-            '<div class="exp-cat-name">' + c + '</div>' +
+            '<div class="exp-cat-name">' + escHtml(c) + '</div>' +
             '<div class="exp-cat-amount">' + fmt(catMap[c]) + '</div>' +
             '<div class="exp-cat-pct">' + pct + '%</div>' +
           '</div>';
@@ -1955,10 +1992,10 @@ async function loadExpReport(months) {
     } else {
       tbody.innerHTML = expenses.map(function(e) {
         return '<tr>' +
-          '<td>' + fmtDate(e.date_paid || e.date) + '</td>' +
-          '<td>' + (e.property_name || '—') + '</td>' +
-          '<td><span class="badge badge-blue">' + (e.category || e.expense_category || 'Other') + '</span></td>' +
-          '<td style="color:var(--muted);font-size:.82rem">' + (e.description || e.notes || '—') + '</td>' +
+          '<td>' + fmtDate(e.date_paid) + '</td>' +
+          '<td>' + escHtml(e.property_name || '—') + '</td>' +
+          '<td><span class="badge badge-blue">' + escHtml(e.category || 'Other') + '</span></td>' +
+          '<td style="color:var(--muted);font-size:.82rem">' + escHtml(expDesc(e) || '—') + '</td>' +
           '<td class="text-right mono">' + fmt(e.amount) + '</td>' +
         '</tr>';
       }).join('');
@@ -1985,7 +2022,8 @@ async function loadMaintReport(months) {
   if (meta) meta.textContent = 'Loading…';
 
   /* Try maintenance_requests table with created_at or date_submitted */
-  var mQ = sb.from('maintenance_requests').select('*').order('created_at', {ascending: false});
+  var mQ = sb.from('maintenance_requests').select('created_at, property_name, issue_description, status, urgency_level, estimated_cost')
+    .is('archived_at', null).order('created_at', {ascending: false});
   if (activeCompanyId) mQ = mQ.eq('company_id', activeCompanyId);
   if (!isPortfolio) mQ = mQ.eq('property_name', currentProperty);
 
@@ -1993,17 +2031,11 @@ async function loadMaintReport(months) {
     var items = (await mQ).data || [];
     /* Filter by period locally since field name may vary */
     _maintRows = []; // reset before filter
-    items = items.filter(function(r) {
-      var d = r.created_at || r.date_submitted || r.date || '';
-      return !d || d >= start;
-    });
+    items = items.filter(function(r) { return localDay(r.created_at) >= start; });
 
     _maintRows = items; // cache for CSV export
-    var totalCost = items.reduce(function(s,r){ return s + Number(r.cost || r.repair_cost || r.amount || 0); }, 0);
-    var openCount = items.filter(function(r){
-      var st = (r.status || '').toLowerCase();
-      return st === 'open' || st === 'in progress' || st === 'pending' || st === '';
-    }).length;
+    var totalCost = items.reduce(function(s,r){ return s + Number(r.estimated_cost || 0); }, 0);
+    var openCount = items.filter(function(r){ return r.status !== 'Resolved'; }).length;  // Open | In Progress | Resolved
 
     setText('rpt-maint-total', items.length || '0');
     setText('rpt-maint-open',  openCount || '0');
@@ -2027,13 +2059,13 @@ async function loadMaintReport(months) {
         var pri = r.urgency_level || '';
         var priCls = pri === 'High' || pri === 'Emergency' ? 'badge-red'
                    : pri === 'Normal' ? 'badge-yellow' : 'badge-muted';
-        var cost = Number(r.cost || r.repair_cost || r.amount || 0);
+        var cost = Number(r.estimated_cost || 0);
         return '<tr>' +
-          '<td>' + fmtDate(r.created_at ? r.created_at.split('T')[0] : (r.date_submitted || r.date || '')) + '</td>' +
-          '<td>' + (r.property_name || '—') + '</td>' +
-          '<td>' + (r.title || r.issue || r.description || '—') + '</td>' +
-          '<td class="text-center">' + (pri ? '<span class="badge ' + priCls + '">' + pri + '</span>' : '—') + '</td>' +
-          '<td class="text-center"><span class="badge ' + stCls + '">' + st + '</span></td>' +
+          '<td>' + fmtDate(localDay(r.created_at)) + '</td>' +
+          '<td>' + escHtml(r.property_name || '—') + '</td>' +
+          '<td>' + escHtml(r.issue_description || '—') + '</td>' +
+          '<td class="text-center">' + (pri ? '<span class="badge ' + priCls + '">' + escHtml(pri) + '</span>' : '—') + '</td>' +
+          '<td class="text-center"><span class="badge ' + stCls + '">' + escHtml(st) + '</span></td>' +
           '<td class="text-right mono">' + (cost > 0 ? fmt(cost) : '—') + '</td>' +
         '</tr>';
       }).join('');

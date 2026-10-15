@@ -2312,35 +2312,20 @@ async function loadActiveLeases(propertyIds){
   activeLeaseByProperty = new Map();
   if(!selectedCompanyId || properties.length === 0) return;
 
-  const today = todayISO();
-  const propertyIdsSafe = (propertyIds || []).filter(Boolean);
-  const propertyNameMap = new Map(properties.map(p => [String(p.name || "").trim().toLowerCase(), p.id]));
-
-  let query = sb
-    .from("leases")
-    .select("property_id, property_name, tenant_name, rent_amount, status, lease_start, lease_end")
-    .eq("company_id", selectedCompanyId);
-
-  if(propertyIdsSafe.length){
-    query = query.in("property_id", propertyIdsSafe);
-  }
-
-  const { data, error } = await query;
+  // The lease in force per property, from the database rent schedule: active, holdover and
+  // month-to-month leases all count (the old check required lease_end >= today, so holdover and
+  // month-to-month properties showed as vacant). "ended" means terminated.
+  const d = new Date();
+  const asOf = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  const { data, error } = await sb.rpc("rg_rent_schedule", { p_company_id: selectedCompanyId, p_as_of: asOf });
   if(error) throw error;
 
+  const wanted = new Set((propertyIds || []).filter(Boolean));
   for(const row of (data || [])){
-    const status = String(row.status || "").toLowerCase();
-    const isSignedLike = ["signed", "active", "current", "renewed"].includes(status);
-    const hasDateWindow = row.lease_start && row.lease_end && row.lease_start <= today && row.lease_end >= today;
-    const isActive = isSignedLike && hasDateWindow;
-    if(!isActive) continue;
-
-    const directPropertyId = row.property_id && propertyIdsSafe.includes(row.property_id) ? row.property_id : null;
-    const byName = propertyNameMap.get(String(row.property_name || "").trim().toLowerCase()) || null;
-    const resolvedPropertyId = directPropertyId || byName;
-
-    if(resolvedPropertyId && !activeLeaseByProperty.has(resolvedPropertyId)){
-      activeLeaseByProperty.set(resolvedPropertyId, { tenant_name: row.tenant_name, rent_amount: row.rent_amount });
+    if(row.lease_state === "ended") continue;
+    if(wanted.size && !wanted.has(row.property_id)) continue;
+    if(!activeLeaseByProperty.has(row.property_id)){
+      activeLeaseByProperty.set(row.property_id, { tenant_name: row.tenant_name, rent_amount: row.rent_amount, lease_state: row.lease_state });
     }
   }
 }

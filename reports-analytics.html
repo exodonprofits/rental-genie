@@ -1408,8 +1408,9 @@ async function loadReportsQuickPeek() {
   if (activeCompanyId) expQ = expQ.eq('company_id', activeCompanyId);
 
   try {
-    var results = await Promise.all([propQ, leaseQ, rentQ, expQ]);
-    var propRes = results[0], leaseRes = results[1], rentRes = results[2], expRes = results[3];
+    var schedQ = sb.rpc('rg_rent_schedule', { p_company_id: activeCompanyId || null, p_as_of: ymdLocal(today) });
+    var results = await Promise.all([propQ, leaseQ, rentQ, expQ, schedQ]);
+    var propRes = results[0], leaseRes = results[1], rentRes = results[2], expRes = results[3], schedRes = results[4];
 
     /* ── Property snapshot ── */
     var propRow = (propRes.data || []).find(function (p) { return p.name === currentProperty; });
@@ -1464,12 +1465,15 @@ async function loadReportsQuickPeek() {
     setText('qp-month-paid', 'Collected: ' + money(totalThisMonth));
     setText('qp-last-payment', latestPayDate ? 'Last payment: ' + fmtDate(String(latestPayDate).slice(0, 10)) : 'Last payment: none this month');
 
-    if (monthlyRent !== null) {
-      var balance = monthlyRent - totalThisMonth;
+    // Balance owed from the database schedule (all unpaid due dates up to today), not rent minus
+    // this month's payments
+    var schedRows = (schedRes && !schedRes.error ? schedRes.data || [] : []).filter(function (r) { return r.property_name === currentProperty; });
+    if (schedRows.length) {
+      var balance = schedRows.reduce(function (t, r) { return t + Number(r.balance || 0); }, 0);
       var mbEl = $('qp-month-balance');
       if (mbEl) {
         mbEl.style.display = 'inline-flex';
-        mbEl.textContent = balance > 0 ? 'Remaining: ' + money(balance) : (balance < 0 ? 'Overpaid: ' + money(Math.abs(balance)) : 'Paid in full');
+        mbEl.textContent = balance > 0 ? 'Balance owed: ' + money(balance) : 'Paid in full';
       }
     }
 

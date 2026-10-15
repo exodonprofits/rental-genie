@@ -2419,7 +2419,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
             <th>Due Date</th>
             <th>Tenant</th>
             <th>Rent</th>
-            <th>Late Fee</th>
+            <th title="From the lease terms. Not added to the balance.">Late Fee*</th>
             <th>Total Due</th>
             <th>Status</th>
             <th>Paid Date</th>
@@ -2853,10 +2853,11 @@ async function convertLeaseToM2M(lease) {
   if (!confirmed) return;
   try {
     var sb = window.sb || window._rgClient;
+    // Keep lease_end: it records when the original term ended. Month-to-month status is what keeps
+    // rent accruing (rg_rent_schedule), so clearing the date only lost history.
     var res = await sb.from('leases').update({
       lease_type: 'month_to_month',
-      status:     'month_to_month',
-      lease_end:  null
+      status:     'month_to_month'
     }).eq('id', lease.id);
     if (res.error) throw res.error;
     // Reload the page to reflect changes
@@ -2878,7 +2879,10 @@ function paymentBelongsToLease(paymentRow, lease) {
   if (!lease) return true;
 
   const leaseStart = toISODateOnly(lease.lease_start || "");
-  const leaseEnd = toISODateOnly(lease.lease_end || "");
+  // The current lease keeps charging after lease_end (holdover / month-to-month), so its
+  // payments have no upper bound; only a past lease is cut off at its end date.
+  const isCurrent = currentLease && getLeaseIdentityKey(lease) === getLeaseIdentityKey(currentLease);
+  const leaseEnd = isCurrent ? "9999-12-31" : toISODateOnly(lease.lease_end || "");
   if (!leaseStart || !leaseEnd) return true;
 
   const dueISO = toISODateOnly(paymentRow?.applied_to_due_date || "");
@@ -3207,8 +3211,8 @@ async function loadPropertyDropdown() {
 
 
 async function computeAndStoreRentAttention(props){
-  // Preferred path: rg_rent_status, the shared calculation the dashboard uses.
-  // Falls through to the legacy in-page calculation only if the call fails.
+  // rg_rent_status is the only rent calculation (CLAUDE.md). The old in-page fallback disagreed
+  // with it, so a failed call now shows nothing rather than different numbers.
   try{
     let companyIdRpc = null;
     try{ companyIdRpc = await resolveActiveCompanyId(); }catch(e){ companyIdRpc = null; }
@@ -3218,155 +3222,43 @@ async function computeAndStoreRentAttention(props){
       p_company_id: companyIdRpc || null,
       p_as_of: asOf
     });
-    if(!statusErr && Array.isArray(statusRows)){
-      const queue = [];
-      statusRows.forEach(r => {
-        const balance = Number(r.balance || 0);
-        if(balance <= 0.01) return;
-        const rent = Number(r.rent_amount || 0);
-        const curPaid = Number(r.current_paid || 0);
-        const periods = Number(r.periods_unpaid || 0);
-        const isPartial = periods === 1 && curPaid > 0.01 && curPaid < rent;
-        const status = isPartial ? "partial" : (r.is_late ? "late" : "unpaid");
-        let label = isPartial ? "Partial" : (r.is_late ? "Late" : "Unpaid");
-        if(periods > 1) label += " · " + periods + " mo";
-        if(r.lease_state === "ended") label += " · Ended";
-        const pn = r.property_name || "";
-        queue.push({
-          property_name: pn,
-          tenant_name: r.tenant_name || "—",
-          due_date: r.oldest_unpaid_due || r.current_due_date || "",
-          due_day: Number(r.due_day || 1),
-          paid: curPaid,
-          rent,
-          remaining: balance,
-          periods_unpaid: periods,
-          lease_state: r.lease_state || "",
-          status,
-          statusLabel: label,
-          href: `lease-rent-center.html?property=${encodeURIComponent(pn)}${r.property_id ? `&property_id=${encodeURIComponent(r.property_id)}` : ""}${companyIdRpc ? `&company_id=${encodeURIComponent(companyIdRpc)}` : ""}&tab=rent`
-        });
-      });
-      queue.sort((a,b) => Number(b.remaining || 0) - Number(a.remaining || 0));
-      rentAttentionQueue = queue;
-      renderAttentionQueue();
-      return;
-    }
-    if(statusErr) console.warn("Rent status: falling back to in-page calculation", statusErr);
-  }catch(e){
-    console.warn("Rent status call failed; using in-page calculation", e);
-  }
-
-  try{
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth()+1, 1).toISOString().slice(0,10);
-
-    let companyId = null;
-    try{ companyId = await resolveActiveCompanyId(); }catch(e){ companyId = null; }
-
-    
-    // If caller didn't pass an array of properties, load them here (RLS will scope results).
-    if(!Array.isArray(props)){
-      try{
-        const propsQ = client
-          .from("properties")
-          .select("id,name,address,company_id")
-          .order("name", { ascending:true });
-        if(companyId) propsQ.eq("company_id", companyId);
-        const { data: propRows, error: propErr } = await propsQ;
-        if(propErr){ console.warn("Genie rent attention: properties", propErr); }
-        props = propRows || [];
-      }catch(e){
-        console.warn("Genie rent attention: properties load failed", e);
-        props = [];
-      }
-    }
-const leaseQuery = client
-      .from("leases")
-      .select("property_name,tenant_name,rent_amount,rent_due_day,due_day,lease_start,grace_period,late_fee_grace_days,status")
-      .order("lease_start", { ascending:false });
-    if(companyId) leaseQuery.eq("company_id", companyId);
-
-    const { data: leaseRows, error: leaseErr } = await leaseQuery;
-    if(leaseErr){ console.warn("Genie rent attention: leases", leaseErr); }
-
-    const latest = {};
-    (leaseRows||[]).forEach(l => {
-      const pn = l.property_name;
-      if(!pn) return;
-      if(!latest[pn]) latest[pn] = l;
-    });
-
-    const { data: rentRows, error: rentErr } = await client
-      .from("rent_log")
-      .select("property_name,amount,date_paid,note")
-      .gte("date_paid", monthStart)
-      .lt("date_paid", monthEnd);
-
-    if(rentErr){ console.warn("Genie rent attention: rent_log", rentErr); }
-
-    const paid = {};
-    (rentRows||[]).forEach(r=>{
-      if(r.is_late_fee === true) return;
-      if((r.is_late_fee === undefined) && String(r.note||"").toLowerCase().includes("late fee")) return;
-      const pn = r.property_name || "";
-      const amt = Number(r.amount||0);
-      paid[pn] = (paid[pn]||0) + (isNaN(amt)?0:amt);
-    });
-
-    function dim(y,m){ return new Date(y,m+1,0).getDate(); }
-
-    let attention=0, overdue=0, partial=0;
+    if(statusErr) throw statusErr;
     const queue = [];
-    (props||[]).forEach(p=>{
-      const pn = p.name || "";
-      const lease = latest[pn];
-      const rent = Number(lease?.rent_amount||0);
-      if(!lease || !rent || rent<=0) return;
-
-      const dueDayRaw = Number(lease?.rent_due_day || lease?.due_day || 1);
-      const day = Math.min(Math.max(dueDayRaw,1), dim(now.getFullYear(), now.getMonth()));
-      const dueDate = new Date(now.getFullYear(), now.getMonth(), day);
-
-      const pPaid = Number(paid[pn]||0);
-      if(now >= dueDate && pPaid + 0.01 < rent){
-        attention += 1;
-        const remaining = Math.max(rent - pPaid, 0);
-        const grace = Number(lease?.grace_period || lease?.late_fee_grace_days || 0) || 0;
-        const lateAfter = new Date(now.getFullYear(), now.getMonth(), day + Math.max(0, grace));
-        const isPartial = pPaid > 0.01;
-        const isLate = now > lateAfter;
-        const status = isPartial ? "partial" : (isLate ? "late" : "unpaid");
-        if(isPartial) partial += 1;
-        else overdue += 1;
-
-        queue.push({
-          property_name: pn,
-          tenant_name: lease?.tenant_name || "—",
-          due_date: monthStart.slice(0, 8) + String(day).padStart(2, "0"),
-          due_day: day,
-          paid: pPaid,
-          rent,
-          remaining,
-          status,
-          statusLabel: status === "partial" ? "Partial" : (status === "late" ? "Late" : "Unpaid"),
-          href: `lease-rent-center.html?property=${encodeURIComponent(pn)}${p?.id ? `&property_id=${encodeURIComponent(p.id)}` : ""}${companyId ? `&company_id=${encodeURIComponent(companyId)}` : ""}&tab=rent`
-        });
-      }
+    (statusRows || []).forEach(r => {
+      const balance = Number(r.balance || 0);
+      if(balance <= 0.01) return;
+      const rent = Number(r.rent_amount || 0);
+      const curPaid = Number(r.current_paid || 0);
+      const periods = Number(r.periods_unpaid || 0);
+      const isPartial = periods === 1 && curPaid > 0.01 && curPaid < rent;
+      const status = isPartial ? "partial" : (r.is_late ? "late" : "unpaid");
+      let label = isPartial ? "Partial" : (r.is_late ? "Late" : "Unpaid");
+      if(periods > 1) label += " · " + periods + " mo";
+      if(r.lease_state === "ended") label += " · Ended";
+      const pn = r.property_name || "";
+      queue.push({
+        property_name: pn,
+        tenant_name: r.tenant_name || "—",
+        due_date: r.oldest_unpaid_due || r.current_due_date || "",
+        due_day: Number(r.due_day || 1),
+        paid: curPaid,
+        rent,
+        remaining: balance,
+        periods_unpaid: periods,
+        lease_state: r.lease_state || "",
+        status,
+        statusLabel: label,
+        href: `lease-rent-center.html?property=${encodeURIComponent(pn)}${r.property_id ? `&property_id=${encodeURIComponent(r.property_id)}` : ""}${companyIdRpc ? `&company_id=${encodeURIComponent(companyIdRpc)}` : ""}&tab=rent`
+      });
     });
-
     queue.sort((a,b) => Number(b.remaining || 0) - Number(a.remaining || 0));
     rentAttentionQueue = queue;
     renderAttentionQueue();
-
-    // NOTE: Rent attention badges are computed ONLY on the dashboard (index.html)
-    // so they stay correct even if you never visit this page.
-    // This page can still compute rent attention for its own UI, but it should NOT
-    // overwrite the shared badge counts.
-    try{ applyNavBadgesFromMem(); }catch(e){}
   }catch(e){
-    console.warn("computeAndStoreRentAttention failed", e);
+    console.warn("Rent status could not be loaded", e);
+    rentAttentionQueue = [];
+    renderAttentionQueue();
+    try { showToast("Couldn't load rent status. Refresh to try again.", "⚠️"); } catch (_) {}
   }
 }
 
@@ -3816,11 +3708,48 @@ async function updateLeasePanel() {
   }
 }
 
+/* Rent schedule for the current property, from rg_rent_schedule (CLAUDE.md: rent is calculated in
+   the database). As-of is the end of next month so the next due date also comes from the database;
+   rows after today are "upcoming" and never counted in a balance. */
+let scheduleRows = [];
+async function loadSchedule() {
+  scheduleRows = [];
+  if (!currentProperty) return;
+  const now = new Date();
+  const asOf = toISODateOnly(new Date(now.getFullYear(), now.getMonth() + 2, 0));
+  const { data, error } = await client.rpc("rg_rent_schedule", { p_company_id: getSelectedPropertyCompanyId() || null, p_as_of: asOf });
+  if (error) { console.error("Error loading rent schedule:", error); return; }
+  scheduleRows = (data || []).filter(r => r.property_name === currentProperty);
+}
+
+// One row per due date for the lease on screen: { dueISO, rent, paid, balance, upcoming }.
+function ledgerRowsForLease(lease) {
+  if (!lease) return [];
+  const todayISO = toISODateOnly(new Date());
+  const sched = scheduleRows.filter(r => lease.id && r.lease_id === lease.id);
+  if (sched.length) {
+    return sched
+      .map(r => ({ dueISO: r.due_date, rent: Number(r.rent_amount) || 0, paid: Number(r.paid) || 0,
+                   balance: Number(r.balance) || 0, upcoming: r.due_date > todayISO }))
+      .sort((a, b) => a.dueISO < b.dueISO ? -1 : 1);
+  }
+  // A past lease (or one not yet in force): the database schedule covers only the lease currently
+  // in force, so list its due dates from the lease terms and the payments recorded against them.
+  // Display only; totals and the attention queue always come from the database.
+  const rent = Number(lease.rent_amount || 0) || 0;
+  return buildMonthlyDueDates(lease).map(d => {
+    const dueISO = toISODateOnly(d);
+    const paid = Number((paidByDueDate.get(dueISO) || {}).totalPaid || 0) || 0;
+    return { dueISO, rent, paid, balance: Math.max(0, rent - paid), upcoming: dueISO > todayISO };
+  });
+}
+
 async function loadPayments() {
   // Build a per-due-date payment summary so the ledger can support partial payments
   paidByDueDate = new Map(); // key YYYY-MM-DD -> summary
   paymentRows = [];
   if (!currentProperty) return;
+  await loadSchedule();
 
   const { data, error } = await client
     .from("rent_log")
@@ -3918,7 +3847,7 @@ async function updateQuickPeek() {
     elDueMeta.textContent = `Due day: ${dueDay}${endTxt}`;
   }
 
-  // --- Build due schedule + compute balances/flags from payments map ---
+  // --- Balances, flags and next due date from the database schedule (ledgerRowsForLease) ---
   let nextDueISO = null;
   let nextTenant = lease?.tenant_name || "—";
   let totalBalance = 0;
@@ -3926,69 +3855,18 @@ async function updateQuickPeek() {
   let hasPartial = false;
 
   if (hasLease) {
-    const rent = Number(lease.rent_amount || 0) || 0;
     const grace = getLeaseGraceDays(lease);
-
-    const dueDatesISO = buildMonthlyDueDates(lease).map(d => toISODateOnly(d));
-
-    // iterate all due dates inside lease
-    for (const dueISO of dueDatesISO) {
-      const summary = paidByDueDate.get(dueISO) || { payments: [], totalPaid: 0, latestPaidISO: "", methods: new Set(), latestPayment: null };
-      const paidTotal = Number(summary.totalPaid || 0) || 0;
-
-      // late fee for this due (unless waived by note marker)
-      const waived = (summary.payments || []).some(p => (p?.note || "").toLowerCase().includes("late fee waived"));
-
-      let { lateFee: lateFeeDue } = computeLateFeeForRow({
-        dueISO,
-        paidDateISO: waived ? null : (summary.latestPaidISO || null)
-      });
-      if (waived) lateFeeDue = 0;
-
-      const totalDue = rent + (Number(lateFeeDue) || 0);
-      const bal = Math.max(0, totalDue - paidTotal);
-      if (bal > 0) totalBalance += bal;
-
-      const dueDateObj = parseISODateOnly(dueISO);
-      if (dueDateObj) {
-        if (dueDateObj < todayMid && bal > 0) hasLate = true;
-        if (paidTotal > 0 && bal > 0) hasPartial = true;
-      }
-
-      // pick next due: earliest due >= today with balance > 0, otherwise earliest due with balance > 0
-      if (bal > 0 && dueDateObj) {
-        if (!nextDueISO) {
-          nextDueISO = dueISO;
-        } else {
-          const cur = parseISODateOnly(nextDueISO);
-          if (cur && dueDateObj < cur) nextDueISO = dueISO;
-        }
-      }
-    }
-
-    // prefer “upcoming” next due date (>= today)
-    const candidates = [];
-    for (const dueISO of dueDatesISO) {
-      const summary = paidByDueDate.get(dueISO) || { totalPaid: 0, payments: [] };
-      const paidTotal = Number(summary.totalPaid || 0) || 0;
-
-      const waived = (summary.payments || []).some(p => (p?.note || "").toLowerCase().includes("late fee waived"));
-      let { lateFee: lateFeeDue } = computeLateFeeForRow({
-        dueISO,
-        paidDateISO: waived ? null : (summary.latestPaidISO || null)
-      });
-      if (waived) lateFeeDue = 0;
-
-      const rent = Number(lease.rent_amount || 0) || 0;
-      const totalDue = rent + (Number(lateFeeDue) || 0);
-      const bal = Math.max(0, totalDue - paidTotal);
-
-      const d = parseISODateOnly(dueISO);
-      if (d && bal > 0) candidates.push({ dueISO, d });
-    }
-    candidates.sort((a,b) => a.d - b.d);
-    const upcoming = candidates.find(x => x.d >= todayMid);
-    nextDueISO = (upcoming || candidates[0])?.dueISO || null;
+    const rows = ledgerRowsForLease(lease);
+    rows.forEach(r => {
+      if (r.upcoming) return;                       // not due yet: never part of the balance
+      totalBalance += r.balance;
+      if (r.balance > 0 && computeStatusForDue(r.dueISO, grace).cls === "late") hasLate = true;
+      if (r.paid > 0 && r.balance > 0) hasPartial = true;
+    });
+    // Next due: the oldest unpaid due date, else the next upcoming one
+    const unpaid = rows.find(r => !r.upcoming && r.balance > 0);
+    const upcoming = rows.find(r => r.upcoming && r.balance > 0);
+    nextDueISO = (unpaid || upcoming || {}).dueISO || null;
   }
 
   // --- Next payment due card ---
@@ -4101,53 +3979,14 @@ function renderNeedsAttentionFromState({ lease, hasLease, todayMid }) {
     }
   }
 
-  // 2) Late / Partial based on per-due-date totals (paidByDueDate + schedule)
+  // 2) Late / Partial from the database schedule rows
   if (hasLease) {
-    const rent = Number(lease.rent_amount || 0) || 0;
     const grace = getLeaseGraceDays(lease);
-
-    const dueDatesISO = buildMonthlyDueDates(lease).map(d => toISODateOnly(d));
-
-    const lateItems = [];
-    const partialItems = [];
-
-    for (const dueISO of dueDatesISO) {
-      const dueObj = parseISODateOnly(dueISO);
-      if (!dueObj) continue;
-
-      const summary = paidByDueDate.get(dueISO) || { payments: [], totalPaid: 0, latestPaidISO: "" };
-      const paidTotal = Number(summary.totalPaid || 0) || 0;
-
-      const waived = (summary.payments || []).some(p => (p?.note || "").toLowerCase().includes("late fee waived"));
-      let { lateFee: lateFeeDue } = computeLateFeeForRow({
-        dueISO,
-        paidDateISO: waived ? null : (summary.latestPaidISO || null)
-      });
-      if (waived) lateFeeDue = 0;
-
-      const totalDue = rent + (Number(lateFeeDue) || 0);
-      const bal = Math.max(0, totalDue - paidTotal);
-
-      if (bal <= 0) continue;
-
-      const status = computeStatusForDue(dueISO, grace);
-      if (dueObj < todayMid && status.cls === "late") {
-        lateItems.push({ dueISO, bal });
-      } else if (paidTotal > 0 && bal > 0) {
-        partialItems.push({ dueISO, bal });
-      }
-    }
-
-    lateItems.sort((a,b)=>parseISODateOnly(a.dueISO)-parseISODateOnly(b.dueISO));
-    partialItems.sort((a,b)=>parseISODateOnly(a.dueISO)-parseISODateOnly(b.dueISO));
-
-    if (lateItems.length) {
-      const x = lateItems[0];
-      alerts.push({ tag: "Late", text: `${formatDate(x.dueISO)} • Balance ${formatMoney(x.bal)}` });
-    } else if (partialItems.length) {
-      const x = partialItems[0];
-      alerts.push({ tag: "Partial", text: `${formatDate(x.dueISO)} • Balance ${formatMoney(x.bal)}` });
-    }
+    const rows = ledgerRowsForLease(lease).filter(r => !r.upcoming && r.balance > 0);
+    const late = rows.find(r => computeStatusForDue(r.dueISO, grace).cls === "late");
+    const partial = rows.find(r => r.paid > 0);
+    if (late) alerts.push({ tag: "Late", text: `${formatDate(late.dueISO)} • Balance ${formatMoney(late.balance)}` });
+    else if (partial) alerts.push({ tag: "Partial", text: `${formatDate(partial.dueISO)} • Balance ${formatMoney(partial.balance)}` });
   }
 
   // Render chips
@@ -4209,22 +4048,23 @@ async function renderDueLedger() {
     return;
   }
 
-  const rent = Number(activeLease.rent_amount || activeLease.monthly_rent || 0) || 0;
   const tenant = activeLease.tenant_name || "—";
   const grace = getLeaseGraceDays(activeLease);
 
-  const dueDates = buildMonthlyDueDates(activeLease).map(d => toISODateOnly(d));
-  if (!dueDates.length) {
+  const ledgerRows = ledgerRowsForLease(activeLease);
+  if (!ledgerRows.length) {
     body.innerHTML = '<tr><td colspan="11">Lease dates missing or invalid. Please update lease start/end.</td></tr>';
     return;
   }
 
   updateLedgerLeaseContext();
 
-  body.innerHTML = dueDates.map((dueISO) => {
+  body.innerHTML = ledgerRows.map((row) => {
+    const dueISO = row.dueISO;
+    const rent = row.rent;
     const summary = paidByDueDate.get(dueISO) || { payments: [], totalPaid: 0, latestPaidISO: "", methods: new Set(), latestPayment: null };
     const payment = summary.latestPayment || null;
-    const paidTotal = Number(summary.totalPaid || 0) || 0;
+    const paidTotal = row.paid;
     const paidDateISO = summary.latestPaidISO || (payment?.date_paid ? toISODateOnly(payment.date_paid) : null);
 
     // Base status (Upcoming / Due / Late) based on date rules
@@ -4237,8 +4077,10 @@ async function renderDueLedger() {
     let { lateFee: lateFeeDue } = computeLateFeeForRow({ dueISO, paidDateISO: waivedLateFee ? null : paidDateISO });
     if (waivedLateFee) lateFeeDue = 0;
 
-    const totalDue = rent + lateFeeDue;
-    const balance = Math.max(0, totalDue - paidTotal);
+    // Rent and balance come from the database schedule. The late fee is shown from the lease terms
+    // but isn't added to the balance (rg_rent_status doesn't charge it either).
+    const totalDue = rent;
+    const balance = row.balance;
 
     // Final status including partial payments
     let status = baseStatus;

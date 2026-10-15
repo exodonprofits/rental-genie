@@ -3817,7 +3817,7 @@ async function fetchDashboardData(user) {
     rent30Query, maintExp30Query, leasesQuery, rentMonthQuery
   ]);
   const { data: rentStatusRows, error: rentStatusErr } = await rentStatusPromise;
-  if (rentStatusErr) console.warn("Rent status: falling back to in-page calculation", rentStatusErr);
+  if (rentStatusErr) console.warn("Rent status could not be loaded", rentStatusErr);
 
   if (propertiesError)    console.error("Error loading properties:", propertiesError);
   if (rentYTDError)       console.error("Error loading YTD rent:", rentYTDError);
@@ -3841,56 +3841,6 @@ async function fetchDashboardData(user) {
     if (!latestLeaseByProperty[l.property_name]) latestLeaseByProperty[l.property_name] = l;
   });
 
-  if (rentMonthErr) console.warn("Rent attention: rent_log month load error", rentMonthErr);
-
-  // Build paidByProperty keyed on the due date each payment covers.
-  // Priority: applied_to_due_date (set by Rent Center ledger).
-  // Fallback: if applied_to_due_date is null, use the month of date_paid.
-  function daysInMonth(y, m){ return new Date(y, m+1, 0).getDate(); }
-
-  // Pre-compute each property's due date ISO for the current month
-  // so we can match against applied_to_due_date accurately.
-  function thisDueDateISO(lease) {
-    const dueDayRaw = Number(lease?.rent_due_day || lease?.due_day || 1);
-    const dim = daysInMonth(now.getFullYear(), now.getMonth());
-    const dueDay = Math.min(Math.max(dueDayRaw, 1), dim);
-    const d = new Date(now.getFullYear(), now.getMonth(), dueDay);
-    return d.toISOString().slice(0, 10);
-  }
-
-  // Build a set of this month's due date ISOs (one per property)
-  const dueDateISOByProperty = {};
-  (leaseRows || []).forEach(l => {
-    if (!l.property_name) return;
-    if (!dueDateISOByProperty[l.property_name]) {
-      dueDateISOByProperty[l.property_name] = thisDueDateISO(l);
-    }
-  });
-
-  const paidByProperty = {};
-  (rentMonthRows || []).forEach(r => {
-    const pn  = r.property_name || "";
-    const amt = Number(r.amount || 0);
-    if (!pn || isNaN(amt)) return;
-
-    const appliedISO = (r.applied_to_due_date || "").slice(0, 10);
-    const thisDueISO = dueDateISOByProperty[pn] || "";
-
-    // Count this payment toward this month if:
-    // (a) applied_to_due_date matches this month's due date, OR
-    // (b) applied_to_due_date is blank and date_paid falls in current month
-    const paidISO    = (r.date_paid || "").slice(0, 10);
-    const paidMonth  = paidISO.slice(0, 7); // "YYYY-MM"
-    const nowMonth   = now.toISOString().slice(0, 7);
-    const countsForThisMonth =
-      (appliedISO && appliedISO === thisDueISO) ||
-      (!appliedISO && paidMonth === nowMonth);
-
-    if (countsForThisMonth) {
-      paidByProperty[pn] = (paidByProperty[pn] || 0) + amt;
-    }
-  });
-
   let rentExpectedMonth = 0;
   let rentPaidMonth = 0;
   let leasedPropertyCount = 0;
@@ -3900,53 +3850,10 @@ async function fetchDashboardData(user) {
   let rentOverdueAmount = 0;
   const rent_attention_items = [];
 
-  properties.forEach(p => {
-    const pn = p.name || p.property_name || p.address || "";
-    const lease = latestLeaseByProperty[pn];
-    const rent = Number(lease?.rent_amount || 0);
-    if(!lease || !rent || isNaN(rent) || rent <= 0) return;
-
-    const dueDayRaw = Number(lease?.rent_due_day || lease?.due_day || 1);
-    const dim = daysInMonth(now.getFullYear(), now.getMonth());
-    const dueDay = Math.min(Math.max(dueDayRaw, 1), dim);
-    const dueDate = new Date(now.getFullYear(), now.getMonth(), dueDay);
-    dueDate.setHours(0, 0, 0, 0);
-
-    // Use midnight comparison — avoid time-of-day false positives
-    const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const paid = Number(paidByProperty[pn] || 0);
-    const remaining = Math.max(rent - paid, 0);
-
-    // This month's rent picture, independent of the period selector above
-    leasedPropertyCount += 1;
-    rentExpectedMonth += rent;
-    rentPaidMonth += Math.min(paid, rent);
-
-    if(todayMid >= dueDate && remaining > 0.01){
-      const status = paid > 0.01 ? "partial" : "unpaid";
-      rent_attention_count += 1;
-      rentOverdueAmount += remaining;
-      if(status === "partial") rent_partial_count += 1;
-      else rent_overdue_count += 1;
-      rent_attention_items.push({
-        property_name: pn,
-        tenant_name: lease?.tenant_name || "",
-        status,
-        paid,
-        remaining,
-        rent,
-        due_day: dueDay,
-        href: `lease-rent-center.html?property=${encodeURIComponent(pn)}&filter=attention&view=ledger`
-      });
-    }
-  });
-
-
-  // ── Rent attention from rg_rent_status (single source of truth) ──
-  // Counts every unpaid month on the lease in effect, not just this month, and
-  // stops charging when a lease is terminated. Falls back to the in-page
-  // calculation above only if the function call failed.
+  // ── Rent attention from rg_rent_status (the single source of truth, CLAUDE.md) ──
+  // Counts every unpaid month on the lease in effect and stops charging when a lease is
+  // terminated. The old in-page fallback disagreed with it and was removed: if the call fails,
+  // the rent figures stay at zero and a warning is logged.
   if (Array.isArray(rentStatusRows) && !rentStatusErr) {
     rent_attention_items.length = 0;
     rent_attention_count = 0;

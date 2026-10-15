@@ -556,6 +556,11 @@ textarea { resize: vertical; min-height: 88px; }
               <option value="terminated">Terminated</option>
             </select>
           </div>
+          <div class="form-group" id="terminatedDateWrap" style="display:none">
+            <label for="terminatedDate">Termination date</label>
+            <input type="date" id="terminatedDate" />
+            <span class="field-hint">Rent stops accruing after this date.</span>
+          </div>
           <div class="form-group">
             <label for="leaseType">Lease Term Type</label>
             <select id="leaseType">
@@ -1124,6 +1129,17 @@ function updateStatusAccent() {
   if (sel.value === 'signed')     sel.classList.add('status-signed');
   if (sel.value === 'terminated') sel.classList.add('status-terminated');
   if (sel.value === 'draft')      sel.classList.add('status-draft');
+  // A terminated lease needs its end date, or the rent schedule keeps charging to the original
+  // lease end (rg_rent_schedule stops at terminated_date).
+  var wrap = $('terminatedDate') && $('terminatedDateWrap');
+  if (wrap) {
+    var isTerm = sel.value === 'terminated';
+    wrap.style.display = isTerm ? '' : 'none';
+    if (isTerm && !$('terminatedDate').value) {
+      var t = new Date();
+      $('terminatedDate').value = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+    }
+  }
 }
 $('status').addEventListener('change', updateStatusAccent);
 
@@ -1354,6 +1370,7 @@ function applyLeaseToForm(data, renewMode) {
   } else {
     $('leaseStart').value = data.lease_start || '';
     $('leaseEnd').value   = data.lease_end   || '';
+    if ($('terminatedDate')) $('terminatedDate').value = data.terminated_date || '';
     var st = String(data.status || '').toLowerCase();
     if      (st.includes('term'))                               $('status').value = 'terminated';
     else if (st === 'month_to_month' || st.includes('month'))   $('status').value = 'month_to_month';
@@ -1429,6 +1446,8 @@ function saveLease() {
     terms:            $('terms').value      || null,
     status:           $('status').value,
     lease_type:       ($('leaseType') && $('leaseType').value) || 'fixed_term',
+    // Only a terminated lease has a termination date; clear it if the lease is reinstated
+    terminated_date:  $('status').value === 'terminated' ? ($('terminatedDate').value || null) : null,
   };
 
   var payFields = readPayFields();

@@ -720,7 +720,9 @@
   }
   function fmtDate(iso) {
     if (!iso) return '—';
-    var d = new Date(iso);
+    // 'YYYY-MM-DD' is a local calendar date; new Date() would read it as UTC (a day early in the US)
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso));
+    var d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(iso);
     return isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
   }
   function setText(id, val) { var e = $(id); if (e) e.textContent = val ?? '—'; }
@@ -845,12 +847,17 @@
   function monthKey(d) {
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
   }
-  function computeNextDueDate(dueDay) {
+  function ymdLocal(d) {
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  // Rent figures for the tenant come from the database (rg_my_rent_schedule: the landlord's
+  // rg_rent_schedule limited to this tenant's lease). As-of is the end of next month so the next
+  // due date is listed; rows after today are upcoming and not owed yet.
+  function loadMySchedule() {
     var now = new Date();
-    var dd  = Math.min(Math.max(parseInt(dueDay || '1', 10) || 1, 1), 28);
-    var candidate = new Date(now.getFullYear(), now.getMonth(), dd);
-    if (candidate < now) return new Date(now.getFullYear(), now.getMonth() + 1, dd);
-    return candidate;
+    return sb.rpc('rg_my_rent_schedule', { p_as_of: ymdLocal(new Date(now.getFullYear(), now.getMonth() + 2, 0)) })
+      .then(function (r) { if (r.error) { console.warn('Rent schedule load failed:', r.error); return []; } return r.data || []; })
+      .catch(function () { return []; });
   }
 
   /* ── Hero stat accent ───────────────────────────────────── */
@@ -931,9 +938,10 @@
       .order('date_paid', { ascending: false });
     if (propertyFromUrl) payQ = payQ.eq('property_name', propertyFromUrl);
 
-    Promise.all([leaseQ.limit(10), payQ]).then(function (results) {
+    Promise.all([leaseQ.limit(10), payQ, loadMySchedule()]).then(function (results) {
       var leaseRes = results[0];
       var payRes   = results[1];
+      var schedAll = results[2] || [];
 
       if (leaseRes.error) {
         console.warn('Lease load failed:', leaseRes.error);
@@ -952,20 +960,29 @@
 
       var rentAmount = lease ? Number(lease.rent_amount || 0) : 0;
       var dueDay     = lease ? (lease.rent_due_day || lease.due_day || '') : '';
-      var nextDue    = dueDay ? computeNextDueDate(dueDay) : null;
 
-      var paidThisMonth = rows
-        .filter(function (r) {
-          var d = r.date_paid ? new Date(r.date_paid) : (r.inserted_at ? new Date(r.inserted_at) : null);
-          return d && monthKey(d) === monthKey(now);
-        })
-        .reduce(function (sum, r) { return sum + (Number(r.amount || 0) || 0); }, 0);
+      // Schedule rows for this lease (database figures)
+      var todayISO = ymdLocal(now);
+      var sched = schedAll.filter(function (r) { return lease && r.lease_id === lease.id; })
+        .sort(function (a, b) { return a.due_date < b.due_date ? -1 : 1; });
+      var owedRows   = sched.filter(function (r) { return r.due_date <= todayISO && Number(r.balance || 0) > 0; });
+      var balanceDue = owedRows.reduce(function (t, r) { return t + Number(r.balance || 0); }, 0);
+      var nextRow    = owedRows[0] || sched.filter(function (r) { return r.due_date > todayISO; })[0] || null;
+      var nextDue    = nextRow ? nextRow.due_date : null;
+      var monthRow   = sched.filter(function (r) { return monthKey(new Date(r.due_date + 'T00:00:00')) === monthKey(now); })[0] || null;
+      // "Paid this month" = paid toward this month's due date, which is how the landlord's ledger counts it
+      var paidThisMonth = monthRow ? Number(monthRow.paid || 0) : 0;
+      var graceDays = lease ? Number(lease.grace_period || lease.late_fee_grace_days || 0) || 0 : 0;
+      var pastDue = owedRows.some(function (r) {
+        var d = new Date(r.due_date + 'T00:00:00'); d.setDate(d.getDate() + graceDays);
+        return ymdLocal(d) < todayISO;
+      });
 
       var last = rows.length ? rows[0] : null;
 
       /* ── Hero stats ── */
       setText('qpRent', rentAmount ? fmtMoney(rentAmount) : '—');
-      setText('qpNextDue', nextDue ? 'Next due: ' + fmtDate(nextDue) + (dueDay ? ' (day ' + dueDay + ')' : '') : 'Due day not set');
+      setText('qpNextDue', nextDue ? 'Next due: ' + fmtDate(nextDue) + (dueDay ? ' (day ' + dueDay + ')' : '') : (lease ? 'No rent due' : 'Due day not set'));
       setText('qpPaidMonth', fmtMoney(paidThisMonth));
 
       if (last) {
@@ -977,9 +994,9 @@
 
       // Paid stat accent
       if (rentAmount > 0) {
-        if (paidThisMonth >= rentAmount)       setStatAccent('statPaid', 'good');
-        else if (paidThisMonth > 0)            setStatAccent('statPaid', 'warn');
-        else if (nextDue && now > nextDue)     setStatAccent('statPaid', 'danger');
+        if (pastDue)                                         setStatAccent('statPaid', 'danger');
+        else if (monthRow && Number(monthRow.balance) <= 0)  setStatAccent('statPaid', 'good');
+        else if (paidThisMonth > 0)                          setStatAccent('statPaid', 'warn');
       }
 
       /* ── Lease status ── */
@@ -1039,10 +1056,10 @@
         }
       }
       if (rentAmount) {
-        if (paidThisMonth > 0 && paidThisMonth < rentAmount)
-          attention.push('Partial payment this month: paid ' + fmtMoney(paidThisMonth) + ' of ' + fmtMoney(rentAmount) + '.');
-        if (nextDue && now > nextDue && paidThisMonth < rentAmount)
-          attention.push('Rent may be past due. Please check your payment history.');
+        if (monthRow && paidThisMonth > 0 && Number(monthRow.balance) > 0)
+          attention.push('Partial payment this month: paid ' + fmtMoney(paidThisMonth) + ' of ' + fmtMoney(monthRow.rent_amount) + '.');
+        if (pastDue)
+          attention.push('Rent is past due: ' + fmtMoney(balanceDue) + ' outstanding. Please check your payment history or contact your landlord.');
       } else if (lease) {
         attention.push('Monthly rent amount is not set on your lease — contact your landlord.');
       }

@@ -717,7 +717,12 @@ const els = {
 };
 
 function showMsg(type, text) {
-  els.msg.innerHTML = `<div class="${type}">${text}</div>`;
+  // Messages can include database or AI text (error messages, vendor names): set as text, never HTML.
+  els.msg.textContent = "";
+  const d = document.createElement("div");
+  d.className = type;
+  d.textContent = text;
+  els.msg.appendChild(d);
 }
 
 function money(n){
@@ -806,20 +811,39 @@ async function loadRecent() {
     return;
   }
 
-  const rows = (data||[]).map(r => `
-    <tr>
-      <td>${r.date_paid || "—"}</td>
-      <td>${r.category || "—"}</td>
-      <td>${r.vendor || "—"}</td>
-      <td class="right">$${money(r.amount)}</td>
-      <td style="text-align:center">${(r.receipt_path || r.receipt_url) ? `<a href="#"${rgFiles.attr('receipts', r.receipt_path || r.receipt_url)} target="_blank" rel="noopener" title="View receipt" style="font-size:1.1rem;text-decoration:none;">🧾</a>` : ''}</td>
-      <td>
-        <button class="btn btn-ghost" type="button" onclick="location.href='add-expense.html?id=${encodeURIComponent(r.id)}'">✏️ Edit</button>
-      </td>
-    </tr>
-  `).join("");
-
-  els.recentBody.innerHTML = rows || `<tr><td colspan="5" class="small">No expenses yet.</td></tr>`;
+  // Built with createElement: vendor can come from the AI reading of a receipt image.
+  els.recentBody.textContent = "";
+  (data || []).forEach(r => {
+    const tr = document.createElement("tr");
+    const cell = (text, cls) => { const td = document.createElement("td"); if (cls) td.className = cls; td.textContent = text; tr.appendChild(td); return td; };
+    cell(r.date_paid || "—");
+    cell(r.category || "—");
+    cell(r.vendor || "—");
+    cell("$" + money(r.amount), "right");
+    const rc = cell("");
+    rc.style.textAlign = "center";
+    const receipt = r.receipt_path || r.receipt_url;
+    if (receipt) {
+      const a = document.createElement("a");
+      a.href = "#";
+      a.setAttribute("data-rg-file", "receipts|" + encodeURIComponent(receipt));
+      a.target = "_blank"; a.rel = "noopener"; a.title = "View receipt";
+      a.style.fontSize = "1.1rem"; a.style.textDecoration = "none";
+      a.textContent = "🧾";
+      rc.appendChild(a);
+    }
+    const ac = cell("");
+    const btn = document.createElement("button");
+    btn.className = "btn btn-ghost"; btn.type = "button"; btn.textContent = "✏️ Edit";
+    btn.addEventListener("click", () => { location.href = "add-expense.html?id=" + encodeURIComponent(r.id); });
+    ac.appendChild(btn);
+    els.recentBody.appendChild(tr);
+  });
+  if (!els.recentBody.firstChild) {
+    const tr = document.createElement("tr"), td = document.createElement("td");
+    td.colSpan = 5; td.className = "small"; td.textContent = "No expenses yet.";
+    tr.appendChild(td); els.recentBody.appendChild(tr);
+  }
   rgFiles.hydrate(client, els.recentBody);
 }
 

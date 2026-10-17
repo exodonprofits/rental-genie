@@ -873,17 +873,23 @@ main {
     </div>
   </div>
 
-  <!-- ── More reports ───────────────────────────────────────────── -->
-  <div class="section-heading">🗂️ More Reports</div>
-  <div class="report-grid">
-    <a class="report-card" href="portfolio-financial-dashboard.html">
-      <div class="report-icon">📈</div>
-      <div class="report-label">Portfolio Financial<br>Dashboard</div>
-    </a>
-    <a class="report-card" href="all-properties-summary.html">
-      <div class="report-icon">🏘️</div>
-      <div class="report-label">All Properties<br>Summary</div>
-    </a>
+  <!-- ══════════════════════════════════════════════════════════
+       PORTFOLIO: YEAR TO DATE (was the Portfolio Financial Dashboard)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="report-section" id="portfolioSection">
+    <div class="report-section-head">
+      <div class="report-section-title">📈 Portfolio, year to date</div>
+      <span class="report-section-meta" id="portfolioYtdMeta">Loading…</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="rg-stack rpt-table">
+        <thead>
+          <tr><th>Property</th><th class="text-right">Rent YTD</th><th class="text-right">Expenses YTD</th><th class="text-right">Mortgage / mo</th><th class="text-right">Net YTD</th></tr>
+        </thead>
+        <tbody id="portfolioYtdBody"></tbody>
+        <tfoot id="portfolioYtdFoot"></tfoot>
+      </table>
+    </div>
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -1091,8 +1097,8 @@ main {
       <a href="lease-rent-center.html">Lease &amp; Rent</a>
       <a href="expense-tracking.html">Expenses</a>
       <a href="maintenance-requests.html">Maintenance</a>
-      <a href="all-properties-summary.html">All Properties Summary</a>
-      <a href="portfolio-financial-dashboard.html">Portfolio Dashboard</a>
+      <a href="property-management.html">All Properties</a>
+      <a href="reports-analytics.html#portfolioSection">Portfolio (year to date)</a>
     </div>
     <div class="footer-section">
       <h4>Account</h4>
@@ -1367,7 +1373,7 @@ function applyCurrentProperty() {
   var enc = currentProperty ? encodeURIComponent(currentProperty) : '';
 
   /* Wire card links with property param */
-  if (propCards.income)      propCards.income.href      = 'portfolio-financial-dashboard.html' + (enc ? '?property=' + enc : '');
+  if (propCards.income)      propCards.income.href      = '#portfolioSection';
   if (propCards.rent)        propCards.rent.href        = 'lease-rent-center.html'             + (enc ? '?property=' + enc : '');
   if (propCards.payments)    propCards.payments.href    = 'expense-tracking.html'              + (enc ? '?property=' + enc : '');
   if (propCards.maintenance) propCards.maintenance.href = 'maintenance-cost.html'              + (enc ? '?property=' + enc : '');
@@ -1701,6 +1707,70 @@ function renderTrendChart(labels, rent, expenses, fixed, net) {
 
 
 /* ============================================================
+   PORTFOLIO, YEAR TO DATE (per-property table, all properties)
+   Net = rent − expenses − mortgage for the months elapsed this year, skipping months the mortgage
+   was already logged as an expense (add-expense's mortgage split), so nothing counts twice.
+============================================================ */
+var PORTFOLIO_MORTGAGE_CATS = ['Mortgage Payment', 'Mortgage Principal', 'Mortgage Interest'];
+async function loadPortfolioYtd() {
+  var body = $('portfolioYtdBody'), foot = $('portfolioYtdFoot'), meta = $('portfolioYtdMeta');
+  if (!body) return;
+  var now = new Date(), yearStart = now.getFullYear() + '-01-01', monthsElapsed = now.getMonth() + 1;
+  var pq = sb.from('properties').select('id, name, monthly_payment, mortgage_pi').is('archived_at', null).order('name');
+  var rq = sb.from('rent_log').select('property_name, amount').is('archived_at', null).gte('date_paid', yearStart);
+  var eq = sb.from('expenses').select('property_name, amount, category, date_paid').is('archived_at', null).gte('date_paid', yearStart);
+  if (activeCompanyId) { pq = pq.eq('company_id', activeCompanyId); rq = rq.eq('company_id', activeCompanyId); eq = eq.eq('company_id', activeCompanyId); }
+  try {
+    var res = await Promise.all([pq, rq, eq]);
+    if (res[0].error) throw res[0].error;
+    var rent = {}, exp = {}, mortLogged = {};
+    (res[1].data || []).forEach(function (r) { rent[r.property_name] = (rent[r.property_name] || 0) + Number(r.amount || 0); });
+    (res[2].data || []).forEach(function (e) {
+      exp[e.property_name] = (exp[e.property_name] || 0) + Number(e.amount || 0);
+      var k = monthKey(e.date_paid);
+      if (k && PORTFOLIO_MORTGAGE_CATS.indexOf(e.category) !== -1) (mortLogged[e.property_name] = mortLogged[e.property_name] || {})[k] = true;
+    });
+    var tot = { rent: 0, exp: 0, mort: 0, net: 0 };
+    body.textContent = ''; foot.textContent = '';
+    var props = res[0].data || [];
+    props.forEach(function (p) {
+      var mort = Number(p.monthly_payment || p.mortgage_pi || 0), mortYtd = 0;
+      for (var m = 1; m <= monthsElapsed; m++) {
+        var key = now.getFullYear() + '-' + String(m).padStart(2, '0');
+        if (!(mortLogged[p.name] || {})[key]) mortYtd += mort;
+      }
+      var r = rent[p.name] || 0, e = exp[p.name] || 0, net = r - e - mortYtd;
+      tot.rent += r; tot.exp += e; tot.mort += mort; tot.net += net;
+      body.appendChild(portfolioRow([p.name || '—', fmt(r), fmt(e), fmt(mort), signedFmt(net)], net));
+    });
+    if (!props.length) {
+      var tr = document.createElement('tr'), td = document.createElement('td');
+      td.colSpan = 5; td.className = 'rpt-empty'; td.textContent = 'No properties yet.'; tr.appendChild(td); body.appendChild(tr);
+    } else {
+      var t = portfolioRow(['Total', fmt(tot.rent), fmt(tot.exp), fmt(tot.mort), signedFmt(tot.net)], tot.net);
+      t.className = 'rpt-totals'; foot.appendChild(t);
+    }
+    if (meta) meta.textContent = props.length + ' propert' + (props.length === 1 ? 'y' : 'ies') + ' · Jan 1 to today';
+  } catch (e) {
+    console.error('Portfolio YTD error:', e);
+    if (meta) meta.textContent = 'Could not load';
+  }
+}
+function signedFmt(v) { return (v < 0 ? '-' : '+') + fmt(Math.abs(v)); }
+function portfolioRow(cells, net) {
+  var tr = document.createElement('tr');
+  cells.forEach(function (c, i) {
+    var td = document.createElement('td');
+    td.textContent = c;
+    if (i > 0) td.className = 'text-right mono';
+    if (i === 4) td.style.color = net >= 0 ? 'var(--success)' : 'var(--danger)';
+    if (i === 0) td.style.fontWeight = '600';
+    tr.appendChild(td);
+  });
+  return tr;
+}
+
+/* ============================================================
    INIT
 ============================================================ */
 document.getElementById('footerYear').textContent = new Date().getFullYear();
@@ -1820,6 +1890,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     await loadCompanyDropdown();
     if (!activeCompanyId) { hideOverlay(); return; }
     await loadPropertyDropdown();
+    loadPortfolioYtd();
 
     setProgress(100, 'Ready!', 3);
     setTimeout(hideOverlay, 320);

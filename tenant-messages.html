@@ -99,6 +99,8 @@ main{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:28px 22px 48px;}
 .convo-row{display:flex;align-items:flex-start;gap:14px;padding:14px 4px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .12s;border-radius:var(--radius-md);}
 .convo-row:hover{background:#f8fafc;}
 .convo-row:last-child{border-bottom:none;}
+.convo-row.unread .convo-name,.convo-row.unread .convo-subject{font-weight:800;color:#0c1e3a;}
+.unread-badge{display:inline-block;margin:4px 0;padding:2px 8px;border-radius:999px;background:#1e5799;color:#fff;font-size:.7rem;font-weight:700;}
 .convo-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#1a3a6b,#1e5799);color:#fff;font-weight:700;font-size:.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;text-transform:uppercase;}
 .convo-main{flex:1;min-width:0;}
 .convo-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
@@ -428,6 +430,8 @@ body { overflow-x: hidden; }
         snippet: last.message,
         last_at: last.created_at,
         status: last.status || 'open',
+        // Tenant messages the landlord hasn't opened yet (read_at is set when the thread is opened)
+        unread: msgs.filter(function (m) { return m.sender !== 'landlord' && !m.read_at; }).length,
         messages: msgs
       };
     });
@@ -454,7 +458,7 @@ body { overflow-x: hidden; }
       return;
     }
     el.innerHTML = list.map(function (c) {
-      return '<div class="convo-row" data-key="' + escapeHtml(c.key) + '">'
+      return '<div class="convo-row' + (c.unread ? ' unread' : '') + '" data-key="' + escapeHtml(c.key) + '">'
         + '<div class="convo-avatar">' + escapeHtml(initials(c.tenant_email)) + '</div>'
         + '<div class="convo-main">'
         + '<div class="convo-top"><span class="convo-name">' + escapeHtml(c.tenant_email) + '</span><span class="convo-property">· ' + escapeHtml(c.property_name || '') + '</span></div>'
@@ -462,6 +466,7 @@ body { overflow-x: hidden; }
         + '<div class="convo-snippet">' + escapeHtml(c.snippet || '') + '</div>'
         + '</div>'
         + '<div class="convo-right"><div class="convo-time">' + timeAgo(c.last_at) + '</div>'
+        + (c.unread ? '<span class="unread-badge" title="Unread">' + c.unread + ' new</span>' : '')
         + '<span class="chip ' + (c.status === 'closed' ? 'closed' : 'open') + '">' + (c.status === 'closed' ? '✅ Closed' : '🕐 Open') + '</span></div>'
         + '</div>';
     }).join('');
@@ -488,6 +493,19 @@ body { overflow-x: hidden; }
     $('replyStatus').textContent = '';
     $('replyInput').value = '';
     $('modalOverlay').classList.add('active');
+    markRead(c);
+  }
+
+  // Stamp read_at on the tenant's unread messages in this thread, then refresh the list's badges
+  async function markRead(c) {
+    var ids = c.messages.filter(function (m) { return m.sender !== 'landlord' && !m.read_at; }).map(function (m) { return m.id; });
+    if (!ids.length) return;
+    var now = new Date().toISOString();
+    var res = await db.from('tenant_messages').update({ read_at: now }).in('id', ids);
+    if (res.error) { console.warn('Could not mark messages read:', res.error); return; }
+    c.messages.forEach(function (m) { if (ids.indexOf(m.id) !== -1) m.read_at = now; });
+    c.unread = 0;
+    applyFilters();
   }
 
   function renderThread(c) {

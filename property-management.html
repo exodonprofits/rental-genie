@@ -994,6 +994,12 @@ h1 { font-size: 1.7rem !important; font-weight: 800 !important; color: var(--nav
   background-size: 200% 100% !important; animation: rgShimmer 1.1s linear infinite !important; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Year-to-date line on each property card */
+.ytd-line { margin: 10px 0 0; padding: 8px 10px; border-radius: 10px; background: #f8fafc; font-size: .82rem; color: #475569; line-height: 1.5; }
+.ytd-line b { color: #0c1e3a; }
+.ytd-line b.pos { color: #047857; }
+.ytd-line b.neg { color: #b91c1c; }
 </style>
 
 
@@ -1908,6 +1914,7 @@ let selectedCompanyId = null;
 let properties = [];
 let activeLeaseByProperty = new Map(); // property_id -> {tenant_name, rent_amount}
 let lastRentByProperty = new Map(); // property_id -> {date_paid, amount}
+let ytdByProperty = new Map();      // property_id -> {rent, exp, net} for this year (was all-properties-summary)
 
 function money(v){
   const n = Number(v || 0);
@@ -2199,6 +2206,7 @@ function renderCards(list){
   cardsEl.innerHTML = list.map(p => {
     const lease = activeLeaseByProperty.get(p.id);
     const last = lastRentByProperty.get(p.id);
+    const ytd = ytdByProperty.get(p.id);
 
     const tenant = lease?.tenant_name ? lease.tenant_name : (String(p.occupancy_status||"").toLowerCase()==="owner_occupied" ? "Owner" : "Vacant");
     const rent = lease?.rent_amount ? money(lease.rent_amount) + "/mo" : "—";
@@ -2237,6 +2245,7 @@ function renderCards(list){
             <strong>${safeHtml(lastRent)}</strong>
           </div>
         </div>
+        ${ytd ? `<div class="ytd-line">This year: Rent <b>${escHtml(money(ytd.rent))}</b> · Expenses <b>${escHtml(money(ytd.exp))}</b> · Net <b class="${ytd.net >= 0 ? "pos" : "neg"}">${escHtml((ytd.net >= 0 ? "+" : "") + money(ytd.net))}</b></div>` : ""}
 
         <div class="card-actions">
           <a class="btn btn-secondary" href="property-overview.html?property_id=${encodeURIComponent(p.id)}&company_id=${encodeURIComponent(selectedCompanyId||"")}&property=${encodeURIComponent(p.name||"")}">👀 Overview</a>
@@ -2314,7 +2323,7 @@ async function loadProperties(){
 
   const { data, error } = await sb
     .from("properties")
-    .select("id, name, address, occupancy_status, use_type, units, company_id")
+    .select("id, name, address, occupancy_status, use_type, units, company_id, monthly_payment, mortgage_pi")
     .eq("company_id", selectedCompanyId)
     .order("created_at", { ascending: false });
 
@@ -2422,6 +2431,37 @@ async function createWorkspace(){
   }
 }
 
+/* Year-to-date rent, expenses and net per property. Net subtracts the mortgage for the months
+   elapsed this year, skipping months it was already logged as an expense (mortgage split). */
+async function loadYtd(propertyIds){
+  ytdByProperty = new Map();
+  const ids = (propertyIds || []).filter(Boolean);
+  if(!ids.length) return;
+  const now = new Date(), yearStart = now.getFullYear() + "-01-01";
+  const [rentRes, expRes] = await Promise.all([
+    sb.from("rent_log").select("property_id, amount").is("archived_at", null).in("property_id", ids).gte("date_paid", yearStart),
+    sb.from("expenses").select("property_id, amount, category, date_paid").is("archived_at", null).in("property_id", ids).gte("date_paid", yearStart)
+  ]);
+  if(rentRes.error || expRes.error){ console.warn("YTD load failed", rentRes.error || expRes.error); return; }
+  const MORT = ["Mortgage Payment", "Mortgage Principal", "Mortgage Interest"];
+  const acc = new Map(ids.map(id => [id, { rent: 0, exp: 0, logged: new Set() }]));
+  (rentRes.data || []).forEach(r => { const a = acc.get(r.property_id); if(a) a.rent += Number(r.amount || 0); });
+  (expRes.data || []).forEach(e => {
+    const a = acc.get(e.property_id); if(!a) return;
+    a.exp += Number(e.amount || 0);
+    if(MORT.includes(e.category)) a.logged.add(String(e.date_paid || "").slice(0, 7));
+  });
+  properties.forEach(p => {
+    const a = acc.get(p.id); if(!a) return;
+    const mort = Number(p.monthly_payment || p.mortgage_pi || 0);
+    let mortYtd = 0;
+    for(let m = 1; m <= now.getMonth() + 1; m++){
+      if(!a.logged.has(now.getFullYear() + "-" + String(m).padStart(2, "0"))) mortYtd += mort;
+    }
+    ytdByProperty.set(p.id, { rent: a.rent, exp: a.exp, net: a.rent - a.exp - mortYtd });
+  });
+}
+
 async function refreshAll(){
   try{
     clearBanner();
@@ -2437,7 +2477,8 @@ async function refreshAll(){
 
     await Promise.all([
       loadActiveLeases(ids),
-      loadLastRent(ids)
+      loadLastRent(ids),
+      loadYtd(ids)
     ]);
 
     computeKpis(properties);

@@ -1461,6 +1461,10 @@ Used by:
 }
 .property-row-action:hover { filter: brightness(0.92); }
 
+
+/* Bottom tab labels (icons alone were hard to learn) */
+.mnav-label { display: block; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 360px) { .mnav-label { font-size: 9px; letter-spacing: -.2px; } .mnav { padding-left: 2px !important; padding-right: 2px !important; } }
 </style>
 <style>
   /* ===== Movable Ask Genie (Floating) ===== */
@@ -4864,13 +4868,13 @@ function setProgress(pct, statusText, activeStep) {
 <!-- ===== MOBILE BOTTOM NAV ===== -->
 <nav class="mobile-nav" aria-label="GenieSphere mobile navigation">
   <div class="mobile-nav-inner">
-    <a class="mnav" href="dashboard.html" data-nav="household"><div class="ico">📊</div></a>
-    <a class="mnav" href="property-management.html" data-nav="household"><div class="ico">🏘️</div></a>
-    <a class="mnav" href="lease-rent-center.html" data-nav="business"><div class="ico">💰</div></a>
+    <a class="mnav" href="dashboard.html" data-nav="household"><div class="ico">📊</div><span class="mnav-label">Home</span></a>
+    <a class="mnav" href="property-management.html" data-nav="household"><div class="ico">🏘️</div><span class="mnav-label">Properties</span></a>
+    <a class="mnav" href="lease-rent-center.html" data-nav="business"><div class="ico">💰</div><span class="mnav-label">Rent</span></a>
     <!--a class="mnav" href="lease-rent-center.html" data-nav="investment"><div class="ico">💰</div></a-->
-    <a class="mnav" href="expense-tracking.html" data-nav="leisure"><div class="ico">💸 </div></a>
-    <a class="mnav" href="maintenance-requests.html" data-nav="leisure"><div class="ico">🛠️</div></a>
-     <a class="mnav" href="reports-analytics.html" data-nav="leisure"><div class="ico">📈</div></a>
+    <a class="mnav" href="expense-tracking.html" data-nav="leisure"><div class="ico">💸 </div><span class="mnav-label">Expenses</span></a>
+    <a class="mnav" href="maintenance-requests.html" data-nav="leisure"><div class="ico">🛠️</div><span class="mnav-label">Repairs</span></a>
+     <a class="mnav" href="reports-analytics.html" data-nav="leisure"><div class="ico">📈</div><span class="mnav-label">Reports</span></a>
   </div>
 </nav>
 

@@ -397,6 +397,36 @@ footer { margin-top: auto; padding: 20px 22px; text-align: center; color: var(--
   flex-wrap: wrap; gap: 10px; margin-bottom: 14px;
 }
 .table-count { font-size: .8rem; color: var(--muted); }
+
+/* Record tables become labelled cards on phones (CLAUDE.md UI standard). The labels are copied
+   from the header row by the rgStackTables script at the end of the page. */
+@media (max-width: 640px) {
+  table.rg-stack { min-width: 0 !important; width: 100% !important; border-collapse: separate; }
+  table.rg-stack thead { display: none; }
+  table.rg-stack tbody, table.rg-stack tfoot, table.rg-stack tr, table.rg-stack td { display: block; width: 100%; box-sizing: border-box; }
+  table.rg-stack tr { border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 6px 12px; margin: 0 0 10px; background: #fff; }
+  table.rg-stack td { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 7px 0; border: none !important; text-align: right; white-space: normal !important; word-break: break-word; max-width: none !important; }
+  table.rg-stack td + td { border-top: 1px dashed var(--border, #e2e8f0) !important; }
+  table.rg-stack td::before { content: attr(data-label); flex: 0 0 auto; max-width: 45%; text-align: left; font-weight: 600; font-size: .8rem; color: var(--muted, #64748b); }
+  table.rg-stack td[data-label=""]::before, table.rg-stack td:not([data-label])::before { content: none; }
+  table.rg-stack td[colspan] { display: block; text-align: center; }
+  table.rg-stack td[colspan]::before { content: none; }
+}
+
+/* Phone menu (the hamburger had no drawer behind it) */
+.rg-drawer { display: none; position: fixed; top: 70px; left: 12px; right: 12px; z-index: 1300; background: #fff;
+  border: 1px solid var(--border, #e2e8f0); border-radius: 16px; padding: 10px; box-shadow: 0 16px 40px rgba(12,30,58,.18);
+  max-height: calc(100vh - 90px); overflow-y: auto; }
+.rg-drawer.open { display: block; }
+.rg-drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.rg-drawer a, .rg-drawer button { display: block; padding: 11px 12px; border-radius: 10px; color: #0c1e3a; font-weight: 600;
+  font-size: .9rem; text-decoration: none; background: #f8fafc; border: none; text-align: left; font-family: inherit; cursor: pointer; }
+.rg-drawer .rg-drawer-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border, #e2e8f0); }
+.rg-drawer .danger { color: #b91c1c; }
+@media (max-width: 860px) { .umd-wrap, body.auth-ready .umd-wrap, body.auth-ready #userMenu { display: none !important; } }
+
+/* CLAUDE.md: no sideways scroll on phones */
+body { overflow-x: hidden; }
 </style>
 </head>
 <body class="auth-guest">
@@ -590,7 +620,7 @@ footer { margin-top: auto; padding: 20px 22px; text-align: center; color: var(--
       <button onclick="exportCSV()">⬇ Export CSV</button>
     </div>
     <div style="overflow-x: auto;">
-      <table style="width: 100%; border-collapse: collapse; font-size: .9rem;">
+      <table class="rg-stack" style="width: 100%; border-collapse: collapse; font-size: .9rem;">
         <thead>
           <tr style="border-bottom: 2px solid var(--border);">
             <th style="text-align: left; padding: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; font-size: .75rem;">Date</th>
@@ -1202,5 +1232,56 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
+<script>
+/* rgStackTables: copy each column's header text into its cells (data-label) so record tables can
+   show as labelled cards on phones. Re-runs when rows are re-rendered. */
+(function () {
+  function label(t) {
+    var heads = Array.prototype.map.call(t.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+    if (!heads.length) return;
+    Array.prototype.forEach.call(t.querySelectorAll('tbody tr, tfoot tr'), function (tr) {
+      var i = 0;
+      Array.prototype.forEach.call(tr.children, function (td) {
+        if (!td.hasAttribute('data-label')) td.setAttribute('data-label', td.colSpan > 1 ? '' : (heads[i] || ''));
+        i += td.colSpan || 1;
+      });
+    });
+  }
+  function run() {
+    Array.prototype.forEach.call(document.querySelectorAll('table.rg-stack'), function (t) {
+      label(t);
+      if (!t.__rgStack) { t.__rgStack = new MutationObserver(function () { label(t); }); t.__rgStack.observe(t, { childList: true, subtree: true }); }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+})();
+</script>
+<script>
+/* Phone menu: build the drawer the hamburger opens (createElement, per CLAUDE.md). Links carry the
+   current property; Sign Out reuses the page's own logout button. */
+(function () {
+  var ham = document.getElementById('hamburgerBtn');
+  if (!ham) return;
+  var q = new URLSearchParams(location.search), keep = new URLSearchParams();
+  ['property', 'property_id', 'company_id'].forEach(function (k) { if (q.get(k)) keep.set(k, q.get(k)); });
+  function withProp(href) { var s = keep.toString(); return s ? href + '?' + s : href; }
+  var d = document.createElement('nav');
+  d.className = 'rg-drawer'; d.id = 'mobileDrawer'; d.setAttribute('aria-label', 'Menu');
+  var grid = document.createElement('div'); grid.className = 'rg-drawer-grid';
+  [['dashboard.html', '📊 Dashboard'], ['property-management.html', '🏘️ Properties'], ['lease-rent-center.html', '💰 Lease & Rent'],
+   ['expense-tracking.html', '💸 Expenses'], ['maintenance-requests.html', '🛠 Maintenance'], ['reports-analytics.html', '📈 Reports']]
+    .forEach(function (l) { var a = document.createElement('a'); a.href = withProp(l[0]); a.textContent = l[1]; grid.appendChild(a); });
+  d.appendChild(grid);
+  var foot = document.createElement('div'); foot.className = 'rg-drawer-foot';
+  var acct = document.createElement('a'); acct.href = 'account.html'; acct.textContent = '👤 Account'; foot.appendChild(acct);
+  var out = document.createElement('button'); out.type = 'button'; out.className = 'danger'; out.textContent = '🚪 Sign Out';
+  out.addEventListener('click', function () { var b = document.getElementById('logoutBtn'); if (b) b.click(); else location.href = 'login.html'; });
+  foot.appendChild(out); d.appendChild(foot);
+  document.body.appendChild(d);
+  ham.setAttribute('aria-expanded', 'false');
+  ham.addEventListener('click', function (e) { e.stopPropagation(); var open = d.classList.toggle('open'); ham.setAttribute('aria-expanded', open ? 'true' : 'false'); });
+  document.addEventListener('click', function (e) { if (d.classList.contains('open') && !d.contains(e.target)) { d.classList.remove('open'); ham.setAttribute('aria-expanded', 'false'); } });
+})();
+</script>
 </body>
 </html>

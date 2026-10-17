@@ -442,6 +442,13 @@ textarea { resize: vertical; min-height: 80px; }
   .section-head, .section-body { padding-left: 16px; padding-right: 16px; }
   .finance-head { padding-left: 16px; padding-right: 16px; }
 }
+
+/* CLAUDE.md: no sideways scroll on phones */
+body { overflow-x: hidden; }
+
+/* Bottom tab labels (icons alone were hard to learn) */
+.mnav-label { display: block; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 360px) { .mnav-label { font-size: 9px; letter-spacing: -.2px; } .mnav { padding-left: 2px !important; padding-right: 2px !important; } }
 </style>
 <style>
 /* ── Mobile: hide UMD pill ── */
@@ -1045,12 +1052,12 @@ textarea { resize: vertical; min-height: 80px; }
 <!-- Mobile Bottom Nav -->
 <nav class="mobile-nav" aria-label="Mobile navigation">
   <div class="mobile-nav-inner">
-    <a class="mnav" href="dashboard.html"><div class="ico">📊</div></a>
-    <a class="mnav active" href="property-management.html"><div class="ico">🏘️</div></a>
-    <a class="mnav" href="lease-rent-center.html"><div class="ico">💰</div></a>
-    <a class="mnav" href="expense-tracking.html"><div class="ico">💸</div></a>
-    <a class="mnav" href="maintenance-requests.html"><div class="ico">🛠️</div></a>
-    <a class="mnav" href="reports-analytics.html"><div class="ico">📈</div></a>
+    <a class="mnav" href="dashboard.html"><div class="ico">📊</div><span class="mnav-label">Home</span></a>
+    <a class="mnav active" href="property-management.html"><div class="ico">🏘️</div><span class="mnav-label">Properties</span></a>
+    <a class="mnav" href="lease-rent-center.html"><div class="ico">💰</div><span class="mnav-label">Rent</span></a>
+    <a class="mnav" href="expense-tracking.html"><div class="ico">💸</div><span class="mnav-label">Expenses</span></a>
+    <a class="mnav" href="maintenance-requests.html"><div class="ico">🛠️</div><span class="mnav-label">Repairs</span></a>
+    <a class="mnav" href="reports-analytics.html"><div class="ico">📈</div><span class="mnav-label">Reports</span></a>
   </div>
 </nav>
 <div class="mobile-pad" aria-hidden="true"></div>

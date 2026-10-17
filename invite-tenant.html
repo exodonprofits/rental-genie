@@ -201,6 +201,13 @@ main.page{flex:1 0 auto;max-width:860px;margin:0 auto;padding:28px 16px 60px;wid
 .footer-section a:hover{color:rgba(255,255,255,.9);}
 .footer-bottom{max-width:1440px;margin:20px auto 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;color:rgba(255,255,255,.3);font-size:.78rem;}
 .footer-bottom a{color:rgba(255,255,255,.4);text-decoration:none;}
+
+/* CLAUDE.md: no sideways scroll on phones */
+body { overflow-x: hidden; }
+
+/* Bottom tab labels (icons alone were hard to learn) */
+.mnav-label { display: block; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 360px) { .mnav-label { font-size: 9px; letter-spacing: -.2px; } .mnav { padding-left: 2px !important; padding-right: 2px !important; } }
 </style>
 
 <!-- Supabase Bootstrap — identical to lease-rent-center.html -->
@@ -423,12 +430,12 @@ main.page{flex:1 0 auto;max-width:860px;margin:0 auto;padding:28px 16px 60px;wid
 
 <nav class="mobile-nav" aria-label="Mobile navigation">
   <div class="mobile-nav-inner">
-    <a class="mnav" href="dashboard.html"><div class="ico">📊</div></a>
-    <a class="mnav" href="property-management.html"><div class="ico">🏘️</div></a>
-    <a class="mnav" href="lease-rent-center.html"><div class="ico">💰</div></a>
-    <a class="mnav" href="expense-tracking.html"><div class="ico">💸</div></a>
-    <a class="mnav" href="maintenance-requests.html"><div class="ico">🛠</div></a>
-    <a class="mnav active" href="invite-tenant.html"><div class="ico">✉️</div></a>
+    <a class="mnav" href="dashboard.html"><div class="ico">📊</div><span class="mnav-label">Home</span></a>
+    <a class="mnav" href="property-management.html"><div class="ico">🏘️</div><span class="mnav-label">Properties</span></a>
+    <a class="mnav" href="lease-rent-center.html"><div class="ico">💰</div><span class="mnav-label">Rent</span></a>
+    <a class="mnav" href="expense-tracking.html"><div class="ico">💸</div><span class="mnav-label">Expenses</span></a>
+    <a class="mnav" href="maintenance-requests.html"><div class="ico">🛠</div><span class="mnav-label">Repairs</span></a>
+    <a class="mnav" href="reports-analytics.html"><div class="ico">📈</div><span class="mnav-label">Reports</span></a>
   </div>
 </nav>
 

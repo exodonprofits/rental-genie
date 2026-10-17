@@ -2861,8 +2861,20 @@ if (hamburgerBtn && mobileDrawer) {
         const now = new Date();
         const yyyyMmDd = new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,10);
 
+        // 1) Claim the request: only a still-pending request moves to Approved, so a double click or a
+        //    second tab can't create a second expense.
+        const { data: claimed, error: claimErr } = await client.from("reimbursement_requests").update({
+          status: "Approved",
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: uid
+        }).eq("id", id).eq("status", "Pending").select("id");
+        if (claimErr) { alert("Failed to approve: " + claimErr.message); return; }
+        if (!claimed || !claimed.length) { alert("This reimbursement was already reviewed."); await loadReimbursements(); return; }
+
+        // 2) Log the matching expense; if that fails, put the request back to Pending
         const { data: expRow, error: expErr } = await client.from("expenses").insert([{
           property_name: r.property_name,
+          property_id: r.property_id || null,
           company_id: r.company_id,
           category: "Repairs & Maintenance",
           amount: r.amount,
@@ -2872,16 +2884,16 @@ if (hamburgerBtn && mobileDrawer) {
           receipt_path: r.receipt_path || null
         }]).select("id").single();
 
-        if (expErr) { alert("Failed to create expense: " + expErr.message); return; }
+        if (expErr) {
+          await client.from("reimbursement_requests").update({ status: "Pending", reviewed_at: null, reviewed_by: null }).eq("id", id);
+          alert("Failed to create the expense, so the reimbursement is still pending: " + expErr.message);
+          await loadReimbursements();
+          return;
+        }
 
-        const { error: updErr } = await client.from("reimbursement_requests").update({
-          status: "Approved",
-          expense_id: expRow ? expRow.id : null,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: uid
-        }).eq("id", id);
-
-        if (updErr) { alert("Expense created, but failed to update reimbursement status: " + updErr.message); }
+        // 3) Link the expense to the request
+        const { error: linkErr } = await client.from("reimbursement_requests").update({ expense_id: expRow.id }).eq("id", id);
+        if (linkErr) console.warn("Reimbursement approved and expense logged, but the link wasn't saved:", linkErr);
 
         showToast("Reimbursement approved — expense logged.");
         await loadReimbursements();

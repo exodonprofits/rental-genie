@@ -4177,6 +4177,9 @@ function renderPayInbox(pending, everReceived) {
   var list = document.getElementById("payInboxList");
   var title = document.getElementById("payInboxTitle");
   if (!card || !list) return;
+  // Until the inbox address is configured (RG_PAYMENT_INBOX_BASE), the setup steps have no address
+  // to forward to, so the card stays hidden unless forwarded payments are already waiting.
+  if (!RG_PAYMENT_INBOX_BASE && !pending.length) { card.classList.remove("show"); return; }
 
   while (list.firstChild) list.removeChild(list.firstChild);
   renderPayInboxSetup(everReceived);

@@ -958,11 +958,25 @@ function renderDocs() {
   rgFiles.hydrate(client, body);
 }
 
+// Storage path of a document: file_path, or the part after the bucket in a legacy public URL
+function docStoragePath(d) {
+  if (d && d.file_path) return d.file_path;
+  var m = /\/tenant-documents\/(.+)$/.exec(String((d && d.file_url) || '').split('?')[0]);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 window._deleteDoc = function (id) {
   if (!confirm('Delete this document? This cannot be undone.')) return;
+  var doc = docsCache.filter(function (d) { return d.id === id; })[0];
+  var path = docStoragePath(doc);
+  // Delete the record first, then the file. If the file removal fails it's logged; the record is
+  // already gone, so nobody is left with a broken link.
   client.from('tenant_documents').delete().eq('id', id).then(function (res) {
     if (res.error) { alert('Delete failed: ' + res.error.message); return; }
-    loadDocuments();
+    var done = path
+      ? client.storage.from('tenant-documents').remove([path]).then(function (r) { if (r.error) console.warn('Document file not removed:', r.error); })
+      : Promise.resolve();
+    return done.then(loadDocuments, loadDocuments);
   });
 };
 

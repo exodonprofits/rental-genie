@@ -578,7 +578,7 @@ body { overflow-x: hidden; }
       <div class="page-sub">Spending on maintenance across your portfolio — by period, property, and vendor.</div>
     </div>
     <div class="page-actions">
-      <a class="btn" id="historyLink" href="maintenance-history.html">📋 View History ↗</a>
+      <a class="btn" id="historyLink" href="maintenance-requests.html?view=all">📋 View History ↗</a>
       <button class="btn primary" id="downloadBtn">⬇️ Export CSV</button>
     </div>
   </div>
@@ -719,7 +719,7 @@ body { overflow-x: hidden; }
       <h4>Account</h4>
       <a href="account.html">My Account</a>
       <a href="maintenance-requests.html">Maintenance Requests</a>
-      <a href="maintenance-history.html">Maintenance History</a>
+      <a href="maintenance-requests.html?view=all">Maintenance History</a>
     </div>
   </div>
   <div class="footer-bottom">© <span id="footerYear"></span> Rental Genie. All rights reserved.</div>
@@ -1181,8 +1181,8 @@ function updateHistoryLink() {
   if (!link) return;
   var prop = propertySelect.value;
   link.href = prop === 'all'
-    ? 'maintenance-history.html'
-    : 'maintenance-history.html?property=' + encodeURIComponent(prop);
+    ? 'maintenance-requests.html?view=all'
+    : 'maintenance-requests.html?view=all&property=' + encodeURIComponent(prop);
 }
 
 /* ============================================================

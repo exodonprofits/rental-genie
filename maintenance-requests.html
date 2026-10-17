@@ -1626,6 +1626,15 @@ window.rgFiles = (function () {
             </select>
           </div>
 
+          <div class="filter-item">
+            <label for="viewSelect">Show</label>
+            <select id="viewSelect">
+              <option value="active">Active requests</option>
+              <option value="archived">Archived</option>
+              <option value="all">All (history)</option>
+            </select>
+          </div>
+
           <div class="filter-item filter-search">
             <label for="searchInput">Search</label>
             <input id="searchInput" type="text" placeholder="Search issue, tenant email, notes…" />
@@ -1637,7 +1646,10 @@ window.rgFiles = (function () {
 
       <div class="card-header">
         <h2>Request Ledger</h2>
-        <button class="add-btn" id="addRequestBtn">➕ Log New Request</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="add-btn" id="exportCsvBtn" type="button" style="background:#fff;color:#0c1e3a;border:1px solid #cbd5e1;">⬇️ Export CSV</button>
+          <button class="add-btn" id="addRequestBtn">➕ Log New Request</button>
+        </div>
       </div>
 
       <div class="card">
@@ -2200,6 +2212,10 @@ if (hamburgerBtn && mobileDrawer) {
     function renderActions(r){
       const status = normalizeStatus(r.status);
       const id = r.id;
+      if (r.archived_at) {
+        return `<div class="actions"><span class="pill" style="font-size:.75rem;color:#64748b;">Archived</span>
+          <button class="btn-mini" onclick="restoreRequest(${Number(id)})">↩️ Restore</button></div>`;
+      }
       const menuId = `menu_${id}`;
       const canStart = status === "Open";
       const canComplete = status === "In Progress" || status === "Open";
@@ -2243,7 +2259,9 @@ if (hamburgerBtn && mobileDrawer) {
       status: "",
       priority: "",
       quick: "",
+      view: "active",   // active | archived | all (the old maintenance-history view)
     };
+    let lastRenderedRows = [];  // what the table shows, for CSV export
 
     async function ensureAuthenticated() {
       try {
@@ -2284,12 +2302,15 @@ if (hamburgerBtn && mobileDrawer) {
       currentFilters.status = params.get("status") || "";
       currentFilters.priority = params.get("priority") || "";
       currentFilters.quick = params.get("quick") || "";
+      currentFilters.view = ["active", "archived", "all"].includes(params.get("view")) ? params.get("view") : "active";
+      const viewSelect = document.getElementById("viewSelect");
 
       // Load Properties
       loadPropertyOptions(propertySelect).then(() => {
         propertySelect.value = currentFilters.property;
         statusSelect.value = currentFilters.status;
         prioritySelect.value = currentFilters.priority;
+        if (viewSelect) viewSelect.value = currentFilters.view;
         if (searchInput) searchInput.value = params.get("q") || "";
         syncChipsUI();
         applyFilters();
@@ -2297,7 +2318,7 @@ if (hamburgerBtn && mobileDrawer) {
 
       // Add event listeners to update filters and reload data
 
-      [propertySelect, statusSelect, prioritySelect].forEach((el) => {
+      [propertySelect, statusSelect, prioritySelect, viewSelect].forEach((el) => {
         if (!el) return;
         el.addEventListener("change", (e) => {
           currentFilters[el.id.replace("Select", "")] = e.target.value;
@@ -2367,6 +2388,7 @@ if (hamburgerBtn && mobileDrawer) {
       if (currentFilters.property) url.searchParams.set("property", currentFilters.property);
       if (currentFilters.status) url.searchParams.set("status", currentFilters.status);
       if (currentFilters.priority) url.searchParams.set("priority", currentFilters.priority);
+      if (currentFilters.view && currentFilters.view !== "active") url.searchParams.set("view", currentFilters.view);
       if (currentFilters.quick) url.searchParams.set("quick", currentFilters.quick);
       const q = (document.getElementById("searchInput")?.value || "").trim();
       if (q) url.searchParams.set("q", q);
@@ -2388,7 +2410,9 @@ if (hamburgerBtn && mobileDrawer) {
         if (el) el.textContent = "0";
       });
 
-      let query = client.from("maintenance_requests").select("*").is("archived_at", null);
+      let query = client.from("maintenance_requests").select("*");
+      if (currentFilters.view === "active") query = query.is("archived_at", null);
+      else if (currentFilters.view === "archived") query = query.not("archived_at", "is", null);
 
       // Scope to the active landlord/company (multi-landlord)
       if (activeCompanyId) {
@@ -2461,6 +2485,7 @@ if (hamburgerBtn && mobileDrawer) {
           return ageDays >= 7;
         });
       }
+      lastRenderedRows = rows;
       if (!rows.length) {
         body.innerHTML = '<tr><td colspan="7">No requests found for the selected filters.</td></tr>';
         return;
@@ -2775,6 +2800,37 @@ if (hamburgerBtn && mobileDrawer) {
 
     const saveEditBtn = document.getElementById("saveEditBtn");
     if (saveEditBtn) saveEditBtn.onclick = saveEdit;
+
+    async function restoreRequest(id){
+      try {
+        const { error } = await client.rpc("unarchive_maintenance_request", { p_request_id: id });
+        if (error) throw error;
+        showToast("Request restored");
+        await loadRequests();
+      } catch (err) {
+        alert("Failed to restore request.");
+        console.error(err);
+      }
+    }
+
+    // CSV of exactly what the table shows (filters and view applied)
+    function exportRequestsCsv(){
+      const rows = lastRenderedRows || [];
+      if (!rows.length) { alert("No requests to export for these filters."); return; }
+      const cell = (v) => { const s = String(v == null ? "" : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+      const head = ["Date", "Property", "Tenant", "Issue", "Urgency", "Status", "Vendor", "Estimated cost", "Archived"];
+      const lines = [head.join(",")].concat(rows.map(r => [
+        (r.created_at || "").slice(0, 10), r.property_name, r.tenant_email, r.issue_description,
+        r.urgency_level, r.status, r.assigned_vendor, r.estimated_cost, r.archived_at ? (r.archived_at || "").slice(0, 10) : ""
+      ].map(cell).join(",")));
+      const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "maintenance-requests-" + new Date().toISOString().slice(0, 10) + ".csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    }
+    document.getElementById("exportCsvBtn")?.addEventListener("click", exportRequestsCsv);
 
     async function confirmDelete(id){
       // Enterprise safety: archive instead of hard delete

@@ -898,6 +898,20 @@ Used by:
 /* ✅ Fix filter card input overflow (Search going wider than panel) */
 /* filter-bar overflow guards (consolidated above) */
 
+
+/* Bottom tab labels (icons alone were hard to learn) */
+.mnav-label { display: block; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 360px) { .mnav-label { font-size: 9px; letter-spacing: -.2px; } .mnav { padding-left: 2px !important; padding-right: 2px !important; } }
+
+/* Loading indicator: a 3px shimmer bar at the top (CLAUDE.md standard), not a full-screen overlay.
+   The scripts still show/hide #authOverlay as before; only its look changed. */
+#authOverlay { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important;
+  width: 100% !important; height: 3px !important; padding: 0 !important; margin: 0 !important; z-index: 3000 !important;
+  pointer-events: none !important; backdrop-filter: none !important;
+  background: linear-gradient(90deg, rgba(30,87,153,0) 0%, #1e5799 35%, #2d8cf0 50%, #1e5799 65%, rgba(30,87,153,0) 100%) !important;
+  background-size: 200% 100% !important; animation: rgShimmer 1.1s linear infinite !important; }
+#authOverlay > * { display: none !important; }
+@keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>
 
 <style id="rg-design-system">
@@ -1612,6 +1626,15 @@ window.rgFiles = (function () {
             </select>
           </div>
 
+          <div class="filter-item">
+            <label for="viewSelect">Show</label>
+            <select id="viewSelect">
+              <option value="active">Active requests</option>
+              <option value="archived">Archived</option>
+              <option value="all">All (history)</option>
+            </select>
+          </div>
+
           <div class="filter-item filter-search">
             <label for="searchInput">Search</label>
             <input id="searchInput" type="text" placeholder="Search issue, tenant email, notes…" />
@@ -1623,7 +1646,10 @@ window.rgFiles = (function () {
 
       <div class="card-header">
         <h2>Request Ledger</h2>
-        <button class="add-btn" id="addRequestBtn">➕ Log New Request</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="add-btn" id="exportCsvBtn" type="button" style="background:#fff;color:#0c1e3a;border:1px solid #cbd5e1;">⬇️ Export CSV</button>
+          <button class="add-btn" id="addRequestBtn">➕ Log New Request</button>
+        </div>
       </div>
 
       <div class="card">
@@ -2186,6 +2212,10 @@ if (hamburgerBtn && mobileDrawer) {
     function renderActions(r){
       const status = normalizeStatus(r.status);
       const id = r.id;
+      if (r.archived_at) {
+        return `<div class="actions"><span class="pill" style="font-size:.75rem;color:#64748b;">Archived</span>
+          <button class="btn-mini" onclick="restoreRequest(${Number(id)})">↩️ Restore</button></div>`;
+      }
       const menuId = `menu_${id}`;
       const canStart = status === "Open";
       const canComplete = status === "In Progress" || status === "Open";
@@ -2229,7 +2259,9 @@ if (hamburgerBtn && mobileDrawer) {
       status: "",
       priority: "",
       quick: "",
+      view: "active",   // active | archived | all (the old maintenance-history view)
     };
+    let lastRenderedRows = [];  // what the table shows, for CSV export
 
     async function ensureAuthenticated() {
       try {
@@ -2270,12 +2302,15 @@ if (hamburgerBtn && mobileDrawer) {
       currentFilters.status = params.get("status") || "";
       currentFilters.priority = params.get("priority") || "";
       currentFilters.quick = params.get("quick") || "";
+      currentFilters.view = ["active", "archived", "all"].includes(params.get("view")) ? params.get("view") : "active";
+      const viewSelect = document.getElementById("viewSelect");
 
       // Load Properties
       loadPropertyOptions(propertySelect).then(() => {
         propertySelect.value = currentFilters.property;
         statusSelect.value = currentFilters.status;
         prioritySelect.value = currentFilters.priority;
+        if (viewSelect) viewSelect.value = currentFilters.view;
         if (searchInput) searchInput.value = params.get("q") || "";
         syncChipsUI();
         applyFilters();
@@ -2283,7 +2318,7 @@ if (hamburgerBtn && mobileDrawer) {
 
       // Add event listeners to update filters and reload data
 
-      [propertySelect, statusSelect, prioritySelect].forEach((el) => {
+      [propertySelect, statusSelect, prioritySelect, viewSelect].forEach((el) => {
         if (!el) return;
         el.addEventListener("change", (e) => {
           currentFilters[el.id.replace("Select", "")] = e.target.value;
@@ -2353,6 +2388,7 @@ if (hamburgerBtn && mobileDrawer) {
       if (currentFilters.property) url.searchParams.set("property", currentFilters.property);
       if (currentFilters.status) url.searchParams.set("status", currentFilters.status);
       if (currentFilters.priority) url.searchParams.set("priority", currentFilters.priority);
+      if (currentFilters.view && currentFilters.view !== "active") url.searchParams.set("view", currentFilters.view);
       if (currentFilters.quick) url.searchParams.set("quick", currentFilters.quick);
       const q = (document.getElementById("searchInput")?.value || "").trim();
       if (q) url.searchParams.set("q", q);
@@ -2374,7 +2410,9 @@ if (hamburgerBtn && mobileDrawer) {
         if (el) el.textContent = "0";
       });
 
-      let query = client.from("maintenance_requests").select("*").is("archived_at", null);
+      let query = client.from("maintenance_requests").select("*");
+      if (currentFilters.view === "active") query = query.is("archived_at", null);
+      else if (currentFilters.view === "archived") query = query.not("archived_at", "is", null);
 
       // Scope to the active landlord/company (multi-landlord)
       if (activeCompanyId) {
@@ -2447,6 +2485,7 @@ if (hamburgerBtn && mobileDrawer) {
           return ageDays >= 7;
         });
       }
+      lastRenderedRows = rows;
       if (!rows.length) {
         body.innerHTML = '<tr><td colspan="7">No requests found for the selected filters.</td></tr>';
         return;
@@ -2762,6 +2801,37 @@ if (hamburgerBtn && mobileDrawer) {
     const saveEditBtn = document.getElementById("saveEditBtn");
     if (saveEditBtn) saveEditBtn.onclick = saveEdit;
 
+    async function restoreRequest(id){
+      try {
+        const { error } = await client.rpc("unarchive_maintenance_request", { p_request_id: id });
+        if (error) throw error;
+        showToast("Request restored");
+        await loadRequests();
+      } catch (err) {
+        alert("Failed to restore request.");
+        console.error(err);
+      }
+    }
+
+    // CSV of exactly what the table shows (filters and view applied)
+    function exportRequestsCsv(){
+      const rows = lastRenderedRows || [];
+      if (!rows.length) { alert("No requests to export for these filters."); return; }
+      const cell = (v) => { const s = String(v == null ? "" : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+      const head = ["Date", "Property", "Tenant", "Issue", "Urgency", "Status", "Vendor", "Estimated cost", "Archived"];
+      const lines = [head.join(",")].concat(rows.map(r => [
+        (r.created_at || "").slice(0, 10), r.property_name, r.tenant_email, r.issue_description,
+        r.urgency_level, r.status, r.assigned_vendor, r.estimated_cost, r.archived_at ? (r.archived_at || "").slice(0, 10) : ""
+      ].map(cell).join(",")));
+      const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "maintenance-requests-" + new Date().toISOString().slice(0, 10) + ".csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+    }
+    document.getElementById("exportCsvBtn")?.addEventListener("click", exportRequestsCsv);
+
     async function confirmDelete(id){
       // Enterprise safety: archive instead of hard delete
       try {
@@ -2857,8 +2927,20 @@ if (hamburgerBtn && mobileDrawer) {
         const now = new Date();
         const yyyyMmDd = new Date(now.getTime() - now.getTimezoneOffset()*60000).toISOString().slice(0,10);
 
+        // 1) Claim the request: only a still-pending request moves to Approved, so a double click or a
+        //    second tab can't create a second expense.
+        const { data: claimed, error: claimErr } = await client.from("reimbursement_requests").update({
+          status: "Approved",
+          reviewed_at: new Date().toISOString(),
+          reviewed_by: uid
+        }).eq("id", id).eq("status", "Pending").select("id");
+        if (claimErr) { alert("Failed to approve: " + claimErr.message); return; }
+        if (!claimed || !claimed.length) { alert("This reimbursement was already reviewed."); await loadReimbursements(); return; }
+
+        // 2) Log the matching expense; if that fails, put the request back to Pending
         const { data: expRow, error: expErr } = await client.from("expenses").insert([{
           property_name: r.property_name,
+          property_id: r.property_id || null,
           company_id: r.company_id,
           category: "Repairs & Maintenance",
           amount: r.amount,
@@ -2868,16 +2950,16 @@ if (hamburgerBtn && mobileDrawer) {
           receipt_path: r.receipt_path || null
         }]).select("id").single();
 
-        if (expErr) { alert("Failed to create expense: " + expErr.message); return; }
+        if (expErr) {
+          await client.from("reimbursement_requests").update({ status: "Pending", reviewed_at: null, reviewed_by: null }).eq("id", id);
+          alert("Failed to create the expense, so the reimbursement is still pending: " + expErr.message);
+          await loadReimbursements();
+          return;
+        }
 
-        const { error: updErr } = await client.from("reimbursement_requests").update({
-          status: "Approved",
-          expense_id: expRow ? expRow.id : null,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: uid
-        }).eq("id", id);
-
-        if (updErr) { alert("Expense created, but failed to update reimbursement status: " + updErr.message); }
+        // 3) Link the expense to the request
+        const { error: linkErr } = await client.from("reimbursement_requests").update({ expense_id: expRow.id }).eq("id", id);
+        if (linkErr) console.warn("Reimbursement approved and expense logged, but the link wasn't saved:", linkErr);
 
         showToast("Reimbursement approved — expense logged.");
         await loadReimbursements();
@@ -2984,12 +3066,12 @@ function setProgress(pct, statusText, activeStep) {
 <!-- ===== MOBILE BOTTOM NAV ===== -->
 <nav class="mobile-nav" aria-label="GenieSphere mobile navigation">
   <div class="mobile-nav-inner">
-    <a class="mnav" href="dashboard.html" data-nav="household"><div class="ico">📊</div></a>
-    <a class="mnav" href="property-management.html" data-nav="household"><div class="ico">🏘️</div></a>
-    <a class="mnav" href="lease-rent-center.html" data-nav="investment"><div class="ico">💰</div></a>
-    <a class="mnav" href="expense-tracking.html" data-nav="leisure"><div class="ico">💸 </div></a>
-    <a class="mnav" href="maintenance-requests.html" data-nav="leisure"><div class="ico">🛠️</div></a>
-     <a class="mnav" href="reports-analytics.html" data-nav="leisure"><div class="ico">📈</div></a>
+    <a class="mnav" href="dashboard.html" data-nav="household"><div class="ico">📊</div><span class="mnav-label">Home</span></a>
+    <a class="mnav" href="property-management.html" data-nav="household"><div class="ico">🏘️</div><span class="mnav-label">Properties</span></a>
+    <a class="mnav" href="lease-rent-center.html" data-nav="investment"><div class="ico">💰</div><span class="mnav-label">Rent</span></a>
+    <a class="mnav" href="expense-tracking.html" data-nav="leisure"><div class="ico">💸 </div><span class="mnav-label">Expenses</span></a>
+    <a class="mnav" href="maintenance-requests.html" data-nav="leisure"><div class="ico">🛠️</div><span class="mnav-label">Repairs</span></a>
+     <a class="mnav" href="reports-analytics.html" data-nav="leisure"><div class="ico">📈</div><span class="mnav-label">Reports</span></a>
   </div>
 </nav>
 

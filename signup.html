@@ -49,6 +49,9 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(45
 .site-footer{padding:20px;background:var(--navy)}
 .footer-bottom{max-width:1440px;margin:0 auto;text-align:center;color:rgba(255,255,255,.28);font-size:.82rem}
 @media(max-width:600px){.site-footer{display:none}}
+
+/* CLAUDE.md: no sideways scroll on phones */
+body { overflow-x: hidden; }
 </style>
 </head>
 <body>
@@ -59,18 +62,14 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(45
       <div class="brand-title">Rental Genie</div>
     </div>
     <nav class="nav-links">
-      <a href="dashboard.html">📊 Dashboard</a>
-      <a href="property-management.html">🏘️ Property Management</a>
-      <a href="lease-rent-center.html">💰 Lease &amp; Rent Center</a>
+      <a href="index.html">Home</a>
       <a id="nav-login" href="login.html">Log in</a>
     </nav>
     <button class="hamburger" id="hamburgerBtn">☰</button>
   </div>
 </header>
 <div class="drawer" id="mobileDrawer">
-  <a href="dashboard.html">📊 Dashboard</a>
-  <a href="property-management.html">🏘️ Property Management</a>
-  <a href="lease-rent-center.html">💰 Lease &amp; Rent Center</a>
+  <a href="index.html">Home</a>
   <a href="login.html" id="mobileLogin">Log in</a>
 </div>
 <main>

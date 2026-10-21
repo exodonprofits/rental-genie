@@ -423,6 +423,16 @@ textarea { resize: vertical; min-height: 88px; }
   font-weight: 400; text-transform: none; letter-spacing: 0;
   color: var(--muted); font-size: .68rem; margin-left: 4px;
 }
+
+/* Phones: the drawer has the account links, so the user chip goes (it pushed the menu button off-screen) */
+@media (max-width: 900px) { .umd-wrap, body.auth-ready .umd-wrap { display: none !important; } }
+
+/* CLAUDE.md: no sideways scroll on phones */
+body { overflow-x: hidden; }
+
+/* Bottom tab labels (icons alone were hard to learn) */
+.mnav-label { display: block; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 360px) { .mnav-label { font-size: 9px; letter-spacing: -.2px; } .mnav { padding-left: 2px !important; padding-right: 2px !important; } }
 </style>
 </head>
 <body>
@@ -484,6 +494,7 @@ textarea { resize: vertical; min-height: 88px; }
   <a href="reports-analytics.html">📈 Reports</a>
   <div class="drawer-divider"></div>
   <a href="account.html">⚙️ Account Settings</a>
+  <a href="account.html">👤 Account</a>
   <button class="drawer-signout" id="mobileLogoutBtn">🚪 Sign Out</button>
 </div>
 
@@ -817,12 +828,12 @@ textarea { resize: vertical; min-height: 88px; }
 <!-- Mobile Bottom Nav -->
 <nav class="mobile-nav" aria-label="Mobile navigation">
   <div class="mobile-nav-inner">
-    <a class="mnav" href="dashboard.html"><div class="ico">📊</div></a>
-    <a class="mnav" href="property-management.html"><div class="ico">🏘️</div></a>
-    <a class="mnav active" href="lease-rent-center.html"><div class="ico">💰</div></a>
-    <a class="mnav" href="expense-tracking.html"><div class="ico">💸</div></a>
-    <a class="mnav" href="maintenance-requests.html"><div class="ico">🛠️</div></a>
-    <a class="mnav" href="reports-analytics.html"><div class="ico">📈</div></a>
+    <a class="mnav" href="dashboard.html"><div class="ico">📊</div><span class="mnav-label">Home</span></a>
+    <a class="mnav" href="property-management.html"><div class="ico">🏘️</div><span class="mnav-label">Properties</span></a>
+    <a class="mnav active" href="lease-rent-center.html"><div class="ico">💰</div><span class="mnav-label">Rent</span></a>
+    <a class="mnav" href="expense-tracking.html"><div class="ico">💸</div><span class="mnav-label">Expenses</span></a>
+    <a class="mnav" href="maintenance-requests.html"><div class="ico">🛠️</div><span class="mnav-label">Repairs</span></a>
+    <a class="mnav" href="reports-analytics.html"><div class="ico">📈</div><span class="mnav-label">Reports</span></a>
   </div>
 </nav>
 <div class="mobile-pad" aria-hidden="true"></div>

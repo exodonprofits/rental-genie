@@ -437,7 +437,35 @@
     .card-head { padding: 16px 16px 0; }
     .card-body { padding: 14px 16px 20px; }
   }
-  </style>
+  
+/* Record tables become labelled cards on phones (CLAUDE.md UI standard). The labels are copied
+   from the header row by the rgStackTables script at the end of the page. */
+@media (max-width: 640px) {
+  table.rg-stack { min-width: 0 !important; width: 100% !important; border-collapse: separate; }
+  table.rg-stack thead { display: none; }
+  table.rg-stack tbody, table.rg-stack tfoot, table.rg-stack tr, table.rg-stack td { display: block; width: 100%; box-sizing: border-box; }
+  table.rg-stack tr { border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 6px 12px; margin: 0 0 10px; background: #fff; }
+  table.rg-stack td { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 7px 0; border: none !important; text-align: right; white-space: normal !important; word-break: break-word; max-width: none !important; }
+  table.rg-stack td + td { border-top: 1px dashed var(--border, #e2e8f0) !important; }
+  table.rg-stack td::before { content: attr(data-label); flex: 0 0 auto; max-width: 45%; text-align: left; font-weight: 600; font-size: .8rem; color: var(--muted, #64748b); }
+  table.rg-stack td[data-label=""]::before, table.rg-stack td:not([data-label])::before { content: none; }
+  table.rg-stack td[colspan] { display: block; text-align: center; }
+  table.rg-stack td[colspan]::before { content: none; }
+}
+
+/* CLAUDE.md: no sideways scroll on phones */
+body { overflow-x: hidden; }
+
+/* Loading indicator: a 3px shimmer bar at the top (CLAUDE.md standard), not a full-screen overlay.
+   The scripts still show/hide #authOverlay as before; only its look changed. */
+#authOverlay { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important;
+  width: 100% !important; height: 3px !important; padding: 0 !important; margin: 0 !important; z-index: 3000 !important;
+  pointer-events: none !important; backdrop-filter: none !important;
+  background: linear-gradient(90deg, rgba(30,87,153,0) 0%, #1e5799 35%, #2d8cf0 50%, #1e5799 65%, rgba(30,87,153,0) 100%) !important;
+  background-size: 200% 100% !important; animation: rgShimmer 1.1s linear infinite !important; }
+#authOverlay > * { display: none !important; }
+@keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+</style>
 </head>
 <body>
 
@@ -638,7 +666,7 @@
     </div>
     <div class="card-body">
       <div class="table-wrap">
-        <table>
+        <table class="rg-stack">
           <thead>
             <tr>
               <th>Property</th>
@@ -1031,6 +1059,30 @@
 
   document.addEventListener('DOMContentLoaded', init);
 }());
+</script>
+<script>
+/* rgStackTables: copy each column's header text into its cells (data-label) so record tables can
+   show as labelled cards on phones. Re-runs when rows are re-rendered. */
+(function () {
+  function label(t) {
+    var heads = Array.prototype.map.call(t.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+    if (!heads.length) return;
+    Array.prototype.forEach.call(t.querySelectorAll('tbody tr, tfoot tr'), function (tr) {
+      var i = 0;
+      Array.prototype.forEach.call(tr.children, function (td) {
+        if (!td.hasAttribute('data-label')) td.setAttribute('data-label', td.colSpan > 1 ? '' : (heads[i] || ''));
+        i += td.colSpan || 1;
+      });
+    });
+  }
+  function run() {
+    Array.prototype.forEach.call(document.querySelectorAll('table.rg-stack'), function (t) {
+      label(t);
+      if (!t.__rgStack) { t.__rgStack = new MutationObserver(function () { label(t); }); t.__rgStack.observe(t, { childList: true, subtree: true }); }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+})();
 </script>
 </body>
 </html>

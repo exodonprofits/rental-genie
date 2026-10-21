@@ -92,6 +92,9 @@ textarea{min-height:80px;resize:vertical}
 .footer-section a:hover{color:rgba(255,255,255,.85)}
 .footer-bottom{text-align:center;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.28);font-size:.82rem}
 @media(max-width:600px){.site-footer{display:none}}
+
+/* CLAUDE.md: no sideways scroll on phones */
+body { overflow-x: hidden; }
 </style>
 </head>
 <body>
@@ -104,12 +107,12 @@ textarea{min-height:80px;resize:vertical}
     </div>
     <nav class="nav-links">
       <a href="dashboard.html">📊 Dashboard</a>
-      <a href="property-management.html" class="nav-active">🏘️ Property Management</a>
-      <a href="lease-rent-center.html">💰 Lease &amp; Rent Center</a>
-      <a href="expense-tracking.html">💸 Expense Tracking</a>
-      <a href="maintenance-requests.html">🛠 Maintenance Requests</a>
+      <a href="property-management.html" class="nav-active">🏘️ Properties</a>
+      <a href="lease-rent-center.html">💰 Lease &amp; Rent</a>
+      <a href="expense-tracking.html">💸 Expenses</a>
+      <a href="maintenance-requests.html">🛠 Maintenance</a>
       <a href="tenant-messages.html">💬 Messages</a>
-      <a href="reports-analytics.html">📈 Reports &amp; Analytics</a>
+      <a href="reports-analytics.html">📈 Reports</a>
       <a id="nav-login" href="login.html">Log in</a>
       <div class="user-menu" id="userMenu">
         <button class="user-menu-toggle" id="userMenuBtn"><span id="usernameLabel">User</span> ▾</button>
@@ -126,12 +129,12 @@ textarea{min-height:80px;resize:vertical}
 <div class="drawer" id="mobileDrawer">
   <a href="account.html" id="mobileAccountLink" style="display:none;">Hello, <span id="mobileUsernameLabel">User</span> (Account)</a>
   <a href="dashboard.html">📊 Dashboard</a>
-  <a href="property-management.html">🏘️ Property Management</a>
-  <a href="lease-rent-center.html">💰 Lease &amp; Rent Center</a>
-  <a href="expense-tracking.html">💸 Expense Tracking</a>
-  <a href="maintenance-requests.html">🛠 Maintenance Requests</a>
+  <a href="property-management.html">🏘️ Properties</a>
+  <a href="lease-rent-center.html">💰 Lease &amp; Rent</a>
+  <a href="expense-tracking.html">💸 Expenses</a>
+  <a href="maintenance-requests.html">🛠 Maintenance</a>
   <a href="tenant-messages.html">💬 Messages</a>
-  <a href="reports-analytics.html">📈 Reports &amp; Analytics</a>
+  <a href="reports-analytics.html">📈 Reports</a>
   <a href="login.html" id="mobileLogin">Log in</a>
   <div id="mobileLogoutContainer" style="display:none;"><button id="mobileLogoutBtn">Sign Out</button></div>
 </div>

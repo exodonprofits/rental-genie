@@ -634,6 +634,35 @@ main {
 }
 .rpt-period-label { font-size: .78rem; font-weight: 700; color: var(--muted); white-space: nowrap; }
 
+
+/* Record tables become labelled cards on phones (CLAUDE.md UI standard). The labels are copied
+   from the header row by the rgStackTables script at the end of the page. */
+@media (max-width: 640px) {
+  table.rg-stack { min-width: 0 !important; width: 100% !important; border-collapse: separate; }
+  table.rg-stack thead { display: none; }
+  table.rg-stack tbody, table.rg-stack tfoot, table.rg-stack tr, table.rg-stack td { display: block; width: 100%; box-sizing: border-box; }
+  table.rg-stack tr { border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 6px 12px; margin: 0 0 10px; background: #fff; }
+  table.rg-stack td { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 7px 0; border: none !important; text-align: right; white-space: normal !important; word-break: break-word; max-width: none !important; }
+  table.rg-stack td + td { border-top: 1px dashed var(--border, #e2e8f0) !important; }
+  table.rg-stack td::before { content: attr(data-label); flex: 0 0 auto; max-width: 45%; text-align: left; font-weight: 600; font-size: .8rem; color: var(--muted, #64748b); }
+  table.rg-stack td[data-label=""]::before, table.rg-stack td:not([data-label])::before { content: none; }
+  table.rg-stack td[colspan] { display: block; text-align: center; }
+  table.rg-stack td[colspan]::before { content: none; }
+}
+
+/* Bottom tab labels (icons alone were hard to learn) */
+.mnav-label { display: block; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 360px) { .mnav-label { font-size: 9px; letter-spacing: -.2px; } .mnav { padding-left: 2px !important; padding-right: 2px !important; } }
+
+/* Loading indicator: a 3px shimmer bar at the top (CLAUDE.md standard), not a full-screen overlay.
+   The scripts still show/hide #authOverlay as before; only its look changed. */
+#authOverlay { position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: auto !important;
+  width: 100% !important; height: 3px !important; padding: 0 !important; margin: 0 !important; z-index: 3000 !important;
+  pointer-events: none !important; backdrop-filter: none !important;
+  background: linear-gradient(90deg, rgba(30,87,153,0) 0%, #1e5799 35%, #2d8cf0 50%, #1e5799 65%, rgba(30,87,153,0) 100%) !important;
+  background-size: 200% 100% !important; animation: rgShimmer 1.1s linear infinite !important; }
+#authOverlay > * { display: none !important; }
+@keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>
 <style>
 /* ── Global mobile horizontal-overflow guard ─────────────────── */
@@ -844,17 +873,23 @@ main {
     </div>
   </div>
 
-  <!-- ── More reports ───────────────────────────────────────────── -->
-  <div class="section-heading">🗂️ More Reports</div>
-  <div class="report-grid">
-    <a class="report-card" href="portfolio-financial-dashboard.html">
-      <div class="report-icon">📈</div>
-      <div class="report-label">Portfolio Financial<br>Dashboard</div>
-    </a>
-    <a class="report-card" href="all-properties-summary.html">
-      <div class="report-icon">🏘️</div>
-      <div class="report-label">All Properties<br>Summary</div>
-    </a>
+  <!-- ══════════════════════════════════════════════════════════
+       PORTFOLIO: YEAR TO DATE (was the Portfolio Financial Dashboard)
+  ══════════════════════════════════════════════════════════ -->
+  <div class="report-section" id="portfolioSection">
+    <div class="report-section-head">
+      <div class="report-section-title">📈 Portfolio, year to date</div>
+      <span class="report-section-meta" id="portfolioYtdMeta">Loading…</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="rg-stack rpt-table">
+        <thead>
+          <tr><th>Property</th><th class="text-right">Rent YTD</th><th class="text-right">Expenses YTD</th><th class="text-right">Mortgage / mo</th><th class="text-right">Net YTD</th></tr>
+        </thead>
+        <tbody id="portfolioYtdBody"></tbody>
+        <tfoot id="portfolioYtdFoot"></tfoot>
+      </table>
+    </div>
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -896,7 +931,7 @@ main {
       </div>
       <!-- Payment history table -->
       <div style="overflow-x:auto;">
-        <table class="rpt-table">
+        <table class="rg-stack rpt-table">
           <thead>
             <tr>
               <th>Date Paid</th>
@@ -952,7 +987,7 @@ main {
       </div>
       <!-- Full expense table -->
       <div style="overflow-x:auto; border-top:1px solid var(--border);">
-        <table class="rpt-table">
+        <table class="rg-stack rpt-table">
           <thead>
             <tr>
               <th>Date</th>
@@ -1011,7 +1046,7 @@ main {
       </div>
       <!-- Maintenance table -->
       <div style="overflow-x:auto;">
-        <table class="rpt-table">
+        <table class="rg-stack rpt-table">
           <thead>
             <tr>
               <th>Date</th>
@@ -1035,12 +1070,12 @@ main {
 <!-- Mobile Bottom Nav -->
 <nav class="mobile-nav" aria-label="Mobile navigation">
   <div class="mobile-nav-inner">
-    <a class="mnav" href="dashboard.html"><div class="ico">📊</div></a>
-    <a class="mnav" href="property-management.html"><div class="ico">🏘️</div></a>
-    <a class="mnav" href="lease-rent-center.html"><div class="ico">💰</div></a>
-    <a class="mnav" href="expense-tracking.html"><div class="ico">💸</div></a>
-    <a class="mnav" href="maintenance-requests.html"><div class="ico">🛠️</div></a>
-    <a class="mnav active" href="reports-analytics.html"><div class="ico">📈</div></a>
+    <a class="mnav" href="dashboard.html"><div class="ico">📊</div><span class="mnav-label">Home</span></a>
+    <a class="mnav" href="property-management.html"><div class="ico">🏘️</div><span class="mnav-label">Properties</span></a>
+    <a class="mnav" href="lease-rent-center.html"><div class="ico">💰</div><span class="mnav-label">Rent</span></a>
+    <a class="mnav" href="expense-tracking.html"><div class="ico">💸</div><span class="mnav-label">Expenses</span></a>
+    <a class="mnav" href="maintenance-requests.html"><div class="ico">🛠️</div><span class="mnav-label">Repairs</span></a>
+    <a class="mnav active" href="reports-analytics.html"><div class="ico">📈</div><span class="mnav-label">Reports</span></a>
   </div>
 </nav>
 <div class="mobile-pad" aria-hidden="true"></div>
@@ -1062,8 +1097,8 @@ main {
       <a href="lease-rent-center.html">Lease &amp; Rent</a>
       <a href="expense-tracking.html">Expenses</a>
       <a href="maintenance-requests.html">Maintenance</a>
-      <a href="all-properties-summary.html">All Properties Summary</a>
-      <a href="portfolio-financial-dashboard.html">Portfolio Dashboard</a>
+      <a href="property-management.html">All Properties</a>
+      <a href="reports-analytics.html#portfolioSection">Portfolio (year to date)</a>
     </div>
     <div class="footer-section">
       <h4>Account</h4>
@@ -1338,7 +1373,7 @@ function applyCurrentProperty() {
   var enc = currentProperty ? encodeURIComponent(currentProperty) : '';
 
   /* Wire card links with property param */
-  if (propCards.income)      propCards.income.href      = 'portfolio-financial-dashboard.html' + (enc ? '?property=' + enc : '');
+  if (propCards.income)      propCards.income.href      = '#portfolioSection';
   if (propCards.rent)        propCards.rent.href        = 'lease-rent-center.html'             + (enc ? '?property=' + enc : '');
   if (propCards.payments)    propCards.payments.href    = 'expense-tracking.html'              + (enc ? '?property=' + enc : '');
   if (propCards.maintenance) propCards.maintenance.href = 'maintenance-cost.html'              + (enc ? '?property=' + enc : '');
@@ -1672,6 +1707,70 @@ function renderTrendChart(labels, rent, expenses, fixed, net) {
 
 
 /* ============================================================
+   PORTFOLIO, YEAR TO DATE (per-property table, all properties)
+   Net = rent − expenses − mortgage for the months elapsed this year, skipping months the mortgage
+   was already logged as an expense (add-expense's mortgage split), so nothing counts twice.
+============================================================ */
+var PORTFOLIO_MORTGAGE_CATS = ['Mortgage Payment', 'Mortgage Principal', 'Mortgage Interest'];
+async function loadPortfolioYtd() {
+  var body = $('portfolioYtdBody'), foot = $('portfolioYtdFoot'), meta = $('portfolioYtdMeta');
+  if (!body) return;
+  var now = new Date(), yearStart = now.getFullYear() + '-01-01', monthsElapsed = now.getMonth() + 1;
+  var pq = sb.from('properties').select('id, name, monthly_payment, mortgage_pi').is('archived_at', null).order('name');
+  var rq = sb.from('rent_log').select('property_name, amount').is('archived_at', null).gte('date_paid', yearStart);
+  var eq = sb.from('expenses').select('property_name, amount, category, date_paid').is('archived_at', null).gte('date_paid', yearStart);
+  if (activeCompanyId) { pq = pq.eq('company_id', activeCompanyId); rq = rq.eq('company_id', activeCompanyId); eq = eq.eq('company_id', activeCompanyId); }
+  try {
+    var res = await Promise.all([pq, rq, eq]);
+    if (res[0].error) throw res[0].error;
+    var rent = {}, exp = {}, mortLogged = {};
+    (res[1].data || []).forEach(function (r) { rent[r.property_name] = (rent[r.property_name] || 0) + Number(r.amount || 0); });
+    (res[2].data || []).forEach(function (e) {
+      exp[e.property_name] = (exp[e.property_name] || 0) + Number(e.amount || 0);
+      var k = monthKey(e.date_paid);
+      if (k && PORTFOLIO_MORTGAGE_CATS.indexOf(e.category) !== -1) (mortLogged[e.property_name] = mortLogged[e.property_name] || {})[k] = true;
+    });
+    var tot = { rent: 0, exp: 0, mort: 0, net: 0 };
+    body.textContent = ''; foot.textContent = '';
+    var props = res[0].data || [];
+    props.forEach(function (p) {
+      var mort = Number(p.monthly_payment || p.mortgage_pi || 0), mortYtd = 0;
+      for (var m = 1; m <= monthsElapsed; m++) {
+        var key = now.getFullYear() + '-' + String(m).padStart(2, '0');
+        if (!(mortLogged[p.name] || {})[key]) mortYtd += mort;
+      }
+      var r = rent[p.name] || 0, e = exp[p.name] || 0, net = r - e - mortYtd;
+      tot.rent += r; tot.exp += e; tot.mort += mort; tot.net += net;
+      body.appendChild(portfolioRow([p.name || '—', fmt(r), fmt(e), fmt(mort), signedFmt(net)], net));
+    });
+    if (!props.length) {
+      var tr = document.createElement('tr'), td = document.createElement('td');
+      td.colSpan = 5; td.className = 'rpt-empty'; td.textContent = 'No properties yet.'; tr.appendChild(td); body.appendChild(tr);
+    } else {
+      var t = portfolioRow(['Total', fmt(tot.rent), fmt(tot.exp), fmt(tot.mort), signedFmt(tot.net)], tot.net);
+      t.className = 'rpt-totals'; foot.appendChild(t);
+    }
+    if (meta) meta.textContent = props.length + ' propert' + (props.length === 1 ? 'y' : 'ies') + ' · Jan 1 to today';
+  } catch (e) {
+    console.error('Portfolio YTD error:', e);
+    if (meta) meta.textContent = 'Could not load';
+  }
+}
+function signedFmt(v) { return (v < 0 ? '-' : '+') + fmt(Math.abs(v)); }
+function portfolioRow(cells, net) {
+  var tr = document.createElement('tr');
+  cells.forEach(function (c, i) {
+    var td = document.createElement('td');
+    td.textContent = c;
+    if (i > 0) td.className = 'text-right mono';
+    if (i === 4) td.style.color = net >= 0 ? 'var(--success)' : 'var(--danger)';
+    if (i === 0) td.style.fontWeight = '600';
+    tr.appendChild(td);
+  });
+  return tr;
+}
+
+/* ============================================================
    INIT
 ============================================================ */
 document.getElementById('footerYear').textContent = new Date().getFullYear();
@@ -1791,6 +1890,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     await loadCompanyDropdown();
     if (!activeCompanyId) { hideOverlay(); return; }
     await loadPropertyDropdown();
+    loadPortfolioYtd();
 
     setProgress(100, 'Ready!', 3);
     setTimeout(hideOverlay, 320);
@@ -2099,6 +2199,30 @@ applyCurrentProperty = function() {
   }
 };
 
+</script>
+<script>
+/* rgStackTables: copy each column's header text into its cells (data-label) so record tables can
+   show as labelled cards on phones. Re-runs when rows are re-rendered. */
+(function () {
+  function label(t) {
+    var heads = Array.prototype.map.call(t.querySelectorAll('thead th'), function (th) { return th.textContent.trim(); });
+    if (!heads.length) return;
+    Array.prototype.forEach.call(t.querySelectorAll('tbody tr, tfoot tr'), function (tr) {
+      var i = 0;
+      Array.prototype.forEach.call(tr.children, function (td) {
+        if (!td.hasAttribute('data-label')) td.setAttribute('data-label', td.colSpan > 1 ? '' : (heads[i] || ''));
+        i += td.colSpan || 1;
+      });
+    });
+  }
+  function run() {
+    Array.prototype.forEach.call(document.querySelectorAll('table.rg-stack'), function (t) {
+      label(t);
+      if (!t.__rgStack) { t.__rgStack = new MutationObserver(function () { label(t); }); t.__rgStack.observe(t, { childList: true, subtree: true }); }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run); else run();
+})();
 </script>
 </body>
 </html>

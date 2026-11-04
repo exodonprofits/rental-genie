@@ -255,9 +255,9 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
     </a>
     <nav class="nav-links">
       <a href="listings.html" class="hide-mobile">🏠 Browse Rentals</a>
-      <a href="applicant-login.html" class="hide-mobile">📋 My Applications</a>
-      <a href="login-select.html" class="hide-mobile">Log In</a>
-      <a href="login-select.html" class="cta">
+      <a href="login.html?role=applicant" class="hide-mobile">📋 My Applications</a>
+      <a href="login.html" class="hide-mobile">Log In</a>
+      <a href="login.html" class="cta">
         <span class="cta-full">List Your Property</span>
         <span class="cta-short">List Property</span>
       </a>
@@ -718,7 +718,7 @@ document.getElementById("apSubmitBtn").addEventListener("click", async () => {
   }
 
   resetApplyForm();
-  statusEl.innerHTML = `✅ Application submitted! <a href="applicant-login.html" style="color:inherit; text-decoration:underline;">Create a free account</a> to track its status and message the landlord.`;
+  statusEl.innerHTML = `✅ Application submitted! <a href="login.html?role=applicant" style="color:inherit; text-decoration:underline;">Create a free account</a> to track its status and message the landlord.`;
   statusEl.className = "form-status ok";
 });
 

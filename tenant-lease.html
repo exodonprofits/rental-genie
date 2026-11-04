@@ -788,7 +788,7 @@ body { overflow-x: hidden; }
           drawer.style.display = 'none';
       });
     }
-    function doSignOut() { try { sb.auth.signOut(); } catch (e) {} location.href = 'tenant-login.html'; }
+    function doSignOut() { try { sb.auth.signOut(); } catch (e) {} location.href = 'login.html?role=tenant'; }
     var so = $('navSignOut');    if (so) so.addEventListener('click',    function (e) { e.preventDefault(); doSignOut(); });
     var ds = $('drawerSignOut'); if (ds) ds.addEventListener('click', function (e) { e.preventDefault(); doSignOut(); });
 
@@ -933,7 +933,7 @@ body { overflow-x: hidden; }
     setTimeout(hideOverlay, 4000);
 
     requireAuth().then(function (user) {
-      if (!user) { hideOverlay(); location.href = 'tenant-login.html'; return; }
+      if (!user) { hideOverlay(); location.href = 'login.html?role=tenant'; return; }
 
       hideOverlay();
 
@@ -1048,12 +1048,12 @@ body { overflow-x: hidden; }
     }).catch(function (err) {
       console.error(err);
       hideOverlay();
-      location.href = 'tenant-login.html';
+      location.href = 'login.html?role=tenant';
     });
 
     /* Auth state listener */
     sb.auth.onAuthStateChange(function (event) {
-      if (event === 'SIGNED_OUT') location.href = 'tenant-login.html';
+      if (event === 'SIGNED_OUT') location.href = 'login.html?role=tenant';
     });
   }
 

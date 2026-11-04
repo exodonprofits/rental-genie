@@ -342,7 +342,7 @@ body { overflow-x: hidden; }
     <div class="auth-gate-icon">🔐</div>
     <h2>Session Required</h2>
     <p>Your session has expired or you're not logged in. Please sign in to access your account.</p>
-    <a id="loginLink" class="btn primary" href="tenant-login.html">Go to Login →</a>
+    <a id="loginLink" class="btn primary" href="login.html?role=tenant">Go to Login →</a>
   </div>
 </section>
 
@@ -492,7 +492,7 @@ body { overflow-x: hidden; }
     }
     function doSignOut() {
       try { sb.auth.signOut(); } catch (e) {}
-      location.href = 'tenant-login.html';
+      location.href = 'login.html?role=tenant';
     }
     var so = $('navSignOut'); if (so) so.addEventListener('click', function (e) { e.preventDefault(); doSignOut(); });
     var ds = $('drawerSignOut'); if (ds) ds.addEventListener('click', function (e) { e.preventDefault(); doSignOut(); });
@@ -621,7 +621,7 @@ body { overflow-x: hidden; }
     });
 
     sb.auth.onAuthStateChange(function (event) {
-      if (event === 'SIGNED_OUT') location.href = 'tenant-login.html';
+      if (event === 'SIGNED_OUT') location.href = 'login.html?role=tenant';
     });
   });
 })();

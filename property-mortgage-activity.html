@@ -689,7 +689,7 @@ async function initPage() {
   try {
     const { data, error } = await window._rgClient.auth.getUser();
     if (error || !data?.user) {
-      window.location.href = 'login-select.html';
+      window.location.href = 'login.html';
       return;
     }
 

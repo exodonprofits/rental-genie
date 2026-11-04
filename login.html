@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Landlord Sign In – Rental Genie</title>
-<meta name="description" content="Sign in to your Rental Genie landlord account to manage properties, leases, and tenants."/>
+<title>Sign In – Rental Genie</title>
+<meta name="description" content="Sign in to Rental Genie as a landlord, a tenant, or a rental applicant."/>
 
 <!-- ── Favicons & Home-Screen Icons ─────────────────────────── -->
 <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png">
@@ -273,19 +273,7 @@ body {
 }
 .pass-toggle:hover { color: var(--navy); }
 
-/* Remember + forgot */
-.form-meta {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; margin: 6px 0 22px;
-}
-.remember-label {
-  display: flex; align-items: center; gap: 8px;
-  font-size: .83rem; color: var(--muted); cursor: pointer; user-select: none;
-}
-.remember-label input[type="checkbox"] {
-  width: 16px; height: 16px; accent-color: var(--accent);
-  cursor: pointer;
-}
+/* Forgot link */
 .forgot-link {
   font-size: .83rem; font-weight: 600;
   color: var(--accent); text-decoration: none;
@@ -339,40 +327,6 @@ body {
 .auth-status.err  { background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; display: block; }
 .auth-status.info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; display: block; }
 
-/* ── Role switcher banner ─────────────────────────── */
-.role-banner {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-  margin-top: 0;
-}
-.role-banner-btn {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px; border-radius: 12px;
-  border: 2px solid var(--border);
-  text-decoration: none; color: var(--text);
-  transition: all .16s; background: #f8fafc;
-}
-.role-banner-btn:hover { border-color: var(--accent); background: #fff; transform: translateY(-1px); }
-.role-banner-btn.active { border-color: var(--accent); background: #eff6ff; pointer-events: none; }
-.role-banner-icon {
-  font-size: 1.25rem; flex-shrink: 0;
-  width: 34px; height: 34px;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 8px; background: rgba(255,255,255,.8);
-}
-.role-banner-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.role-banner-label { font-size: .8rem; font-weight: 700; color: var(--navy); }
-.role-banner-sub   { font-size: .68rem; color: var(--muted); margin-top: 1px; }
-.role-banner-check { font-size: .75rem; font-weight: 700; color: var(--accent); flex-shrink: 0; }
-.role-banner-arrow { font-size: .85rem; color: var(--accent); flex-shrink: 0; }
-@media(max-width:380px) { .role-banner { grid-template-columns: 1fr; } }
-
-/* Section label above banner */
-.switch-label {
-  font-size: .7rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .6px; color: var(--muted);
-  margin-bottom: 8px; text-align: center;
-}
-
 /* Back link */
 .back-link {
   text-align: center; margin-top: 20px;
@@ -381,18 +335,108 @@ body {
 .back-link a { color: var(--muted); text-decoration: none; }
 .back-link a:hover { color: var(--accent); }
 
+/* ── Role tabs (Landlord / Tenant / Applicant) ───────── */
+.role-tabs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+  padding: 5px; margin-bottom: 22px;
+  background: #e8edf4; border-radius: 14px;
+}
+.role-tab {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 9px 4px; border: none; border-radius: 10px;
+  background: transparent; color: var(--muted);
+  font-family: 'DM Sans', sans-serif; font-size: .8rem; font-weight: 700;
+  cursor: pointer; transition: background .15s, color .15s, box-shadow .15s;
+}
+.role-tab .role-tab-icon { font-size: 1.1rem; line-height: 1.2; }
+.role-tab:hover { color: var(--navy); }
+.role-tab[aria-selected="true"] {
+  background: var(--surface); color: var(--navy);
+  box-shadow: 0 2px 8px rgba(12,30,58,.12);
+}
+.role-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Magic-link form (tenant, applicant) ─────────────── */
+.input-wrap { position: relative; }
+.input-icon {
+  position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+  font-size: .95rem; pointer-events: none; line-height: 1;
+}
+.input-wrap .form-input { padding-left: 38px; }
+.field-hint { font-size: .78rem; color: var(--muted); margin-top: 6px; line-height: 1.4; }
+.btn-secondary {
+  width: 100%; padding: 12px 15px;
+  border: 1.5px solid var(--border); border-radius: 11px;
+  background: var(--surface); color: var(--navy);
+  font-family: 'DM Sans', sans-serif; font-size: .88rem; font-weight: 600;
+  cursor: pointer; transition: background .15s, border-color .15s, transform .12s;
+}
+.btn-secondary:hover { background: #f1f5f9; border-color: #cbd5e1; transform: translateY(-1px); }
+.tip-box {
+  margin-top: 14px; padding: 11px 14px;
+  border-radius: 10px; background: #fffbeb;
+  border: 1px solid #fde68a;
+  font-size: .78rem; color: #92400e; line-height: 1.5;
+}
+.steps-row {
+  display: flex; align-items: flex-start;
+  margin-bottom: 20px; padding: 14px 16px;
+  background: #f8fafc; border: 1px solid var(--border);
+  border-radius: 12px;
+}
+.step-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  text-align: center; position: relative;
+}
+.step-item:not(:last-child)::after {
+  content: '';
+  position: absolute; top: 13px; left: calc(50% + 14px);
+  width: calc(100% - 28px); height: 2px;
+  background: var(--border); border-radius: 2px;
+}
+.step-num {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--navy), var(--lt));
+  color: #fff; font-size: .72rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 7px; position: relative; z-index: 1;
+}
+.step-label { font-size: .67rem; font-weight: 600; color: var(--muted); line-height: 1.3; }
+.sent-state { text-align: center; padding: 8px 0; }
+.sent-icon-wrap {
+  width: 68px; height: 68px; border-radius: 50%;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 2px solid #a7f3d0;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 14px; font-size: 1.9rem;
+}
+.sent-title { font-size: 1.1rem; font-weight: 700; color: var(--navy); margin-bottom: 7px; }
+.sent-sub   { font-size: .85rem; color: var(--muted); line-height: 1.55; margin-bottom: 18px; overflow-wrap: anywhere; }
+.btn-link {
+  background: none; border: none; color: var(--accent);
+  font-size: .85rem; font-weight: 600; cursor: pointer;
+  text-decoration: underline; font-family: 'DM Sans', sans-serif; padding: 0;
+}
+.btn-link:hover { color: var(--mid); }
+.forgot-row { display: flex; justify-content: flex-end; margin: 6px 0 22px; }
+
+/* Panels follow body[data-role] */
+body:not([data-role="landlord"]) .only-landlord,
+body:not([data-role="tenant"]) .only-tenant,
+body[data-role="landlord"] .only-magic { display: none !important; }
+
 /* CLAUDE.md: no sideways scroll on phones */
 body { overflow-x: hidden; }
 </style>
 </head>
 
-<body>
+<body data-role="landlord">
 <!-- ═══ SUPABASE (body-first: avoids tracking-prevention blocking safeStorage) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ══════════════════════════════════════════════════════════════════════════════ -->
 <div class="page-split">
 
-  <!-- ── LEFT: Brand panel ─────────────────────────────────── -->
+  <!-- ── LEFT: Brand panel (copy follows the chosen role) ──── -->
   <div class="brand-panel">
     <div class="brand-blob"></div>
 
@@ -403,15 +447,15 @@ body { overflow-x: hidden; }
         <span class="brand-logo-name">Rental Genie</span>
       </div>
 
-      <h2 class="brand-headline">
+      <h2 class="brand-headline" id="brandHeadline">
         Your portfolio,<br>
         <em>always under control</em>
       </h2>
-      <p class="brand-sub">
+      <p class="brand-sub" id="brandSub">
         Track rent, manage leases, log expenses, and handle maintenance — all in one beautifully simple place.
       </p>
 
-      <ul class="brand-features">
+      <ul class="brand-features" id="brandFeatures">
         <li><span class="feat-dot">✓</span> Daily rent &amp; assignment dashboard</li>
         <li><span class="feat-dot">✓</span> Lease &amp; payment tracking per property</li>
         <li><span class="feat-dot">✓</span> Expense logging &amp; NOI reporting</li>
@@ -421,7 +465,7 @@ body { overflow-x: hidden; }
     </div>
 
     <div class="brand-bottom">
-      <div class="brand-testi">
+      <div class="brand-testi only-landlord">
         <p class="brand-testi-quote">"I used to spend an hour every Monday just checking payments. Now it takes 5 minutes."</p>
         <div class="brand-testi-author">
           <div class="brand-testi-avatar">JT</div>
@@ -448,79 +492,129 @@ body { overflow-x: hidden; }
         <span class="mobile-brand-name">Rental Genie</span>
       </div>
 
+      <!-- Role choice -->
+      <div class="role-tabs" role="tablist" aria-label="I'm signing in as">
+        <button type="button" class="role-tab" role="tab" id="tab-landlord" data-role="landlord" aria-selected="true">
+          <span class="role-tab-icon">🏘️</span>Landlord
+        </button>
+        <button type="button" class="role-tab" role="tab" id="tab-tenant" data-role="tenant" aria-selected="false">
+          <span class="role-tab-icon">🏠</span>Tenant
+        </button>
+        <button type="button" class="role-tab" role="tab" id="tab-applicant" data-role="applicant" aria-selected="false">
+          <span class="role-tab-icon">📝</span>Applicant
+        </button>
+      </div>
+
       <!-- Heading -->
       <div class="form-heading">
-        <h1>Welcome back 👋</h1>
-        <p>Sign in to your landlord account to manage your properties.</p>
+        <h1 id="formTitle">Welcome back 👋</h1>
+        <p id="formSub">Sign in to your landlord account to manage your properties.</p>
       </div>
 
       <!-- Form card -->
       <div class="auth-card">
-        <form id="passwordForm" novalidate>
-          <div class="form-group">
-            <label class="form-label" for="email">Email address</label>
-            <input class="form-input" id="email" type="email"
-                   autocomplete="email" inputmode="email"
-                   placeholder="you@example.com" required/>
-          </div>
 
-          <div class="form-group">
-            <label class="form-label" for="password">Password</label>
-            <div class="pass-wrap">
-              <input class="form-input" id="password" type="password"
-                     autocomplete="current-password"
-                     placeholder="••••••••" required
-                     style="padding-right:48px"/>
-              <button type="button" class="pass-toggle" id="togglePass"
-                      aria-label="Show/hide password">👁</button>
+        <!-- ── Landlord: email + password ─────────────── -->
+        <div class="only-landlord">
+          <form id="passwordForm" novalidate>
+            <div class="form-group">
+              <label class="form-label" for="email">Email address</label>
+              <input class="form-input" id="email" type="email"
+                     autocomplete="email" inputmode="email"
+                     placeholder="you@example.com" required/>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="password">Password</label>
+              <div class="pass-wrap">
+                <input class="form-input" id="password" type="password"
+                       autocomplete="current-password"
+                       placeholder="••••••••" required
+                       style="padding-right:48px"/>
+                <button type="button" class="pass-toggle" id="togglePass"
+                        aria-label="Show/hide password">👁</button>
+              </div>
+            </div>
+
+            <div class="forgot-row">
+              <a class="forgot-link" href="forgot-password.html">Forgot password?</a>
+            </div>
+
+            <button class="btn-submit" type="submit" id="btnSignIn">
+              Sign in to Dashboard →
+            </button>
+          </form>
+
+          <div class="auth-status" id="statusPassword" role="status" aria-live="polite"></div>
+
+          <div class="auth-divider">or</div>
+
+          <div class="auth-footer-row">
+            Don't have an account? <a href="signup.html">Create one free</a>
+          </div>
+        </div>
+
+        <!-- ── Tenant / applicant: email sign-in link ─── -->
+        <div class="only-magic">
+          <div id="magicForm">
+            <div class="steps-row">
+              <div class="step-item">
+                <div class="step-num">1</div>
+                <div class="step-label">Enter your email</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">2</div>
+                <div class="step-label">Click link in email</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">3</div>
+                <div class="step-label" id="step3Label">Open your portal</div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="magicEmail">Email address</label>
+              <div class="input-wrap">
+                <span class="input-icon">✉️</span>
+                <input class="form-input" id="magicEmail" type="email"
+                       autocomplete="email" inputmode="email"
+                       placeholder="you@example.com"/>
+              </div>
+              <p class="field-hint" id="magicHint">Use the same email address that's on your lease. Check with your landlord if unsure.</p>
+            </div>
+
+            <button class="btn-submit" id="sendLinkBtn" type="button">📨 Send me a sign-in link</button>
+
+            <div class="only-tenant">
+              <div class="auth-divider">already clicked the link?</div>
+              <button class="btn-secondary" id="checkSessionBtn" type="button">🔄 Check my session</button>
+            </div>
+
+            <div class="auth-status" id="magicStatus" role="status" aria-live="polite"></div>
+
+            <div class="tip-box">
+              💡 <strong>Tip:</strong> Check your spam or promotions folder if you don't see the email within 1–2 minutes.
             </div>
           </div>
 
-          <div class="form-meta">
-            <label class="remember-label">
-              <input type="checkbox" id="remember" checked/>
-              Keep me signed in
-            </label>
-            <a class="forgot-link" href="forgot-password.html">Forgot password?</a>
+          <div id="magicSent" style="display:none">
+            <div class="sent-state">
+              <div class="sent-icon-wrap">📬</div>
+              <div class="sent-title">Check your inbox!</div>
+              <p class="sent-sub" id="sentNote"></p>
+              <button class="btn-link" id="resendBtn" type="button">↩ Use a different email or resend</button>
+            </div>
+            <div class="tip-box only-tenant">
+              Already clicked it? <button class="btn-link" id="checkSessionBtn2" type="button">Check my session →</button>
+            </div>
+            <div class="auth-status" id="sentStatus" role="status" aria-live="polite"></div>
           </div>
-
-          <button class="btn-submit" type="submit" id="btnSignIn">
-            Sign in to Dashboard →
-          </button>
-        </form>
-
-        <div class="auth-status" id="statusPassword" role="status" aria-live="polite"></div>
-
-        <div class="auth-divider">or</div>
-
-        <div class="auth-footer-row">
-          Don't have an account? <a href="signup.html">Create one free</a>
         </div>
-      </div>
 
-      <!-- Role switcher -->
-      <div class="switch-label">Not a landlord?</div>
-      <div class="role-banner">
-        <a class="role-banner-btn active" href="login.html">
-          <span class="role-banner-icon">🏘️</span>
-          <span class="role-banner-text">
-            <span class="role-banner-label">Landlord</span>
-            <span class="role-banner-sub">Property owner</span>
-          </span>
-          <span class="role-banner-check">✓</span>
-        </a>
-        <a class="role-banner-btn" href="tenant-login.html">
-          <span class="role-banner-icon">🏠</span>
-          <span class="role-banner-text">
-            <span class="role-banner-label">Tenant</span>
-            <span class="role-banner-sub">Magic link login</span>
-          </span>
-          <span class="role-banner-arrow">→</span>
-        </a>
       </div>
 
       <div class="back-link">
-        <a href="login.html">← Back to role selection</a>
+        <a href="listings.html">Looking for a place to rent? Browse available rentals →</a>
       </div>
 
     </div>
@@ -551,10 +645,14 @@ body { overflow-x: hidden; }
   window._rgClient = sb; window.sb = sb;
 
   /* ============================================================
-     RETURN-TO URL
+     ONE SIGN-IN PAGE (pre-launch audit 2.3): landlords use email + password; tenants and
+     applicants get an email sign-in link. ?role=tenant|applicant picks the tab; the old
+     tenant-login, applicant-login and login-select pages forward here with it.
   ============================================================ */
   var qs = new URLSearchParams(location.search);
-  var raw = qs.get('returnTo') || qs.get('redirect') || qs.get('return_to') || '';
+  var ROLES = ['landlord', 'tenant', 'applicant'];
+  var role = ROLES.indexOf(qs.get('role')) >= 0 ? qs.get('role') : 'landlord';
+
   // Same-origin pages only: blocks javascript: URLs and open redirects to other sites
   function rgSafeReturn(value, fallback) {
     if (!value || value === 'null' || value === 'undefined') return fallback;
@@ -565,7 +663,28 @@ body { overflow-x: hidden; }
       return u.href;
     } catch (e) { return fallback; }
   }
-  var returnTo = rgSafeReturn(raw, 'dashboard.html');
+  // Pages send returnTo; the old tenant pages sent redirect
+  var rawReturn = qs.get('returnTo') || qs.get('redirect') || qs.get('return_to') || '';
+  var returnTo = rgSafeReturn(rawReturn, '');
+  var propParam   = qs.get('property') || '';
+  var propIdParam = qs.get('property_id') || '';
+  var companyId   = qs.get('company_id') || '';
+
+  // Where each role lands once signed in
+  function tenantPortalUrl() {
+    var p = new URLSearchParams();
+    if (propParam)   p.set('property', propParam);
+    if (propIdParam) p.set('property_id', propIdParam);
+    if (companyId)   p.set('company_id', companyId);
+    var s = p.toString();
+    return location.origin + '/tenant-portal.html' + (s ? '?' + s : '');
+  }
+  function destinationFor(r) {
+    if (returnTo) return returnTo;
+    if (r === 'tenant') return tenantPortalUrl();
+    if (r === 'applicant') return new URL('my-applications.html', location.href).href;
+    return 'dashboard.html';
+  }
 
   /* ============================================================
      HELPERS
@@ -581,27 +700,132 @@ body { overflow-x: hidden; }
   }
 
   /* ============================================================
+     ROLE TABS + COPY
+  ============================================================ */
+  var COPY = {
+    landlord: {
+      title: 'Welcome back 👋',
+      sub: 'Sign in to your landlord account to manage your properties.',
+      headline: ['Your portfolio,', 'always under control'],
+      brandSub: 'Track rent, manage leases, log expenses, and handle maintenance — all in one beautifully simple place.',
+      features: ['Daily rent & assignment dashboard', 'Lease & payment tracking per property',
+                 'Expense logging & NOI reporting', 'Maintenance requests & vendor tracking',
+                 'Tenant portal with magic-link login']
+    },
+    tenant: {
+      title: 'Welcome, tenant 🏠',
+      sub: "We'll email you a link to your tenant portal. No password needed.",
+      hint: "Use the same email address that's on your lease. Check with your landlord if unsure.",
+      step3: 'Open your portal',
+      sent: 'Click it to open your tenant portal.',
+      headline: ['Your home,', 'always within reach'],
+      brandSub: 'See your lease and payment history, send maintenance requests, and message your landlord — all in one place.',
+      features: ['Your lease & payment history', "See what's due and when",
+                 'Submit maintenance requests', 'Messages from your landlord',
+                 'Secure sign-in link — no password needed']
+    },
+    applicant: {
+      title: 'Check your application 📝',
+      sub: "Enter the email you applied with and we'll send you a secure sign-in link.",
+      hint: 'Use the email address you put on your rental application.',
+      step3: 'See your application',
+      sent: 'Click it to see your application status.',
+      headline: ['Your application,', 'one place to follow it'],
+      brandSub: 'Check where your rental applications stand and message the landlord about them.',
+      features: ['Status of every application', 'Messages with the landlord',
+                 'Secure sign-in link — no password needed']
+    }
+  };
+
+  function setBrand(c) {
+    var h = $('brandHeadline');
+    var em = document.createElement('em');
+    em.textContent = c.headline[1];
+    h.replaceChildren(document.createTextNode(c.headline[0]), document.createElement('br'), em);
+    $('brandSub').textContent = c.brandSub;
+    var ul = $('brandFeatures');
+    ul.replaceChildren();
+    c.features.forEach(function (f) {
+      var li = document.createElement('li');
+      var dot = document.createElement('span');
+      dot.className = 'feat-dot';
+      dot.textContent = '✓';
+      li.appendChild(dot);
+      li.appendChild(document.createTextNode(' ' + f));
+      ul.appendChild(li);
+    });
+  }
+
+  function setRole(r, opts) {
+    role = r;
+    var c = COPY[r];
+    document.body.setAttribute('data-role', r);
+    document.querySelectorAll('.role-tab').forEach(function (b) {
+      b.setAttribute('aria-selected', b.getAttribute('data-role') === r ? 'true' : 'false');
+    });
+    $('formTitle').textContent = c.title;
+    $('formSub').textContent = c.sub;
+    if (c.hint) $('magicHint').textContent = c.hint;
+    if (c.step3) $('step3Label').textContent = c.step3;
+    setBrand(c);
+    document.title = (r === 'landlord' ? 'Sign In' : r === 'tenant' ? 'Tenant Sign In' : 'Applicant Sign In') + ' – Rental Genie';
+    showMagicForm();
+    setStatus('statusPassword', '', '');
+    if (opts && opts.updateUrl) {
+      var q = new URLSearchParams(location.search);
+      if (r === 'landlord') q.delete('role'); else q.set('role', r);
+      var s = q.toString();
+      history.replaceState(null, '', location.pathname + (s ? '?' + s : '') + location.hash);
+    }
+  }
+
+  document.querySelectorAll('.role-tab').forEach(function (b) {
+    b.addEventListener('click', function () { setRole(b.getAttribute('data-role'), { updateUrl: true }); });
+  });
+  setRole(role);
+
+  /* ============================================================
      REDIRECT IF ALREADY SIGNED IN
   ============================================================ */
+  // Tenants without a property in the link go to the property on their latest lease
+  function goTenantPortal() {
+    if (returnTo || propParam || propIdParam) { location.href = destinationFor('tenant'); return; }
+    sb.auth.getUser().then(function (r) {
+      var email = r.data && r.data.user && r.data.user.email;
+      if (!email) return '';
+      return sb.from('leases')
+        .select('property_name,lease_start')
+        .ilike('tenant_email', email.replace(/[\\%_]/g, function (c) { return '\\' + c; }))
+        .is('archived_at', null)
+        .order('lease_start', { ascending: false })
+        .limit(1).maybeSingle()
+        .then(function (lr) { return (lr.data && lr.data.property_name) || ''; });
+    }).catch(function () { return ''; }).then(function (prop) {
+      location.href = prop ? 'tenant-portal.html?property=' + encodeURIComponent(prop) : 'tenant-portal.html';
+    });
+  }
+  function goSignedIn() {
+    if (role === 'tenant') goTenantPortal();
+    else location.replace(destinationFor(role));
+  }
+
   (async function() {
     try {
       var res = await sb.auth.getUser();
-      if (res.data && res.data.user) { location.replace(returnTo); }
+      if (res.data && res.data.user) goSignedIn();
     } catch(e) {}
   }());
+
+  // A sign-in link opened in another tab signs this one in too
+  sb.auth.onAuthStateChange(function (event) {
+    if (event === 'SIGNED_IN' && role !== 'landlord') goSignedIn();
+  });
 
   /* ============================================================
      FOOTER YEAR
   ============================================================ */
   var fy = $('footerYear');
   if (fy) fy.textContent = new Date().getFullYear();
-
-  /* ============================================================
-     HAMBURGER
-  ============================================================ */
-  // (no hamburger in split-panel layout)
-
-
 
   /* ============================================================
      PASSWORD TOGGLE
@@ -618,7 +842,7 @@ body { overflow-x: hidden; }
   });
 
   /* ============================================================
-     SIGN IN WITH PASSWORD
+     LANDLORD: SIGN IN WITH PASSWORD
   ============================================================ */
   $('passwordForm').addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -639,17 +863,72 @@ body { overflow-x: hidden; }
       var res = await sb.auth.signInWithPassword({ email: email, password: password });
       if (res.error) throw res.error;
       setStatus('statusPassword', 'Signed in! Redirecting…', 'ok');
-      setTimeout(function () { location.replace(returnTo); }, 600);
+      setTimeout(function () { location.replace(destinationFor('landlord')); }, 600);
     } catch(err) {
       var msg = err && err.message ? err.message : 'Sign in failed. Check your email and password.';
       if (msg.toLowerCase().includes('invalid login'))  msg = 'Incorrect email or password. Please try again.';
       if (msg.toLowerCase().includes('email not confirmed')) msg = 'Please confirm your email address first, then try again.';
       setStatus('statusPassword', msg, 'err');
       btn.disabled = false;
-      btn.textContent = '✅ Sign in';
+      btn.textContent = 'Sign in to Dashboard →';
     }
   });
 
+  /* ============================================================
+     TENANT / APPLICANT: EMAIL SIGN-IN LINK
+  ============================================================ */
+  var lastEmail = '';
+  function resetSendBtn() {
+    var btn = $('sendLinkBtn');
+    btn.disabled = false;
+    btn.textContent = '📨 Send me a sign-in link';
+  }
+  function showMagicForm() {
+    $('magicSent').style.display = 'none';
+    $('magicForm').style.display = '';
+    setStatus('magicStatus', '', '');
+    setStatus('sentStatus', '', '');
+    resetSendBtn();
+  }
+  function showMagicSent(email) {
+    $('magicForm').style.display = 'none';
+    $('magicSent').style.display = '';
+    $('sentNote').textContent = 'We sent a sign-in link to ' + email + '. ' + COPY[role].sent;
+  }
+
+  function sendMagicLink() {
+    var email = ($('magicEmail').value || '').trim();
+    if (!email) { setStatus('magicStatus', 'Please enter your email address.', 'err'); return; }
+    var btn = $('sendLinkBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Sending…';
+    setStatus('magicStatus', '', '');
+    lastEmail = email;
+    sb.auth.signInWithOtp({ email: email, options: { emailRedirectTo: destinationFor(role) } })
+      .then(function (r) {
+        if (r.error) throw r.error;
+        showMagicSent(email);
+      })
+      .catch(function (e) {
+        setStatus('magicStatus', (e && e.message) || 'Could not send sign-in link. Please try again.', 'err');
+        resetSendBtn();
+      });
+  }
+  $('sendLinkBtn').addEventListener('click', sendMagicLink);
+  $('magicEmail').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); sendMagicLink(); } });
+
+  function checkSession(statusEl) {
+    sb.auth.getSession().then(function (r) {
+      if (r.data && r.data.session) goSignedIn();
+      else setStatus(statusEl, 'No active session yet — please click the link in your email first.', 'err');
+    }).catch(function () { setStatus(statusEl, 'Could not check session. Please try again.', 'err'); });
+  }
+  $('checkSessionBtn').addEventListener('click', function () { checkSession('magicStatus'); });
+  $('checkSessionBtn2').addEventListener('click', function () { checkSession('sentStatus'); });
+  $('resendBtn').addEventListener('click', function () {
+    showMagicForm();
+    if (lastEmail) $('magicEmail').value = lastEmail;
+  });
 
 }());
 </script>

@@ -3,122 +3,24 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Check Your Application – Rental Genie</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap">
+<meta name="robots" content="noindex" />
+<title>Moved – Rental Genie</title>
+<script>
+/* applicant-login.html was merged into login.html, which has the Landlord / Tenant / Applicant choice (pre-launch audit P2 2.3). This page only keeps old links and
+   bookmarks working: it forwards to the new place, keeping the query string. */
+(function () {
+  var q = new URLSearchParams(location.search);
+  q.set('role', 'applicant');
+  var s = q.toString();
+  location.replace('login.html' + (s ? '?' + s : ''));
+})();
+</script>
 <style>
-:root{
-  --navy:#0c1e3a; --navy-mid:#1a3a6b; --navy-light:#1e5799; --sky:#2d8cf0;
-  --border:#e2e8f0; --bg:#f1f4f8; --card:#ffffff; --text:#0c1e3a; --muted:#64748b;
-  --success:#10b981; --danger:#ef4444;
-  --header-grad: linear-gradient(135deg,#0c1e3a 0%,#1a3a6b 55%,#1e5799 100%);
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',-apple-system,sans-serif; background:var(--header-grad); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;}
-.card{background:#fff; border-radius:20px; max-width:420px; width:100%; padding:36px 32px; box-shadow:0 20px 60px rgba(0,0,0,.3);}
-.logo-row{display:flex; align-items:center; gap:10px; justify-content:center; margin-bottom:22px;}
-.logo-row img{width:36px; height:36px; border-radius:8px;}
-.logo-row span{font-weight:700; font-size:1.1rem; color:var(--navy);}
-h1{font-size:1.3rem; font-weight:800; color:var(--navy); text-align:center;}
-.sub{text-align:center; color:var(--muted); font-size:.88rem; margin-top:6px; margin-bottom:24px;}
-.field label{font-size:.75rem; font-weight:700; text-transform:uppercase; color:#64748b; letter-spacing:.02em;}
-.field input{width:100%; margin-top:6px; padding:12px 14px; border-radius:10px; border:1px solid #cbd5e1; font-family:'DM Sans',sans-serif; font-size:.95rem;}
-.field input:focus{outline:none; border-color:#93c5fd; box-shadow:0 0 0 3px rgba(147,197,253,.35);}
-.btn{width:100%; margin-top:16px; padding:13px; border-radius:10px; border:none; background:linear-gradient(135deg,var(--navy),var(--sky)); color:#fff; font-weight:700; font-size:.95rem; cursor:pointer;}
-.btn:disabled{opacity:.6; cursor:default;}
-.status-msg{font-size:.85rem; font-weight:600; margin-top:14px; text-align:center;}
-.status-msg.ok{color:var(--success);}
-.status-msg.err{color:var(--danger);}
-.sent-box{text-align:center; padding:10px 0;}
-.sent-box .big-icon{font-size:2.4rem; margin-bottom:10px;}
-.back{display:block; text-align:center; margin-top:20px; font-size:.85rem; color:var(--sky); text-decoration:none;}
-
-/* CLAUDE.md: no sideways scroll on phones */
-body { overflow-x: hidden; }
+body { margin: 0; padding: 40px 20px; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0c1e3a; background: #f1f4f8; overflow-x: hidden; }
+a { color: #1e5799; font-weight: 600; }
 </style>
 </head>
 <body>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<div class="card">
-  <div class="logo-row">
-    <img src="images/rg-logo.png" alt="" onerror="this.style.display='none'" />
-    <span>Rental Genie</span>
-  </div>
-
-  <div id="formView">
-    <h1>Check your application</h1>
-    <p class="sub">Enter the email you applied with and we'll send you a secure sign-in link — no password needed.</p>
-    <div class="field">
-      <label>Email</label>
-      <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
-    </div>
-    <button class="btn" id="sendLinkBtn">📨 Send me a sign-in link</button>
-    <div class="status-msg" id="formStatus"></div>
-  </div>
-
-  <div id="sentView" style="display:none;">
-    <div class="sent-box">
-      <div class="big-icon">📬</div>
-      <h1>Check your inbox</h1>
-      <p class="sub" id="sentSub"></p>
-    </div>
-  </div>
-
-  <a href="listings.html" class="back">← Back to Browse Rentals</a>
-</div>
-
-<script>
-const sb = window.supabase.createClient(
-  "https://xqmnaeujwumlcoyhgzuk.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxbW5hZXVqd3VtbGNveWhnenVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NTU0NzIsImV4cCI6MjEwNjEzMTQ3Mn0.GbOKbMKaFO79esF2hx9dCNe8oSIZuMrx6W5p7kfPgXQ"
-);
-
-function $(id){ return document.getElementById(id); }
-
-function buildRedirectUrl(){
-  const url = new URL("my-applications.html", window.location.href);
-  return url.toString();
-}
-
-sb.auth.getSession().then(r => {
-  if (r.data && r.data.session){
-    window.location.href = "my-applications.html";
-  }
-});
-
-function setStatus(msg, cls){
-  const el = $("formStatus");
-  el.textContent = msg;
-  el.className = "status-msg " + (cls || "");
-}
-
-function sendMagicLink(){
-  const email = ($("email").value || "").trim();
-  if (!email){ setStatus("Please enter your email address.", "err"); return; }
-
-  const btn = $("sendLinkBtn");
-  btn.disabled = true;
-  btn.textContent = "Sending…";
-  setStatus("", "");
-
-  sb.auth.signInWithOtp({ email, options: { emailRedirectTo: buildRedirectUrl() } })
-    .then(r => {
-      if (r.error) throw r.error;
-      $("sentSub").textContent = `We sent a sign-in link to ${email}. Click it to see your application status.`;
-      $("formView").style.display = "none";
-      $("sentView").style.display = "";
-    })
-    .catch(e => {
-      setStatus((e && e.message) || "Could not send sign-in link. Please try again.", "err");
-      btn.disabled = false;
-      btn.textContent = "📨 Send me a sign-in link";
-    });
-}
-
-$("sendLinkBtn").addEventListener("click", sendMagicLink);
-$("email").addEventListener("keydown", e => { if (e.key === "Enter") sendMagicLink(); });
-</script>
+<p>This page has moved to <a href="login.html?role=applicant">Sign in</a>.</p>
 </body>
 </html>

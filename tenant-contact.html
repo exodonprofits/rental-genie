@@ -586,7 +586,7 @@ body { overflow-x: hidden; }
     <div class="auth-gate-icon">🔐</div>
     <h2>Session Required</h2>
     <p>Your session has expired or you're not logged in. Please sign in to access your tenant portal.</p>
-    <a id="loginLink" class="btn primary" href="tenant-login.html">Go to Login →</a>
+    <a id="loginLink" class="btn primary" href="login.html?role=tenant">Go to Login →</a>
   </div>
 </section>
 
@@ -689,7 +689,7 @@ body { overflow-x: hidden; }
 
   const ham=$('hamburgerBtn'),drw=$('mobileDrawer');
   if(ham&&drw){ham.addEventListener('click',()=>{drw.style.display=drw.style.display==='block'?'none':'block';});document.addEventListener('click',e=>{if(drw.style.display==='block'&&!drw.contains(e.target)&&e.target!==ham)drw.style.display='none';});}
-  async function doSignOut(){try{await sb.auth.signOut();}catch(e){}location.href='tenant-login.html';}
+  async function doSignOut(){try{await sb.auth.signOut();}catch(e){}location.href='login.html?role=tenant';}
   const nso=$('navSignOut'),dso=$('drawerSignOut');
   if(nso)nso.addEventListener('click',e=>{e.preventDefault();doSignOut();});
   if(dso)dso.addEventListener('click',e=>{e.preventDefault();doSignOut();});
@@ -706,7 +706,7 @@ body { overflow-x: hidden; }
   async function requireAuth(){
     for(let i=0;i<3;i++){const {data:u}=await sb.auth.getUser();if(u?.user)return u.user;const {data:s}=await sb.auth.getSession();if(s?.session?.user)return s.session.user;await new Promise(r=>setTimeout(r,180));}
     $('authGate').classList.remove('hidden');$('app').classList.add('hidden');
-    const link=$('loginLink');if(link)link.href='tenant-login.html?redirect='+encodeURIComponent(location.href);
+    const link=$('loginLink');if(link)link.href='login.html?role=tenant&redirect='+encodeURIComponent(location.href);
     return null;
   }
 

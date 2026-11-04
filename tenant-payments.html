@@ -767,7 +767,7 @@
           drawer.style.display = 'none';
       });
     }
-    function doSignOut() { try { sb.auth.signOut(); } catch (e) {} location.href = 'tenant-login.html'; }
+    function doSignOut() { try { sb.auth.signOut(); } catch (e) {} location.href = 'login.html?role=tenant'; }
     var so = $('navSignOut');    if (so) so.addEventListener('click',    function (e) { e.preventDefault(); doSignOut(); });
     var ds = $('drawerSignOut'); if (ds) ds.addEventListener('click', function (e) { e.preventDefault(); doSignOut(); });
 
@@ -1275,16 +1275,16 @@
     setTimeout(hideOverlay, 4000);
 
     requireAuth().then(function (user) {
-      if (!user) { hideOverlay(); location.href = 'tenant-login.html'; return; }
+      if (!user) { hideOverlay(); location.href = 'login.html?role=tenant'; return; }
       hideOverlay();
       loadTenantData(user);
     }).catch(function () {
       hideOverlay();
-      location.href = 'tenant-login.html';
+      location.href = 'login.html?role=tenant';
     });
 
     sb.auth.onAuthStateChange(function (event) {
-      if (event === 'SIGNED_OUT') location.href = 'tenant-login.html';
+      if (event === 'SIGNED_OUT') location.href = 'login.html?role=tenant';
     });
   });
 }());

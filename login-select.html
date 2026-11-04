@@ -1,223 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Sign In – Rental Genie</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex" />
+<title>Moved – Rental Genie</title>
+<script>
+/* login-select.html was merged into login.html, which has the Landlord / Tenant / Applicant choice (pre-launch audit P2 2.3). This page only keeps old links and
+   bookmarks working: it forwards to the new place, keeping the query string. */
+(function () {
+  var q = new URLSearchParams(location.search);
+  var s = q.toString();
+  location.replace('login.html' + (s ? '?' + s : ''));
+})();
+</script>
 <style>
-:root{
-  --navy:#0c1e3a; --mid:#1a3a6b; --lt:#1e5799;
-  --accent:#2d8cf0; --green:#10b981;
-  --bg:#f1f4f8; --surface:#ffffff;
-  --border:#e2e8f0; --text:#0c1e3a; --muted:#64748b;
-  --shadow-md:0 8px 32px rgba(12,30,58,.14);
-}
-*,*::before,*::after{box-sizing:border-box;}
-html,body{height:100%;margin:0;}
-body{
-  background:var(--bg);
-  font-family:'DM Sans',-apple-system,sans-serif;
-  color:var(--text);min-height:100vh;
-  display:flex;flex-direction:column;
-}
-
-/* ── Header ───────────────────────────────────────── */
-.header-container{
-  position:sticky;top:0;z-index:100;
-  background:linear-gradient(135deg,var(--navy) 0%,var(--mid) 55%,var(--lt) 100%);
-  box-shadow:0 2px 20px rgba(12,30,58,.3);
-  border-bottom:1px solid rgba(255,255,255,.08);
-}
-.navbar{
-  max-width:1440px;margin:0 auto;
-  padding:14px 22px;display:flex;
-  align-items:center;justify-content:space-between;
-}
-.brand-area{display:flex;align-items:center;gap:10px;text-decoration:none;}
-.brand-logo{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);box-shadow:0 0 0 1px rgba(255,255,255,.2);object-fit:cover;}
-.brand-title{font-size:1.25rem;font-weight:700;color:#fff;}
-
-/* ── Main ─────────────────────────────────────────── */
-main{
-  flex:1;display:flex;align-items:center;justify-content:center;
-  padding:48px 16px 60px;
-}
-.shell{width:100%;max-width:560px;}
-
-/* Logo + heading */
-.auth-brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;}
-.auth-brand-logo{
-  width:46px;height:46px;border-radius:50%;
-  background:linear-gradient(135deg,var(--navy),var(--lt));
-  box-shadow:0 4px 14px rgba(12,30,58,.25);
-  display:flex;align-items:center;justify-content:center;overflow:hidden;
-}
-.auth-brand-logo img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
-.auth-brand-name{font-size:1.35rem;font-weight:700;color:var(--navy);letter-spacing:-.4px;}
-.auth-heading{text-align:center;font-size:1.05rem;color:var(--muted);margin-bottom:28px;font-weight:400;}
-
-/* ── Role cards ───────────────────────────────────── */
-.role-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
-@media(max-width:480px){.role-cards{grid-template-columns:1fr;}}
-
-.role-card{
-  display:flex;flex-direction:column;
-  background:var(--surface);border:2px solid var(--border);
-  border-radius:20px;padding:28px 24px 24px;
-  text-decoration:none;color:inherit;
-  box-shadow:var(--shadow-md);
-  transition:border-color .18s,transform .18s,box-shadow .18s;
-  cursor:pointer;position:relative;overflow:hidden;
-}
-.role-card::before{
-  content:'';position:absolute;top:0;left:0;right:0;height:4px;
-  transform:scaleX(0);transform-origin:left;transition:transform .25s;
-}
-.role-card.landlord::before{background:linear-gradient(90deg,var(--navy),var(--accent));}
-.role-card.tenant::before{background:linear-gradient(90deg,var(--green),#34d399);}
-.role-card:hover{transform:translateY(-3px);box-shadow:0 16px 48px rgba(12,30,58,.18);}
-.role-card.landlord:hover{border-color:var(--accent);}
-.role-card.tenant:hover{border-color:var(--green);}
-.role-card:hover::before{transform:scaleX(1);}
-
-.role-icon{
-  width:56px;height:56px;border-radius:14px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:1.6rem;margin-bottom:16px;flex-shrink:0;
-}
-.role-card.landlord .role-icon{background:#eff6ff;}
-.role-card.tenant   .role-icon{background:#f0fdf4;}
-
-.role-label{
-  font-size:.68rem;font-weight:700;text-transform:uppercase;
-  letter-spacing:.8px;margin-bottom:6px;
-}
-.role-card.landlord .role-label{color:var(--accent);}
-.role-card.tenant   .role-label{color:var(--green);}
-
-.role-title{font-size:1.15rem;font-weight:700;color:var(--navy);margin-bottom:8px;letter-spacing:-.3px;}
-.role-desc{font-size:.84rem;color:var(--muted);line-height:1.55;flex:1;}
-
-.role-cta{
-  display:inline-flex;align-items:center;gap:6px;
-  margin-top:18px;padding:10px 18px;border-radius:999px;
-  font-size:.84rem;font-weight:700;transition:filter .15s;
-  align-self:flex-start;
-}
-.role-card.landlord .role-cta{background:var(--navy);color:#fff;}
-.role-card.landlord:hover .role-cta{filter:brightness(1.2);}
-.role-card.tenant   .role-cta{background:var(--green);color:#fff;}
-.role-card.tenant:hover   .role-cta{filter:brightness(1.1);}
-
-/* Divider */
-.or-divider{
-  text-align:center;font-size:.8rem;color:var(--muted);
-  font-weight:600;margin-bottom:16px;
-  display:flex;align-items:center;gap:12px;
-}
-.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:var(--border);}
-
-/* Back to home */
-.back-row{text-align:center;font-size:.82rem;color:var(--muted);}
-.back-row a{color:var(--accent);font-weight:600;text-decoration:none;}
-.back-row a:hover{text-decoration:underline;}
-
-/* ── Footer ───────────────────────────────────────── */
-footer{padding:16px;background:var(--navy);}
-.footer-bottom{text-align:center;color:rgba(255,255,255,.28);font-size:.8rem;}
-@media(max-width:600px){footer{display:none;}}
-
-/* CLAUDE.md: no sideways scroll on phones */
-body { overflow-x: hidden; }
+body { margin: 0; padding: 40px 20px; font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #0c1e3a; background: #f1f4f8; overflow-x: hidden; }
+a { color: #1e5799; font-weight: 600; }
 </style>
 </head>
 <body>
-
-<header class="header-container">
-  <div class="navbar">
-    <a class="brand-area" href="index.html">
-      <img src="images/rg-logo.png" class="brand-logo" alt="Rental Genie" onerror="this.style.display='none'"/>
-      <span class="brand-title">Rental Genie</span>
-    </a>
-  </div>
-</header>
-
-<main>
-  <div class="shell">
-
-    <div class="auth-brand">
-      <div class="auth-brand-logo">
-        <img src="images/rg-logo.png" alt="Rental Genie" onerror="this.style.display='none';this.parentElement.textContent='🧞'"/>
-      </div>
-      <div class="auth-brand-name">Rental Genie</div>
-    </div>
-    <p class="auth-heading">Welcome back — how are you signing in?</p>
-
-    <div class="role-cards">
-
-      <!-- Landlord -->
-      <a class="role-card landlord" href="login.html" id="landlordCard">
-        <div class="role-icon">🏘️</div>
-        <div class="role-label">Landlord</div>
-        <div class="role-title">Property Owner</div>
-        <p class="role-desc">Manage your properties, track rent, log expenses, and review maintenance requests.</p>
-        <span class="role-cta">Sign in →</span>
-      </a>
-
-      <!-- Tenant -->
-      <a class="role-card tenant" href="tenant-login.html" id="tenantCard">
-        <div class="role-icon">🏠</div>
-        <div class="role-label">Tenant</div>
-        <div class="role-title">Renter / Resident</div>
-        <p class="role-desc">View your lease, check payment history, and submit maintenance requests to your landlord.</p>
-        <span class="role-cta">Sign in →</span>
-      </a>
-
-    </div>
-
-    <div class="back-row">
-      New to Rental Genie? <a href="index.html">Learn more →</a><br/>
-      Looking for a place to rent? <a href="listings.html">Browse available rentals →</a>
-    </div>
-
-  </div>
-</main>
-
-<footer>
-  <div class="footer-bottom">© <span id="yr"></span> Rental Genie. All rights reserved.</div>
-</footer>
-
-<script>
-document.getElementById('yr').textContent = new Date().getFullYear();
-
-// Pass through any returnTo / property params to the destination
-(function() {
-  var qs = new URLSearchParams(location.search);
-  var returnTo   = qs.get('returnTo')   || '';
-  var property   = qs.get('property')   || '';
-  var propertyId = qs.get('property_id')|| '';
-  var companyId  = qs.get('company_id') || '';
-
-  function appendParams(base, extraParams) {
-    var p = new URLSearchParams();
-    if (returnTo)   p.set('returnTo',    returnTo);
-    if (property)   p.set('property',   property);
-    if (propertyId) p.set('property_id',propertyId);
-    if (companyId)  p.set('company_id', companyId);
-    for (var k in extraParams) p.set(k, extraParams[k]);
-    var s = p.toString();
-    return s ? base + '?' + s : base;
-  }
-
-  var ll = document.getElementById('landlordCard');
-  var tl = document.getElementById('tenantCard');
-  if (ll) ll.href = appendParams('login.html');
-  if (tl) tl.href = appendParams('tenant-login.html');
-}());
-</script>
-
+<p>This page has moved to <a href="login.html">Sign in</a>.</p>
 </body>
 </html>

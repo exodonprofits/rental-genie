@@ -531,59 +531,6 @@ select {
   font-weight:900;
 }
 
-/* -------------------------------------------------------------
-   Payment Drawer (Add/Edit)
-------------------------------------------------------------- */
-.drawer-overlay{
-  position:fixed;
-  inset:0;
-  background:rgba(15,23,42,0.35);
-  opacity:0;
-  pointer-events:none;
-  transition: opacity .2s ease;
-  z-index: 2000;
-}
-.drawer-overlay.open{ opacity:1; pointer-events:auto; }
-.payment-drawer{
-  position:fixed;
-  top:0; right:0;
-  height:100%;
-  width: min(520px, 94vw);
-  background:white;
-  border-left:1px solid #e2e8f0;
-  box-shadow:-12px 0 30px rgba(0,0,0,0.18);
-  transform: translateX(105%);
-  transition: transform .22s ease;
-  z-index: 2001;
-  display:flex;
-  flex-direction:column;
-}
-.payment-drawer.open{ transform: translateX(0); }
-.payment-drawer-header{
-  padding:14px 14px 12px;
-  border-bottom:1px solid #e5e7eb;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
-.payment-drawer-title{ font-weight:800; color:#0f172a; }
-.payment-drawer-actions{ display:flex; gap:8px; }
-.drawer-btn{
-  border:1px solid #cbd5e1;
-  background:#fff;
-  padding:6px 10px;
-  border-radius:999px;
-  cursor:pointer;
-  font-weight:700;
-  font-size: 0.85rem;
-}
-.drawer-btn:hover{ background:#f1f5f9; }
-.payment-drawer-body{ flex:1; min-height:0; }
-.payment-drawer-iframe{ width:100%; height:100%; border:0; }
-@media (max-width: 640px){
-  .payment-drawer{ width: 96vw; }
-}
 
   /* v2 Quick Peek – Needs Attention bar */
   .attention-bar{
@@ -3122,6 +3069,8 @@ function togglePrimaryActions() {
   }
 }
 
+// The ledger load started by the latest property change (openPaymentFromUrl waits for it)
+let propertyLoad = Promise.resolve();
 function applyCurrentProperty() {
   const selectEl = document.getElementById("propertySelect");
   const labelEl = document.getElementById("currentPropertyLabel");
@@ -3147,7 +3096,7 @@ function applyCurrentProperty() {
   togglePrimaryActions();
   selectedLease = null;
 
-  updateAll();
+  propertyLoad = updateAll();
 }
 
 async function loadPropertyDropdown() {
@@ -4182,12 +4131,7 @@ async function renderDueLedger() {
         const id = btn.getAttribute("data-id");
         if (!id) return;
 
-        const meta = propertyMetaByName.get(currentProperty) || {};
-        const pid = meta.id ? String(meta.id) : "";
-        const cid = meta.company_id ? String(meta.company_id) : (activeCompanyId || "");
-        const url = `add-payment.html?embed=1&property=${encodeURIComponent(currentProperty)}&property_id=${encodeURIComponent(pid)}&company_id=${encodeURIComponent(cid)}&id=${encodeURIComponent(id)}`;
-                
-        openPaymentDrawer(url, "✏️ Edit Latest Payment");
+        openPaymentModal({ mode: "edit", paymentId: id });
         return;
       }
 
@@ -4212,12 +4156,7 @@ async function renderDueLedger() {
         const id = btn.getAttribute("data-id");
         if (!id) return;
 
-        const meta = propertyMetaByName.get(currentProperty) || {};
-        const pid = meta.id ? String(meta.id) : "";
-        const cid = meta.company_id ? String(meta.company_id) : (activeCompanyId || "");
-        const url = `add-payment.html?embed=1&property=${encodeURIComponent(currentProperty)}&property_id=${encodeURIComponent(pid)}&company_id=${encodeURIComponent(cid)}&id=${encodeURIComponent(id)}`;
-
-        openPaymentDrawer(url, "✏️ Edit Payment");
+        openPaymentModal({ mode: "edit", paymentId: id });
       }
 
       if (action === "delete") {
@@ -4284,12 +4223,7 @@ function openPaymentsListModal(dueISO) {
       if (!id) return;
 
       if (action === "edit") {
-        const meta = propertyMetaByName.get(currentProperty) || {};
-        const pid = meta.id ? String(meta.id) : "";
-        const cid = meta.company_id ? String(meta.company_id) : (activeCompanyId || "");
-        const url = `add-payment.html?embed=1&property=${encodeURIComponent(currentProperty)}&property_id=${encodeURIComponent(pid)}&company_id=${encodeURIComponent(cid)}&id=${encodeURIComponent(id)}`;
-
-        openPaymentDrawer(url, "✏️ Edit Payment");
+        openPaymentModal({ mode: "edit", paymentId: id });
         closePaymentsListModal();
       }
 
@@ -4333,34 +4267,134 @@ function initPaymentsListModal() {
 }
 
 /* -------------------------------------------------------------
-   Mark Paid Modal (date picker + method select + include/waive late fee)
+   Payment modal: the one payment form (pre-launch audit 2.3). Used for "Add Payment", a ledger
+   row's "Add Payment" and every edit. add-payment.html now redirects here (?pay=new or
+   ?payment=<id>). Every save sends company_id, property_id and lease_id; the rent_log trigger
+   fills the tenant link (rg_09).
 ------------------------------------------------------------- */
-let markPaidState = { dueISO: "", rent: 0, tenant: "" };
+const LATE_FEE_WAIVED_MARKER = "Late fee waived";
+let markPaidState = { mode: "new", id: "", dueISO: "", rent: 0, base: 0, tenant: "" };
 
-function openMarkPaidModal({ dueISO, tenant, rent, suggestedAmount }) {
-  markPaidState = { dueISO, tenant, rent };
+function stripLateFeeMarker(note) {
+  return String(note || "")
+    .replace(/\s*\(\s*late fee waived\s*\)\s*/i, " ")
+    .replace(/^\s*late fee waived\s*$/i, "")
+    .trim();
+}
 
-  document.getElementById("mpDueLabel").textContent = formatDate(dueISO);
-  document.getElementById("mpTenantLabel").textContent = tenant || "—";
+// Due dates offered in "Applies to": the ledger's rows for the lease on screen
+function paymentDueRows() {
+  return ledgerRowsForLease(getLedgerLease());
+}
 
-  document.getElementById("mpPaidDate").value = toISODateOnly(new Date());
-  const mpMethod = document.getElementById("mpMethod");
-  const defaultMethod = getDefaultPaymentMethod();
-  mpMethod.value = Array.from(mpMethod.options).some((o) => o.value === defaultMethod) ? defaultMethod : "Zelle";
-  document.getElementById("mpNote").value = "";
+// Oldest past-due unpaid month, else the next upcoming one, else the latest
+function defaultDueForNewPayment(rows) {
+  const owed = rows.find(r => !r.upcoming && r.balance > 0);
+  if (owed) return owed.dueISO;
+  const next = rows.find(r => r.upcoming);
+  if (next) return next.dueISO;
+  return rows.length ? rows[rows.length - 1].dueISO : "";
+}
 
-  const amt = (Number(suggestedAmount) || 0) > 0 ? Number(suggestedAmount) : (Number(rent) || 0);
-  const mpAmount = document.getElementById("mpAmount");
-  if (mpAmount) mpAmount.value = (amt || 0).toFixed(2);
+function fillDueSelect(rows, selectedISO) {
+  const sel = document.getElementById("mpDueSelect");
+  sel.replaceChildren();
+  if (!rows.length) {
+    const o = document.createElement("option");
+    o.value = "";
+    o.textContent = "Not tied to a due date";
+    sel.appendChild(o);
+  }
+  for (const r of rows) {
+    const o = document.createElement("option");
+    o.value = r.dueISO;
+    o.textContent = formatDate(r.dueISO) + (r.balance > 0 ? " · " + formatMoney(r.balance) + " due" : " · paid")
+      + (r.upcoming ? " (upcoming)" : "");
+    sel.appendChild(o);
+  }
+  // An edited payment can point at a date outside the current schedule: keep it selectable
+  if (selectedISO && !rows.some(r => r.dueISO === selectedISO)) {
+    const o = document.createElement("option");
+    o.value = selectedISO;
+    o.textContent = formatDate(selectedISO);
+    sel.appendChild(o);
+  }
+  sel.value = selectedISO || (rows.length ? rows[0].dueISO : "");
+}
 
-  document.getElementById("mpIncludeLateFee").checked = true;
-  document.getElementById("mpWaiveLateFee").checked = false;
+function applyDueChoice(dueISO) {
+  const row = paymentDueRows().find(r => r.dueISO === dueISO);
+  const lease = getLedgerLease();
+  const rent = row ? row.rent : (Number(lease?.rent_amount || 0) || 0);
+  markPaidState.dueISO = dueISO || "";
+  markPaidState.rent = rent;
+  // What's still owed for that month (partial payments), or the full rent once it's paid
+  markPaidState.base = row && row.balance > 0 ? row.balance : rent;
+}
 
-  updateLatePreview();
+function setPaymentMethod(value) {
+  const sel = document.getElementById("mpMethod");
+  const v = value || getDefaultPaymentMethod();
+  if (v && !Array.from(sel.options).some(o => o.value === v)) {
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = v;
+    sel.appendChild(o);
+  }
+  sel.value = Array.from(sel.options).some(o => o.value === v) ? v : "Zelle";
+}
 
-  initMarkPaidModal(); // lazy init if DOMContentLoaded fired early
+// mode: "new" (pick the month), "due" (a ledger row's Add Payment) or "edit" (paymentId)
+async function openPaymentModal({ mode = "new", dueISO = "", paymentId = "" } = {}) {
+  initMarkPaidModal();
+  if (!currentProperty) { showToast("Select a property to add a payment.", "💰"); return; }
+
+  let row = null;
+  if (mode === "edit") {
+    row = paymentRows.find(p => String(p.id) === String(paymentId)) || null;
+    if (!row) {
+      const { data, error } = await client.from("rent_log")
+        .select("id, date_paid, tenant_name, amount, method, note, property_name, applied_to_due_date")
+        .eq("id", paymentId).eq("company_id", getSelectedPropertyCompanyId()).maybeSingle();
+      if (error || !data) { alert("Could not load that payment."); return; }
+      row = data;
+    }
+  }
+
+  const lease = getLedgerLease();
+  const rows = paymentDueRows();
+  const chosenDue = mode === "edit" ? toISODateOnly(row.applied_to_due_date)
+    : (dueISO || defaultDueForNewPayment(rows));
+
+  markPaidState = { mode, id: row ? String(row.id) : "", dueISO: "", rent: 0, base: 0,
+                    tenant: row ? (row.tenant_name || "") : (lease?.tenant_name || "") };
+  fillDueSelect(rows, chosenDue);
+  applyDueChoice(document.getElementById("mpDueSelect").value);
+
+  document.getElementById("mpTitle").textContent = mode === "edit" ? "✏️ Edit Payment" : "💵 Record Payment";
+  document.getElementById("mpSaveBtn").textContent = mode === "edit" ? "💾 Save Changes" : "✅ Record Payment";
+  document.getElementById("mpTenantLabel").textContent = markPaidState.tenant || "—";
+  document.getElementById("mpPaidDate").value = row ? toISODateOnly(row.date_paid) : toISODateOnly(new Date());
+  setPaymentMethod(row ? row.method : "");
+  document.getElementById("mpNote").value = row ? stripLateFeeMarker(row.note) : "";
+  const waived = row ? isLateFeeWaived(row) : false;
+  document.getElementById("mpIncludeLateFee").checked = !waived;
+  document.getElementById("mpWaiveLateFee").checked = waived;
+
+  if (row) {
+    document.getElementById("mpAmount").value = (Number(row.amount) || 0).toFixed(2);
+    updateLatePreview({ keepAmount: true });
+  } else {
+    updateLatePreview();
+  }
+
   document.getElementById("markPaidOverlay").style.display = "block";
   document.getElementById("markPaidModal").style.display = "block";
+}
+
+// Kept for the ledger row button
+function openMarkPaidModal({ dueISO }) {
+  return openPaymentModal({ mode: "due", dueISO });
 }
 
 function closeMarkPaidModal() {
@@ -4373,83 +4407,72 @@ function setLateChoiceEnabled(enabled) {
   const a = document.getElementById("mpIncludeLateFee");
   const b = document.getElementById("mpWaiveLateFee");
   if (!wrap || !a || !b) return;
-
   a.disabled = !enabled;
   b.disabled = !enabled;
-
   wrap.style.opacity = enabled ? "1" : "0.55";
 }
 
-function syncMarkPaidAmountToChoice() {
-  const dueISO = markPaidState.dueISO;
+// Late fee for the chosen month and paid date: { isLate, baseLateFee, appliedLate }
+function currentLateChoice() {
   const paidISO = document.getElementById("mpPaidDate").value;
-  const amountEl = document.getElementById("mpAmount");
-  if (!amountEl) return;
-
-  const rent = Number(markPaidState.rent) || 0;
-  if (!paidISO) {
-    amountEl.value = rent.toFixed(2);
-    return;
-  }
-
-  const { isLate } = computeLateFeeForRow({ dueISO, paidDateISO: paidISO });
-  const choice = document.querySelector('input[name="mpLateChoice"]:checked')?.value || "include";
-  const includeLate = (choice === "include");
   const baseLateFee = getLeaseLateFee(getLedgerLease());
-  const appliedLate = (isLate && baseLateFee > 0 && includeLate) ? baseLateFee : 0;
-
-  amountEl.value = (rent + appliedLate).toFixed(2);
+  if (!paidISO || !markPaidState.dueISO) return { isLate: false, baseLateFee, appliedLate: 0 };
+  const { isLate } = computeLateFeeForRow({ dueISO: markPaidState.dueISO, paidDateISO: paidISO });
+  const include = (document.querySelector('input[name="mpLateChoice"]:checked')?.value || "include") === "include";
+  return { isLate, baseLateFee, appliedLate: (isLate && baseLateFee > 0 && include) ? baseLateFee : 0 };
 }
 
-function updateLatePreview() {
-  const dueISO = markPaidState.dueISO;
-  const paidISO = document.getElementById("mpPaidDate").value;
-
-  const rent = Number(markPaidState.rent) || 0;
+function setLateInfo(parts) {
   const box = document.getElementById("mpLateInfo");
-  const wrap = document.getElementById("mpLateChoiceWrap");
+  box.replaceChildren();
+  for (const p of parts) {
+    if (p.bold) {
+      const b = document.createElement("b");
+      b.textContent = p.text;
+      box.appendChild(b);
+    } else {
+      box.appendChild(document.createTextNode(p.text));
+    }
+  }
+}
 
-  // Base late fee configured on the lease
-  const baseLateFee = getLeaseLateFee(getLedgerLease());
+// Refreshes the late-fee box and the suggested amount. keepAmount: leave the amount as typed
+// (editing a saved payment, or the user has changed the date/choice after typing).
+function updateLatePreview(opts = {}) {
+  const paidISO = document.getElementById("mpPaidDate").value;
+  const wrap = document.getElementById("mpLateChoiceWrap");
+  const amountEl = document.getElementById("mpAmount");
+  const { isLate, baseLateFee, appliedLate } = currentLateChoice();
+
+  wrap.style.display = baseLateFee > 0 ? "block" : "none";
+  setLateChoiceEnabled(!!paidISO && isLate && baseLateFee > 0);
+
+  const suggested = markPaidState.base + appliedLate;
+  if (!opts.keepAmount && markPaidState.mode !== "edit") amountEl.value = (suggested || 0).toFixed(2);
 
   if (!paidISO) {
-    box.textContent = "Pick a paid date to calculate late fee.";
-    // Show the choice UI if the lease has a late fee configured (even before choosing a date)
-    wrap.style.display = (baseLateFee > 0) ? "block" : "none";
-    setLateChoiceEnabled(false);
-    return;
-  }
-
-  // Determine whether this payment date is late (grace period honored)
-  const { lateFee, isLate } = computeLateFeeForRow({ dueISO, paidDateISO: paidISO });
-
-  // ✅ Always show include/waive options when the lease has a late fee configured
-  wrap.style.display = (baseLateFee > 0) ? "block" : "none";
-
-  // Enable choice only when the payment is actually late (otherwise it has no effect)
-  setLateChoiceEnabled(isLate && baseLateFee > 0);
-
-  const choice = document.querySelector('input[name="mpLateChoice"]:checked')?.value || "include";
-  const includeLate = (choice === "include");
-
-  const appliedLate = (isLate && baseLateFee > 0 && includeLate) ? baseLateFee : 0;
-  const total = rent + appliedLate;
-
-  if (baseLateFee > 0) {
-    if (isLate) {
-      box.innerHTML = `⚠️ This payment is <b>LATE</b>. Late fee: <b>${formatMoney(baseLateFee)}</b>.`;
-      box.innerHTML += `<div style="margin-top:6px;">💵 Total to record: <b>${formatMoney(total)}</b></div>`;
-    } else {
-      box.innerHTML = `✅ On time (no late fee). Total to record: <b>${formatMoney(rent)}</b>.`;
-    }
+    setLateInfo([{ text: "Pick a paid date to calculate the late fee." }]);
+  } else if (!markPaidState.dueISO) {
+    setLateInfo([{ text: "This payment isn't tied to a due date, so no late fee applies." }]);
+  } else if (baseLateFee > 0 && isLate) {
+    setLateInfo([{ text: "⚠️ This payment is " }, { text: "LATE", bold: true },
+                 { text: ". Late fee: " }, { text: formatMoney(baseLateFee), bold: true }, { text: "." }]);
+  } else if (baseLateFee > 0) {
+    setLateInfo([{ text: "✅ On time, no late fee." }]);
   } else {
-    box.innerHTML = `Total to record: <b>${formatMoney(rent)}</b>.`;
+    setLateInfo([{ text: "No late fee on this lease." }]);
   }
+  updateTotalPreview();
+}
 
-  syncMarkPaidAmountToChoice();
+function updateTotalPreview() {
+  const el = document.getElementById("mpTotalPreview");
+  const amt = Number(document.getElementById("mpAmount").value || 0) || 0;
+  el.textContent = "Total to record: " + (amt > 0 ? formatMoney(amt) : "—");
 }
 
 let _markPaidModalInited = false;
+let _paymentSaving = false;
 function initMarkPaidModal() {
   if (_markPaidModalInited) return;
   const overlay   = document.getElementById("markPaidOverlay");
@@ -4457,8 +4480,9 @@ function initMarkPaidModal() {
   const cancelBtn = document.getElementById("mpCancelBtn");
   const saveBtn   = document.getElementById("mpSaveBtn");
   const paidDate  = document.getElementById("mpPaidDate");
+  const dueSel    = document.getElementById("mpDueSelect");
 
-  if (!overlay || !closeBtn || !cancelBtn || !saveBtn || !paidDate) {
+  if (!overlay || !closeBtn || !cancelBtn || !saveBtn || !paidDate || !dueSel) {
     console.debug("initMarkPaidModal: will init on first open");
     return;
   }
@@ -4468,65 +4492,68 @@ function initMarkPaidModal() {
   closeBtn.addEventListener("click", closeMarkPaidModal);
   cancelBtn.addEventListener("click", closeMarkPaidModal);
 
-  paidDate.addEventListener("change", updateLatePreview);
-  document.getElementById("mpIncludeLateFee")?.addEventListener("change", updateLatePreview);
-  document.getElementById("mpWaiveLateFee")?.addEventListener("change", updateLatePreview);
+  dueSel.addEventListener("change", () => { applyDueChoice(dueSel.value); updateLatePreview(); });
+  paidDate.addEventListener("change", () => updateLatePreview());
+  document.getElementById("mpIncludeLateFee")?.addEventListener("change", () => updateLatePreview());
+  document.getElementById("mpWaiveLateFee")?.addEventListener("change", () => updateLatePreview());
+  document.getElementById("mpAmount")?.addEventListener("input", updateTotalPreview);
 
   saveBtn.addEventListener("click", async () => {
-    const dueISO = markPaidState.dueISO;
-    const tenant = markPaidState.tenant || "";
-    const rent = Number(markPaidState.rent) || 0;
-
+    if (_paymentSaving) return;
     const paidDateISO = document.getElementById("mpPaidDate").value;
     if (!paidDateISO) { alert("Please pick a paid date."); return; }
 
+    const amount = Number(document.getElementById("mpAmount")?.value || 0) || 0;
+    if (amount <= 0) { alert("Please enter an amount greater than 0."); return; }
+
     const method = document.getElementById("mpMethod").value || "Zelle";
-    let note = (document.getElementById("mpNote").value || "").trim();
+    let note = stripLateFeeMarker(document.getElementById("mpNote").value);
 
-    const { lateFee, isLate } = computeLateFeeForRow({ dueISO, paidDateISO });
-
-    const choice = document.querySelector('input[name="mpLateChoice"]:checked')?.value || "include";
-    const includeLate = (choice === "include");
-
-    const baseLateFee = getLeaseLateFee(getLedgerLease());
-    const appliedLate = (isLate && baseLateFee > 0 && includeLate) ? baseLateFee : 0;
-
-    // Always INSERT a new payment record so partial payments are supported
-    const mpAmount = Number(document.getElementById("mpAmount")?.value || 0) || 0;
-    if (mpAmount <= 0) { alert("Please enter an amount greater than 0."); return; }
-
-    // If late fee is waived, add marker for the ledger
-    const marker = "Late fee waived";
-    if (isLate && baseLateFee > 0 && !includeLate) {
-      note = note ? `${note} (${marker})` : marker;
+    // A waived late fee is recorded in the note, which the ledger reads (isLateFeeWaived)
+    const { isLate, baseLateFee } = currentLateChoice();
+    const include = (document.querySelector('input[name="mpLateChoice"]:checked')?.value || "include") === "include";
+    if (isLate && baseLateFee > 0 && !include) {
+      note = note ? `${note} (${LATE_FEE_WAIVED_MARKER})` : LATE_FEE_WAIVED_MARKER;
     }
 
-    // If user chose to include late fee but enters a smaller partial amount, that's OK (balance will remain)
-    const amount = mpAmount;
+    const meta = propertyMetaByName.get(currentProperty) || {};
+    const lease = getLedgerLease();
+    const entry = {
+      company_id: getSelectedPropertyCompanyId(),
+      property_id: meta.id || lease?.property_id || null,
+      property_name: currentProperty,
+      tenant_name: markPaidState.tenant || null,
+      amount,
+      method,
+      note,
+      date_paid: paidDateISO,
+      applied_to_due_date: markPaidState.dueISO || null,
+    };
+    // Only a new payment takes the lease on screen; an edit keeps the lease it was logged against
+    if (markPaidState.mode !== "edit" && lease?.id) entry.lease_id = lease.id;
 
-    const res = await client
-      .from("rent_log")
-      .insert([{
-        company_id: getSelectedPropertyCompanyId(),
-        property_name: currentProperty,
-        tenant_name: tenant,
-        amount,
-        method,
-        note,
-        date_paid: paidDateISO,
-        applied_to_due_date: dueISO
-      }]);
+    _paymentSaving = true;
+    saveBtn.disabled = true;
+    try {
+      const res = markPaidState.mode === "edit"
+        ? await client.from("rent_log").update(entry)
+            .eq("id", markPaidState.id).eq("company_id", getSelectedPropertyCompanyId()).select("id")
+        : await client.from("rent_log").insert([entry]).select("id");
 
-    const error = res.error;
+      if (res.error || !(res.data && res.data.length)) {
+        const error = res.error || { message: "The payment wasn't saved (no access to this property?)" };
+        console.error("Save payment error:", error);
+        alert("Error saving payment: " + (error.message || "Unknown error"));
+        return;
+      }
 
-    if (error) {
-      console.error("Save payment error:", error);
-      alert("Error saving payment: " + (error.message || "Unknown error"));
-      return;
+      closeMarkPaidModal();
+      showToast(markPaidState.mode === "edit" ? "Payment updated." : "Payment recorded.", "✅");
+      await updateAll();
+    } finally {
+      _paymentSaving = false;
+      saveBtn.disabled = false;
     }
-
-    closeMarkPaidModal();
-    await updateAll();
   });
 }
 
@@ -4536,21 +4563,26 @@ function isLateFeeWaived(paymentRow) {
 }
 
 /* -------------------------------------------------------------
-   Add Payment Drawer
+   Add Payment button
 ------------------------------------------------------------- */
 const addPaymentBtn = document.getElementById("addPaymentBtn");
 if (addPaymentBtn) {
-  addPaymentBtn.onclick = () => {
-    if (!currentProperty) {
-      showToast('Select a property to add a payment.', '💰');
-      return;
-    }
-    const meta = propertyMetaByName.get(currentProperty) || {};
-    const pid = meta.id ? String(meta.id) : "";
-    const cid = meta.company_id ? String(meta.company_id) : (activeCompanyId || "");
-    const url = `add-payment.html?property=${encodeURIComponent(currentProperty)}&property_id=${encodeURIComponent(pid)}&company_id=${encodeURIComponent(cid)}&method=${encodeURIComponent(getDefaultPaymentMethod())}&embed=1`;
-    openPaymentDrawer(url, "➕ Add Payment");
-  };
+  addPaymentBtn.onclick = () => openPaymentModal({ mode: "new" });
+}
+
+// Deep links from add-payment.html (now a redirect): ?pay=new, ?pay=due&due=YYYY-MM-DD, ?payment=<id>
+async function openPaymentFromUrl() {
+  const q = new URLSearchParams(location.search);
+  const id = q.get("payment");
+  const pay = q.get("pay");
+  if (!currentProperty || (!id && !pay)) return;
+  try { await propertyLoad; } catch (e) {}
+  if (id) openPaymentModal({ mode: "edit", paymentId: id });
+  else openPaymentModal({ mode: pay === "due" ? "due" : "new", dueISO: q.get("due") || "" });
+  // Drop the trigger so a refresh doesn't reopen the form
+  q.delete("payment"); q.delete("pay"); q.delete("due");
+  const qs = q.toString();
+  history.replaceState(null, "", location.pathname + (qs ? "?" + qs : "") + location.hash);
 }
 
 const refreshBtn = document.getElementById("refreshBtn");
@@ -4568,81 +4600,10 @@ async function updateAll() {
   updateLedgerLeaseContext();
 }
 
-/* -------------------------------------------------------------
-   Payment Drawer
-------------------------------------------------------------- */
-let lastDrawerUrl = "";
-
-function openPaymentDrawer(url, titleText) {
-  lastDrawerUrl = url;
-
-  const paymentDrawer = document.getElementById("paymentDrawer");
-  const paymentDrawerOverlay = document.getElementById("paymentDrawerOverlay");
-  const paymentDrawerIframe = document.getElementById("paymentDrawerIframe");
-  const paymentDrawerTitle = document.getElementById("paymentDrawerTitle");
-
-  if (paymentDrawerTitle) paymentDrawerTitle.textContent = titleText || "💵 Add Payment";
-  if (paymentDrawerIframe) paymentDrawerIframe.src = url;
-
-  if (paymentDrawerOverlay) paymentDrawerOverlay.classList.add("open");
-  if (paymentDrawer) paymentDrawer.classList.add("open");
-  if (paymentDrawerOverlay) paymentDrawerOverlay.setAttribute("aria-hidden", "false");
-}
-
-function closePaymentDrawer() {
-  const paymentDrawer = document.getElementById("paymentDrawer");
-  const paymentDrawerOverlay = document.getElementById("paymentDrawerOverlay");
-  const paymentDrawerIframe = document.getElementById("paymentDrawerIframe");
-
-  if (paymentDrawerOverlay) paymentDrawerOverlay.classList.remove("open");
-  if (paymentDrawer) paymentDrawer.classList.remove("open");
-  if (paymentDrawerOverlay) paymentDrawerOverlay.setAttribute("aria-hidden", "true");
-
-  setTimeout(() => {
-    if (paymentDrawerIframe) paymentDrawerIframe.src = "";
-  }, 220);
-}
-
+/* Escape closes the payment modal */
 function initPaymentDrawer() {
-  const paymentDrawerOverlay = document.getElementById("paymentDrawerOverlay");
-  const paymentDrawerCloseBtn = document.getElementById("paymentDrawerCloseBtn");
-  const paymentDrawerOpenInNewBtn = document.getElementById("paymentDrawerOpenInNewBtn");
-
-  if (paymentDrawerCloseBtn) paymentDrawerCloseBtn.addEventListener("click", closePaymentDrawer);
-  if (paymentDrawerOverlay) paymentDrawerOverlay.addEventListener("click", closePaymentDrawer);
-
-  if (paymentDrawerOpenInNewBtn) {
-    paymentDrawerOpenInNewBtn.addEventListener("click", () => {
-      if (lastDrawerUrl) {
-        // Strip embed=1 so the full page shows header/footer
-        var fullUrl = lastDrawerUrl
-          .replace(/[?&]embed=1/, function(m) { return m[0] === '?' ? '?' : ''; })
-          .replace(/\?&/, '?')
-          .replace(/&&/, '&')
-          .replace(/[?&]$/, '');
-        window.open(fullUrl, "_blank");
-      }
-    });
-  }
-
-  window.addEventListener("message", async (event) => {
-    const msg = event?.data || {};
-    if (!msg || typeof msg !== "object") return;
-
-    if (msg.type === "rent_payment_saved") {
-      closePaymentDrawer();
-      await updateAll();
-    }
-    if (msg.type === "close_payment_drawer") {
-      closePaymentDrawer();
-    }
-  });
-
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closePaymentDrawer();
-      closeMarkPaidModal();
-    }
+    if (e.key === "Escape") closeMarkPaidModal();
   });
 }
 
@@ -4976,6 +4937,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     togglePrimaryActions();
     initAttentionWorkspace();
     await computeAndStoreRentAttention();
+    await openPaymentFromUrl();
   }
 
   setProgress(100, 'Ready!', 3);
@@ -5046,20 +5008,6 @@ if (!window.__rgPayMenuBound) {
 </nav>
 
 
-<!-- Payment Drawer -->
-<div class="drawer-overlay" id="paymentDrawerOverlay" aria-hidden="true"></div>
-<aside class="payment-drawer" id="paymentDrawer" aria-label="Add or edit payment">
-  <div class="payment-drawer-header">
-    <div class="payment-drawer-title" id="paymentDrawerTitle">💵 Add Payment</div>
-    <div class="payment-drawer-actions">
-      <button class="drawer-btn" id="paymentDrawerOpenInNewBtn" type="button">↗ Open</button>
-      <button class="drawer-btn" id="paymentDrawerCloseBtn" type="button">✖ Close</button>
-    </div>
-  </div>
-  <div class="payment-drawer-body">
-    <iframe class="payment-drawer-iframe" id="paymentDrawerIframe" title="Payment form" src=""></iframe>
-  </div>
-</aside>
 
 
 <!-- Payments List Modal -->
@@ -5096,15 +5044,20 @@ if (!window.__rgPayMenuBound) {
 <!-- Mark Paid Modal -->
 <div id="markPaidOverlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.35); z-index:3000;"></div>
 
-<div id="markPaidModal" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(520px,92vw); background:white; border:1px solid #e2e8f0; border-radius:16px; box-shadow:0 18px 40px rgba(0,0,0,0.22); z-index:3001;">
+<div id="markPaidModal" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(520px,92vw); background:white; border:1px solid #e2e8f0; border-radius:16px; box-shadow:0 18px 40px rgba(0,0,0,0.22); z-index:3001; max-height:calc(100dvh - 24px); overflow-y:auto;">
   <div style="padding:14px 16px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:10px;">
-    <div style="font-weight:800; color:#0f172a;">✅ Mark Paid</div>
+    <div style="font-weight:800; color:#0f172a;" id="mpTitle">💵 Record Payment</div>
     <button id="markPaidCloseBtn" type="button" style="border:1px solid #cbd5e1; background:white; border-radius:999px; padding:6px 10px; cursor:pointer; font-weight:700;">✖</button>
   </div>
 
   <div style="padding:14px 16px;">
     <div style="font-size:0.9rem; color:#64748b; margin-bottom:10px;">
-      Due Date: <b id="mpDueLabel">—</b> • Tenant: <b id="mpTenantLabel">—</b>
+      Tenant: <b id="mpTenantLabel">—</b>
+    </div>
+
+    <div style="margin-bottom:10px;">
+      <label for="mpDueSelect" style="display:block; font-size:0.85rem; color:#475569; margin-bottom:6px; font-weight:700;">🗓️ Applies to rent due</label>
+      <select id="mpDueSelect" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:7px; background:white; font-family:inherit;"></select>
     </div>
 
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
@@ -5139,8 +5092,8 @@ if (!window.__rgPayMenuBound) {
       </div>
 
 
-    <div style="margin-top:10px;">
-    <label style="display:block; font-size:0.85rem; color:#475569; margin-bottom:6px; font-weight:700;">📝 Note (optional)</label>
+    <div style="grid-column: 1 / -1;">
+    <label for="mpNote" style="display:block; font-size:0.85rem; color:#475569; margin-bottom:6px; font-weight:700;">📝 Note (optional)</label>
     <input id="mpNote" type="text" placeholder="Example: Confirmation #1234" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:7px; box-sizing: border-box;appearance: none;">
 
     <div style="margin-top:6px; font-size:0.78rem; color:#64748b; line-height:1.35;">
@@ -5151,11 +5104,11 @@ if (!window.__rgPayMenuBound) {
     </div>
 
 
-    <div id="mpLateInfo" style="margin-top:10px; padding:10px 12px; border:1px dashed #e2e8f0; border-radius:7px; font-size:0.9rem; color:#0f172a; background:#f8fafc;">
+    <div id="mpLateInfo" style="grid-column: 1 / -1; padding:10px 12px; border:1px dashed #e2e8f0; border-radius:7px; font-size:0.9rem; color:#0f172a; background:#f8fafc;">
       —
     </div>
 
-    <div id="mpLateChoiceWrap" style="display:none; margin-top:10px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:7px; background:#fff;">
+    <div id="mpLateChoiceWrap" style="display:none; grid-column: 1 / -1; padding:10px 12px; border:1px solid #e2e8f0; border-radius:7px; background:#fff;">
       <div style="font-size:0.85rem; font-weight:800; color:#0f172a; margin-bottom:8px;">Late Fee</div>
 
       <label style="display:flex; align-items:center; gap:10px; margin-bottom:8px; cursor:pointer;">

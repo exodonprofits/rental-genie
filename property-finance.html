@@ -540,7 +540,7 @@ body { overflow-x: hidden; }
           </div>
         </div>
       </div>
-      <a id="nav-login" href="login-select.html" style="display:none">Log in</a>
+      <a id="nav-login" href="login.html" style="display:none">Log in</a>
     </div>
     <button class="hamburger" id="hamburgerBtn" aria-label="Open menu">☰</button>
   </div>
@@ -560,7 +560,7 @@ body { overflow-x: hidden; }
     <a href="tenant-messages.html">💬 Messages</a>
     <a href="reports-analytics.html">📈 Reports</a>
   </div>
-  <a href="login-select.html" id="mobileLogin" class="drawer-login">Log in</a>
+  <a href="login.html" id="mobileLogin" class="drawer-login">Log in</a>
   <div id="mobileLogoutContainer" style="display:none;">
     <button id="mobileLogoutBtn">Sign Out</button>
   </div>
@@ -825,7 +825,7 @@ body { overflow-x: hidden; }
       if (loginEl) loginEl.style.display = 'inline-flex';
       if (umdEl)   umdEl.style.display = 'none';
       document.body.classList.add('auth-guest');
-      location.href = 'login-select.html?returnTo=' + encodeURIComponent(location.pathname + location.search);
+      location.href = 'login.html?returnTo=' + encodeURIComponent(location.pathname + location.search);
       return null;
     }
     var uname = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || user.email.split('@')[0];

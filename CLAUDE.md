@@ -167,6 +167,9 @@ match the page's `<option>` values.
   `business_profiles`, `follow_up_requests` is service-role only.
 - When adding a policy, never add a `using (true)` catch-all: RLS grants access if any policy
   matches, so one catch-all cancels every scoped policy beside it.
+- Keep one permissive policy per table, role and command (rg_13): extend that policy's expression
+  with `or (...)` instead of adding a second policy, and write policies `to authenticated` unless
+  anon genuinely needs them.
 
 ---
 

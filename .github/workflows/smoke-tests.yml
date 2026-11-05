@@ -1,0 +1,56 @@
+# Page smoke tests (tests/smoke/). Runs on every pull request, and the "Deploy to Bluehost" workflow
+# runs it first and deploys only if it passes, since merging is deploying.
+#
+#   1. Syntax-check every inline <script> in the top-level pages (node --check).
+#   2. Load every page at 390px and 1280px with a stubbed Supabase client (no network, no live
+#      database) and fail on an uncaught JavaScript error, a page that doesn't finish loading, or
+#      sideways scrolling. Console errors, same-origin 404s and alert() dialogs are listed as
+#      warnings in the run summary without failing it.
+#
+# Screenshots of failing pages are uploaded as the "smoke-screenshots" artifact.
+
+name: Smoke tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: tests/smoke
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tests/smoke/package-lock.json
+
+      - name: Install test dependencies
+        run: npm ci
+
+      - name: Syntax-check inline scripts
+        run: node check-scripts.js
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Load every page (phone and desktop)
+        run: node run.js
+
+      - name: Upload screenshots of failing pages
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-screenshots
+          path: tests/smoke/artifacts/
+          if-no-files-found: ignore

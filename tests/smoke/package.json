@@ -1,0 +1,12 @@
+{
+  "name": "rentalgenie-smoke-tests",
+  "private": true,
+  "description": "Loads every page with a stubbed Supabase client at phone and desktop widths; see run.js.",
+  "scripts": {
+    "test": "node run.js"
+  },
+  "devDependencies": {
+    "chart.js": "4.4.1",
+    "playwright": "1.63.0"
+  }
+}

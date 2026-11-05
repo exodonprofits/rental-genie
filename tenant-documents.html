@@ -774,14 +774,20 @@ window.rgFiles = (function () {
   /* Resolve tenant identity via auth_user_id (not email) */
   let tenant=null;
   async function resolveTenant(u){
+    const cols='id, auth_user_id, email, tenant_name, phone';
     try{
-      const r1=await sb.from('tenants').select('id, auth_user_id, email, tenant_name, phone').eq('auth_user_id',u.id).maybeSingle();
-      if(r1.data){ if(r1.data.email!==u.email){ sb.from('tenants').update({email:u.email}).eq('id',r1.data.id).then(()=>{},()=>{}); } return r1.data; }
-      const r2=await sb.from('tenants').select('id, auth_user_id, email, tenant_name, phone').ilike('email',u.email).maybeSingle();
-      if(r2.data && !r2.data.auth_user_id){
-        sb.from('tenants').update({auth_user_id:u.id}).eq('id',r2.data.id).then(()=>{},()=>{});
+      const r1=await sb.from('tenants').select(cols).eq('auth_user_id',u.id).maybeSingle();
+      if(r1.data) return r1.data;
+      // Link the tenants row to this login server-side (rg_claim_tenant_row: confirmed email, one match)
+      const c=await sb.rpc('rg_claim_tenant_row');
+      if(c.data){
+        const r2=await sb.from('tenants').select(cols).eq('id',c.data).maybeSingle();
+        if(r2.data) return r2.data;
       }
-      return r2.data||null;
+      // Not linkable yet: read-only match by email
+      const pat=String(u.email||'').replace(/[\\%_]/g,ch=>'\\'+ch);
+      const r3=await sb.from('tenants').select(cols).ilike('email',pat).maybeSingle();
+      return r3.data||null;
     }catch(e){ return null; }
   }
 

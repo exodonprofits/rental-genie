@@ -6,7 +6,8 @@ self-contained file that runs as-is.
 
 **Merging is deploying.** Every merge to main goes live through the "Deploy to Bluehost" GitHub
 Action (`.github/workflows/deploy-bluehost.yml`, gated by the repository variable `DEPLOY_ON_PUSH`),
-which checks that the site serves the merged commit (`rg-version.txt`). There is no staging copy: it
+which runs the page smoke tests first (`tests/smoke/`) and then checks that the site serves the merged
+commit (`rg-version.txt`). There is no staging copy: it
 would share the live database. So test before merging (screenshots at desktop and ~390px with a
 stubbed client, rolled-back transactions for database changes). A manual run of the Action redeploys
 main. The deploy never deletes files it didn't upload; the folder also holds Salon Genie and Voyage
@@ -151,6 +152,12 @@ match the page's `<option>` values.
 - **Syntax-check inline scripts** (`node --check`) after editing a page. These files are large and a
   stray bracket is easy to miss.
 - **Check both widths.** Desktop and a ~390px phone, with no sideways scrolling.
+- **Run the smoke tests:** `cd tests/smoke && npm ci && node check-scripts.js && node run.js` (set
+  `CHROMIUM_PATH` to use an installed Chromium; `node run.js dashboard` checks one page). They load
+  every page at 390px and 1280px with a stubbed client and fail on uncaught errors or sideways
+  scrolling. CI runs them on every pull request, and the deploy runs only if they pass. A new page is
+  picked up automatically; if it needs data the stub doesn't have, add it to `tests/smoke/fixtures.js`
+  (invented data only).
 
 ---
 

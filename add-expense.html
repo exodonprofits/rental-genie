@@ -211,6 +211,13 @@ body.embedded main.page{padding-top:16px!important;}
 .snap-status.show{display:block;}
 .snap-filled{background:var(--green-lt) !important;border-color:#86efac !important;}
 .snap-unsure{background:#fffbeb !important;border-color:#f59e0b !important;box-shadow:0 0 0 2px rgba(245,158,11,.18);}
+/* Invoice for a repair (opened from maintenance-requests.html with ?repair=) */
+.repair-card{border-left:4px solid var(--navy-lt);}
+.repair-card .repair-title{font-weight:800;font-size:1rem;margin-bottom:4px;color:var(--navy);}
+.repair-card .repair-text{font-size:.9rem;color:#475569;line-height:1.45;overflow-wrap:anywhere;}
+.repair-card label.repair-done{display:flex;align-items:center;gap:10px;margin:12px 0 0;font-size:.9rem;font-weight:600;color:var(--navy);cursor:pointer;text-transform:none;letter-spacing:0;}
+/* the generic input rule (width:100%, appearance:none) would turn the checkbox into a blank field */
+.repair-card label.repair-done input[type=checkbox]{appearance:auto;-webkit-appearance:checkbox;width:20px;height:20px;flex:0 0 20px;padding:0;margin:0;accent-color:var(--navy);}
 @media(max-width:600px){.snap-btn{width:100%;}}
 .receipt-upload-row {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
@@ -438,6 +445,12 @@ function setProgress(pct, statusText, activeStep) {
   <div class="page-hero">
     <h1>💸 Add Expense</h1>
     <p>Track repairs, utilities, HOA, management fees, supplies, and more. Saved to the <span class="badge">expenses</span> table.</p>
+  </div>
+
+  <div class="card repair-card" id="repairCard" style="display:none">
+    <div class="repair-title">🛠️ Invoice for a repair</div>
+    <div class="repair-text" id="repairText"></div>
+    <label class="repair-done" id="repairDoneWrap"><input type="checkbox" id="repairDone" checked /> Mark this repair resolved when I save</label>
   </div>
 
   <div class="card snap-card" id="snapCard">
@@ -720,6 +733,9 @@ if (isEmbedded) {
 }
 const preProperty = qs.get("property") ? decodeURIComponent(qs.get("property")) : "";
 const editId = qs.get("id") ? decodeURIComponent(qs.get("id")) : "";
+// ?repair=<maintenance_requests.id>: this expense is the invoice for that repair (rg_16 link)
+const repairParam = /^\d+$/.test(qs.get("repair") || "") ? Number(qs.get("repair")) : null;
+let repair = null;
 // Same-origin pages only: blocks javascript: URLs and open redirects to other sites
 function rgSafeReturn(value, fallback) {
   if (!value || value === 'null' || value === 'undefined') return fallback;
@@ -790,6 +806,34 @@ async function loadProperties() {
   if (preProperty) {
     els.propertySelect.value = preProperty;
   }
+}
+
+// Opened from a repair: show which one, preset property, category and vendor, and word the snap
+// card for an invoice. The repair is read under RLS, so another company's id simply isn't found.
+async function loadRepair() {
+  if (!repairParam || editId) return;
+  const { data, error } = await client.from("maintenance_requests")
+    .select("id, company_id, property_id, property_name, issue_description, status, assigned_vendor")
+    .eq("id", repairParam).maybeSingle();
+  if (error || !data) { showMsg("error", "❌ Couldn't find that repair request. You can still log the expense."); return; }
+  repair = data;
+
+  const card = document.getElementById("repairCard");
+  const issue = String(data.issue_description || "Repair").trim();
+  document.getElementById("repairText").textContent =
+    (data.property_name ? data.property_name + " · " : "") + (issue.length > 160 ? issue.slice(0, 157) + "…" : issue);
+  const resolved = /^(resolved|completed|closed)$/i.test(String(data.status || "").trim());
+  if (resolved) document.getElementById("repairDoneWrap").style.display = "none";
+  card.style.display = "";
+
+  if (data.property_name && snapHasOption(els.propertySelect, data.property_name)) els.propertySelect.value = data.property_name;
+  if (!els.category.value) { els.category.value = "Repairs & Maintenance"; toggleMortgagePanel(); }
+  if (!els.vendor.value && data.assigned_vendor) els.vendor.value = data.assigned_vendor;
+
+  document.querySelector("#snapCard .snap-title").textContent = "📸 Snap the invoice";
+  document.querySelector("#snapCard .snap-sub").textContent = "Take a photo or upload the contractor's invoice. Genie reads it and fills in the form; you check it and save.";
+  const btn = document.getElementById("snapBtn");
+  if (btn && btn.firstChild && btn.firstChild.nodeType === 3) btn.firstChild.nodeValue = "\n      📸 Snap invoice\n      ";
 }
 
 async function loadExpenseForEdit(id) {
@@ -1133,7 +1177,10 @@ function snapApplyDraft(d) {
     snapMark(SNAP_FIELDS.total, unsure.indexOf('total') >= 0);
     filled++;
   }
-  if (d.property_name && snapHasOption(els.propertySelect, d.property_name)) {
+  // An invoice snapped from a repair belongs to the repair's property, whatever the document says
+  if (repair && els.propertySelect.value) {
+    // keep it
+  } else if (d.property_name && snapHasOption(els.propertySelect, d.property_name)) {
     els.propertySelect.value = d.property_name;
     snapMark(SNAP_FIELDS.property, unsure.indexOf('property') >= 0);
     filled++;
@@ -1158,7 +1205,8 @@ async function snapReceipt(rawFile) {
 
     snapStatus('🧞 Genie is reading your receipt…');
     var res = await client.functions.invoke('rg-snap', {
-      body: { kind: 'receipt', bucket: 'receipts', path: rgReceiptPath, company_id: activeCompanyId }
+      body: { kind: 'receipt', bucket: 'receipts', path: rgReceiptPath, company_id: activeCompanyId,
+              hint: repair ? String(repair.issue_description || '') : '' }
     });
     if (res.error) {
       var code = '';
@@ -1220,6 +1268,8 @@ async function saveExpense(e) {
     receipt_url: (els.receiptUrl?.value || "").trim() || null,
     receipt_path: rgReceiptPath || null
   };
+  // Only set when opened from a repair, so editing an expense never clears an existing link
+  if (repair && !editId) payload.maintenance_request_id = repair.id;
 
   if (!payload.property_name || !payload.date_paid || !payload.category) {
     showMsg("error","❌ Please fill Property, Date Paid, Category.");
@@ -1297,6 +1347,21 @@ async function saveExpense(e) {
   if (resp.error) {
     console.error(resp.error);
     showMsg("error","❌ Save failed: " + resp.error.message);
+    return;
+  }
+
+  if (repair && !editId) {
+    let resolvedNow = false;
+    const done = document.getElementById("repairDone");
+    if (done && done.checked && document.getElementById("repairDoneWrap").style.display !== "none") {
+      const { error: stErr } = await client.from("maintenance_requests")
+        .update({ status: "Resolved", completed_at: new Date().toISOString() }).eq("id", repair.id);
+      if (stErr) console.warn("Expense saved, but the repair wasn't marked resolved:", stErr);
+      else resolvedNow = true;
+    }
+    showMsg("success", "✅ Invoice saved and linked to the repair" + (resolvedNow ? ", which is now marked resolved." : "."));
+    await loadRecent();
+    if (returnTo && !isEmbedded) setTimeout(() => { location.href = returnTo; }, 1200);
     return;
   }
 
@@ -1384,6 +1449,7 @@ els.propertySelect.addEventListener("change", loadRecent);
 
   await loadProperties();
   if (editId) await loadExpenseForEdit(editId);
+  else await loadRepair();
   await loadRecent();
 })();
 

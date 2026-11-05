@@ -117,7 +117,10 @@ many existing pages still filter by name, which is safe only because the names a
 receipt (`kind: "receipt"`, bucket `receipts`, path `expenses/<company_id>/…`) or lease (`kind:
 "lease"`, bucket `tenant-documents`, path `<company_id>/…`) with the caller's JWT and returns a
 draft for the page to prefill. It never writes; the landlord saves. Used by `add-expense.html` and
-`lease-form.html`. Needs the `ANTHROPIC_API_KEY` secret (shared with `rental-genie-ai-proxy`), which
+`lease-form.html`. A repair's "📸 Invoice" button on `maintenance-requests.html` opens
+`add-expense.html?repair=<id>`, which sends the repair description as an optional `hint` and saves the
+expense with `maintenance_request_id` (composite FK with `company_id`, rg_16); the repair page shows
+the invoiced total from those rows. Needs the `ANTHROPIC_API_KEY` secret (shared with `rental-genie-ai-proxy`), which
 must be a key created inside a Claude Console workspace: an organization-level key gets a 400 asking
 for `anthropic-workspace-id`, which the functions surface as a 502. Expense categories in the function must
 match the page's `<option>` values.

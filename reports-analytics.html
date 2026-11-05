@@ -615,6 +615,9 @@ main {
 .maint-kpi:last-child { border-right: none; }
 .maint-kpi-val { font-family: 'DM Mono', monospace; font-size: 1.4rem; font-weight: 700; color: var(--navy); }
 .maint-kpi-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); margin-top: 4px; }
+/* "+ $X estimated" under the invoiced total; "est." costs in the table */
+.maint-kpi-sub { font-size: .72rem; color: var(--muted); margin-top: 2px; }
+.cost-est { color: var(--muted); font-style: italic; }
 
 /* Empty / loading states */
 .rpt-empty {
@@ -1041,7 +1044,8 @@ main {
         </div>
         <div class="maint-kpi">
           <div class="maint-kpi-val" id="rpt-maint-cost">$—</div>
-          <div class="maint-kpi-label">Total Cost</div>
+          <div class="maint-kpi-label">Invoiced Cost</div>
+          <div class="maint-kpi-sub" id="rpt-maint-cost-est"></div>
         </div>
       </div>
       <!-- Maintenance table -->
@@ -1054,7 +1058,7 @@ main {
               <th>Issue</th>
               <th class="text-center">Priority</th>
               <th class="text-center">Status</th>
-              <th class="text-right">Cost</th>
+              <th class="text-right" title="Invoiced (expenses linked to the repair), or the estimate while nothing is invoiced">Cost</th>
             </tr>
           </thead>
           <tbody id="maintReportBody">
@@ -1811,10 +1815,11 @@ function exportTableCSV(type) {
     filename = 'expense-report-' + _csvDateStamp() + '.csv';
 
   } else if (type === 'maint') {
-    headers  = ['Date', 'Property', 'Issue', 'Status', 'Urgency', 'Estimated Cost'];
+    headers  = ['Date', 'Property', 'Issue', 'Status', 'Urgency', 'Estimated Cost', 'Invoiced Cost'];
     rows     = _maintRows.map(function(r) {
-      var cost = Number(r.estimated_cost || 0);
-      return [localDay(r.created_at), r.property_name, r.issue_description || '', r.status || '', r.urgency_level || '', cost > 0 ? cost.toFixed(2) : ''];
+      var est = Number(r.estimated_cost || 0), inv = Number(r._invoiced || 0);
+      return [localDay(r.created_at), r.property_name, r.issue_description || '', r.status || '', r.urgency_level || '',
+        est > 0 ? est.toFixed(2) : '', inv > 0 ? inv.toFixed(2) : ''];
     });
     filename = 'maintenance-report-' + _csvDateStamp() + '.csv';
 
@@ -2126,7 +2131,7 @@ async function loadMaintReport(months) {
   if (meta) meta.textContent = 'Loading…';
 
   /* Try maintenance_requests table with created_at or date_submitted */
-  var mQ = sb.from('maintenance_requests').select('created_at, property_name, issue_description, status, urgency_level, estimated_cost')
+  var mQ = sb.from('maintenance_requests').select('id, created_at, property_name, issue_description, status, urgency_level, estimated_cost')
     .is('archived_at', null).order('created_at', {ascending: false});
   if (activeCompanyId) mQ = mQ.eq('company_id', activeCompanyId);
   if (!isPortfolio) mQ = mQ.eq('property_name', currentProperty);
@@ -2137,13 +2142,30 @@ async function loadMaintReport(months) {
     _maintRows = []; // reset before filter
     items = items.filter(function(r) { return localDay(r.created_at) >= start; });
 
+    /* Real cost: expenses linked to each repair (expenses.maintenance_request_id, rg_16). The estimate
+       only stands in, marked "est.", while a repair has nothing invoiced. */
+    var invoiced = {};
+    var ids = items.map(function(r){ return r.id; }).filter(function(id){ return id != null; });
+    if (ids.length) {
+      var invRes = await sb.from('expenses').select('maintenance_request_id, amount')
+        .in('maintenance_request_id', ids).is('archived_at', null);
+      if (invRes.error) console.warn('Invoiced repair costs unavailable:', invRes.error.message);
+      (invRes.data || []).forEach(function(e) {
+        var k = String(e.maintenance_request_id);
+        invoiced[k] = (invoiced[k] || 0) + Number(e.amount || 0);
+      });
+    }
+    items.forEach(function(r) { r._invoiced = invoiced[String(r.id)] || 0; });
+
     _maintRows = items; // cache for CSV export
-    var totalCost = items.reduce(function(s,r){ return s + Number(r.estimated_cost || 0); }, 0);
+    var totalCost = items.reduce(function(s,r){ return s + r._invoiced; }, 0);
+    var estNotInvoiced = items.reduce(function(s,r){ return s + (r._invoiced > 0 ? 0 : Number(r.estimated_cost || 0)); }, 0);
     var openCount = items.filter(function(r){ return r.status !== 'Resolved'; }).length;  // Open | In Progress | Resolved
 
     setText('rpt-maint-total', items.length || '0');
     setText('rpt-maint-open',  openCount || '0');
     setText('rpt-maint-cost',  totalCost > 0 ? fmt(totalCost) : '$0.00');
+    setText('rpt-maint-cost-est', estNotInvoiced > 0 ? '+ ' + fmt(estNotInvoiced) + ' estimated, not yet invoiced' : '');
 
     /* Color open count */
     var openEl = document.getElementById('rpt-maint-open');
@@ -2163,14 +2185,16 @@ async function loadMaintReport(months) {
         var pri = r.urgency_level || '';
         var priCls = pri === 'High' || pri === 'Emergency' ? 'badge-red'
                    : pri === 'Normal' ? 'badge-yellow' : 'badge-muted';
-        var cost = Number(r.estimated_cost || 0);
+        var est = Number(r.estimated_cost || 0);
+        var costCell = r._invoiced > 0 ? fmt(r._invoiced)
+                     : (est > 0 ? '<span class="cost-est" title="Estimate; no invoice linked yet">est. ' + fmt(est) + '</span>' : '—');
         return '<tr>' +
           '<td>' + fmtDate(localDay(r.created_at)) + '</td>' +
           '<td>' + escHtml(r.property_name || '—') + '</td>' +
           '<td>' + escHtml(r.issue_description || '—') + '</td>' +
           '<td class="text-center">' + (pri ? '<span class="badge ' + priCls + '">' + escHtml(pri) + '</span>' : '—') + '</td>' +
           '<td class="text-center"><span class="badge ' + stCls + '">' + escHtml(st) + '</span></td>' +
-          '<td class="text-right mono">' + (cost > 0 ? fmt(cost) : '—') + '</td>' +
+          '<td class="text-right mono">' + costCell + '</td>' +
         '</tr>';
       }).join('');
     }

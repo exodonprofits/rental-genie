@@ -47,11 +47,11 @@ function base() {
       tenant_email: 'tenant@example.com', amount: r.paid, method: 'Zelle', note: '', date_paid: r.due_date,
       applied_to_due_date: r.due_date, inserted_at: r.due_date + 'T12:00:00', archived_at: null })),
     expenses: [
-      { id: 1, company_id: C, property_id: P1, property_name: 'Oak Street', category: 'Repairs', amount: 240, date_paid: today, vendor: 'Plumber', note: 'Leak', archived_at: null },
+      { id: 1, company_id: C, property_id: P1, property_name: 'Oak Street', category: 'Repairs & Maintenance', amount: 240, date_paid: today, vendor: 'Plumber', note: 'Leak', maintenance_request_id: 1, archived_at: null },
       { id: 2, company_id: C, property_id: P2, property_name: 'Elm Avenue', category: 'Insurance', amount: 90, date_paid: today, vendor: 'Insurer', note: '', archived_at: null }
     ],
     maintenance_requests: [{ id: 1, company_id: C, property_id: P1, property_name: 'Oak Street', tenant_id: T1, tenant_email: 'tenant@example.com',
-      tenant_name: 'Test Tenant', issue_description: 'Kitchen tap drips', urgency_level: 'medium', status: 'Pending',
+      tenant_name: 'Test Tenant', issue_description: 'Kitchen tap drips', urgency_level: 'Normal', assigned_vendor: 'Ace Plumbing', status: 'Open',
       created_at: today + 'T09:00:00Z', archived_at: null }],
     tenant_messages: [{ id: 1, company_id: C, property_id: P1, property_name: 'Oak Street', tenant_id: T1, tenant_email: 'tenant@example.com',
       subject: 'Hello', message: 'Is the gutter work scheduled?', sender: 'tenant', created_at: today + 'T10:00:00Z', read_at: null }],

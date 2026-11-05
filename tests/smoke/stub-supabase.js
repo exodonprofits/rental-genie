@@ -1,7 +1,8 @@
 /* Stand-in for supabase-js used by the smoke tests (tests/smoke/run.js serves it in place of the
    CDN script). It never talks to a network: auth returns the fixture user, queries read
    window.__RG_FIXTURE, writes are recorded in window.__rgWrites and succeed, rpc() returns
-   fixture.rpc[name]. Filters are applied loosely (eq / neq / in / is / ilike / gte / lte); anything
+   fixture.rpc[name], functions.invoke() returns fixture.functions[name] and records the call in
+   window.__rgInvokes. Filters are applied loosely (eq / neq / in / is / ilike / gte / lte); anything
    else is accepted and ignored, because the goal is "the page renders without errors", not
    query correctness. */
 (function () {
@@ -98,7 +99,13 @@
             };
           }
         },
-        functions: { invoke: function () { return ok({}); } },
+        functions: {
+          invoke: function (name, opts) {
+            (W.__rgInvokes = W.__rgInvokes || []).push({ name: name, body: clone(opts && opts.body) });
+            var r = (F.functions || {})[name];
+            return ok(typeof r === 'function' ? r(opts && opts.body) : clone(r === undefined ? {} : r));
+          }
+        },
         channel: function () { var c = { on: function () { return c; }, subscribe: function () { return c; }, unsubscribe: function () {} }; return c; },
         removeChannel: function () { return Promise.resolve('ok'); },
         removeAllChannels: function () { return Promise.resolve([]); }

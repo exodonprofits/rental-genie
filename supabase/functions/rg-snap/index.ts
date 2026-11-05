@@ -7,6 +7,8 @@
 //
 // POST { kind: "receipt", bucket: "receipts",         path: "expenses/<company_id>/<file>", company_id }
 // POST { kind: "lease",   bucket: "tenant-documents", path: "<company_id>/<slug>/<file>",  company_id }
+// Optional for a receipt: hint, a short description of the repair the invoice is for (sent when the
+// landlord snaps an invoice from a maintenance request), used as context only.
 // Authorization: Bearer <user JWT>
 //
 // The file is downloaded and the property list read with the CALLER's JWT, so Storage and table
@@ -81,14 +83,17 @@ function receiptSchema(propertyNames: string[]) {
   };
 }
 
-function receiptPrompt(properties: { name: string; address: string | null }[], today: string) {
+function receiptPrompt(properties: { name: string; address: string | null }[], today: string, hint: string) {
   const list = properties.length
     ? properties.map((p) => `- ${p.name}${p.address ? ` (${p.address})` : ""}`).join("\n")
     : "(none on file)";
+  const repair = hint
+    ? `\nThe landlord is attaching this to a repair request: "${hint}". Use that only as context for category and note; read every value from the document itself.\n`
+    : "";
   return `This is a receipt, invoice or bill a landlord uploaded for a rental property. Read it and fill in the expense fields.
 
 Today is ${today}; use it to settle the year when the document omits one.
-
+${repair}
 The landlord's properties:
 ${list}
 
@@ -194,6 +199,7 @@ async function extract(
   bytes: Uint8Array,
   mediaType: string,
   properties: { name: string; address: string | null }[],
+  hint = "",
 ) {
   const anthropic = new Anthropic();
   const fileBlock = mediaType === "application/pdf"
@@ -221,7 +227,7 @@ async function extract(
       role: "user",
       content: [fileBlock, {
         type: "text",
-        text: kind === "lease" ? leasePrompt(properties, today) : receiptPrompt(properties, today),
+        text: kind === "lease" ? leasePrompt(properties, today) : receiptPrompt(properties, today, hint),
       }],
     }],
   } as any);
@@ -266,6 +272,8 @@ Deno.serve(async (req) => {
   const bucket = String(body.bucket || "");
   const path = String(body.path || "");
   const companyId = String(body.company_id || "");
+  // Context from the page, not trusted as data: one line, capped
+  const hint = kind === "receipt" ? String(body.hint || "").replace(/\s+/g, " ").trim().slice(0, 300) : "";
   if (bucket !== BUCKET_FOR_KIND[kind] || !path) return json({ error: "Missing file" }, 400);
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -292,7 +300,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const result = await extract(kind, new Uint8Array(await blob.arrayBuffer()), mediaType, properties);
+    const result = await extract(kind, new Uint8Array(await blob.arrayBuffer()), mediaType, properties, hint);
     if ("error" in result) return json({ error: result.error }, result.status);
     return json({ ok: true, kind, draft: result.draft, model: result.model });
   } catch (err) {

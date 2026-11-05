@@ -4,7 +4,8 @@
 # Run it by hand from the Actions tab ("Deploy to Bluehost" → Run workflow) to redeploy the current
 # main, e.g. after a file was changed on the server by hand. There is no staging target: a copy of the
 # site would use the same live database, so it isn't a safe test environment. Pages are checked with
-# screenshots at desktop and phone widths before they're merged.
+# screenshots at desktop and phone widths before they're merged, and the deploy job runs only after
+# the page smoke tests (smoke-tests.yml) pass on the commit being deployed.
 #
 # Repository secrets (Settings → Secrets and variables → Actions):
 #   BLUEHOST_FTP_SERVER    e.g. ftp.rentalgenieai.com
@@ -39,7 +40,13 @@ permissions:
   contents: read
 
 jobs:
+  # The page smoke tests (.github/workflows/smoke-tests.yml) must pass before anything goes live.
+  smoke:
+    if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_ON_PUSH == 'true'
+    uses: ./.github/workflows/smoke-tests.yml
+
   deploy:
+    needs: smoke
     if: github.event_name == 'workflow_dispatch' || vars.DEPLOY_ON_PUSH == 'true'
     runs-on: ubuntu-latest
     steps:

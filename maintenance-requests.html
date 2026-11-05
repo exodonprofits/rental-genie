@@ -366,6 +366,9 @@ select {
     }
     .btn-mini:hover{ background:#f8fafc; }
     .btn-mini:disabled{ opacity:0.5; cursor:not-allowed; }
+    /* Invoiced total for a repair (expenses linked by maintenance_request_id, rg_16) */
+    .inv-chip{ display:none; margin-top:6px; font-size:.78rem; font-weight:700; color:#065f46; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:999px; padding:2px 10px; width:max-content; max-width:100%; }
+    .inv-chip.show{ display:inline-block; }
     .btn-mini.primary{ border-color:#86efac; }
     .btn-mini.warn{ border-color:#fde68a; }
     .btn-mini.danger{ border-color:#fecaca; color:#b91c1c; }
@@ -1800,6 +1803,7 @@ window.rgFiles = (function () {
         <label for="costModalNote">Note (optional)</label>
         <input id="costModalNote" type="text" placeholder="e.g. Replaced kitchen faucet" />
       </div>
+      <button type="button" class="btn-pill" id="costModalSnapBtn" style="margin-top:12px;width:100%;">📸 Snap the invoice instead</button>
       <div id="costModalPreFilled" style="display:none;margin-top:10px;padding:8px 12px;
            background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:.83rem;color:#065f46;">
         💡 Pre-filled from estimated cost on this request.
@@ -2226,6 +2230,7 @@ if (hamburgerBtn && mobileDrawer) {
           <button class="btn-mini primary" ${canComplete ? "" : "disabled"} onclick="setStatus(${id}, 'Resolved')">✅ Complete</button>
 
           <button class="btn-mini" onclick="openEditModal(${id})">✏️ Edit</button>
+          <button class="btn-mini" onclick="snapInvoice(${Number(id)})" title="Photograph or upload the contractor's invoice">📸 Invoice</button>
 
           <div class="menu-wrap">
             <button class="btn-mini" onclick="toggleMenu('${menuId}')">⋯</button>
@@ -2514,7 +2519,7 @@ if (hamburgerBtn && mobileDrawer) {
             <td data-label="Date">${formatDate(r.created_at)}</td>
             <td data-label="Property">${escapeHtml(r.property_name || "—")}</td>
             <td data-label="Tenant">${escapeHtml(tenant)}</td>
-            <td data-label="Issue">${escapeHtml(issue)}${renderPhotoLinks(r)}</td>
+            <td data-label="Issue">${escapeHtml(issue)}${renderPhotoLinks(r)}<br><span class="inv-chip" data-inv="${Number(r.id)}"></span></td>
             <td data-label="Priority">${escapeHtml(priority)}</td>
             <td data-label="Status">${getStatusPill(r.status)}</td>
             <td class="actions-cell" data-label="Actions">${renderActions(r)}</td>
@@ -2524,6 +2529,7 @@ if (hamburgerBtn && mobileDrawer) {
         .join("");
 
       rgFiles.hydrate(client, body);
+      loadInvoicedTotals(rows);
       if (openEl) openEl.textContent = openCount.toString();
       if (inProgressEl) inProgressEl.textContent = inProgressCount.toString();
       if (highPriorityEl) highPriorityEl.textContent = highPriorityCount.toString();
@@ -2553,6 +2559,37 @@ if (hamburgerBtn && mobileDrawer) {
     }
 
 
+    // Open the expense form as the invoice for this repair: Snap-it reads the invoice, and saving links
+    // the expense to the repair (expenses.maintenance_request_id) and can mark it resolved.
+    function snapInvoice(id){
+      const req = (requestsCache || []).find(x => String(x.id) === String(id)) || null;
+      const q = new URLSearchParams();
+      q.set("repair", String(id));
+      if (req && req.property_name) q.set("property", req.property_name);
+      q.set("return", "maintenance-requests.html" + location.search);
+      location.href = "add-expense.html?" + q.toString();
+    }
+
+    // "Invoiced $X" under each repair that has linked expenses
+    async function loadInvoicedTotals(rows){
+      const ids = (rows || []).map(r => Number(r.id)).filter(n => Number.isFinite(n));
+      if (!ids.length) return;
+      const { data, error } = await client.from("expenses")
+        .select("maintenance_request_id, amount")
+        .in("maintenance_request_id", ids)
+        .is("archived_at", null);
+      if (error) { console.warn("Invoiced totals unavailable:", error.message); return; }
+      const totals = new Map();
+      (data || []).forEach(e => {
+        const k = String(e.maintenance_request_id);
+        totals.set(k, (totals.get(k) || 0) + (Number(e.amount) || 0));
+      });
+      document.querySelectorAll("#requestsTableBody .inv-chip[data-inv]").forEach(el => {
+        const t = totals.get(el.getAttribute("data-inv"));
+        if (t) { el.textContent = "🧾 Invoiced " + money(t); el.classList.add("show"); }
+      });
+    }
+
     async function insertMaintenanceExpenseSafe({ req, amount, note, vendor }) {
       const datePaid = new Date();
       const yyyyMmDd = new Date(datePaid.getTime() - datePaid.getTimezoneOffset()*60000).toISOString().slice(0,10);
@@ -2567,6 +2604,7 @@ if (hamburgerBtn && mobileDrawer) {
         category: "Repairs & Maintenance",
         amount,
         note,
+        maintenance_request_id: req.id,
       };
 
       const try1 = { ...baseRow, ...(vendor ? { vendor } : {}) };
@@ -2607,6 +2645,13 @@ if (hamburgerBtn && mobileDrawer) {
         // Close button
         document.getElementById("closeCostModalBtn").onclick = closeCostModal;
         modal.addEventListener("click", function(e){ if (e.target === modal) closeCostModal(); });
+
+        // Snap the invoice: the request is already Resolved; the expense form links the invoice to it
+        document.getElementById("costModalSnapBtn").onclick = function() {
+          const req = _costModalReq;
+          closeCostModal();
+          if (req) snapInvoice(req.id);
+        };
 
         // Skip: complete with no expense
         document.getElementById("costModalSkipBtn").onclick = async function() {
@@ -2947,7 +2992,8 @@ if (hamburgerBtn && mobileDrawer) {
           date_paid: yyyyMmDd,
           note: "Tenant reimbursement" + (r.description ? ": " + r.description : ""),
           receipt_url: r.receipt_url || null,
-          receipt_path: r.receipt_path || null
+          receipt_path: r.receipt_path || null,
+          maintenance_request_id: r.maintenance_request_id || null
         }]).select("id").single();
 
         if (expErr) {

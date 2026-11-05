@@ -224,7 +224,7 @@
     display: inline-flex; align-items: center; gap: 6px;
     padding: 9px 16px; border-radius: 999px; border: 1px solid var(--border);
     background: #fff; color: var(--text); font-size: .85rem; font-weight: 700;
-    cursor: pointer; font-family: inherit; transition: all .15s;
+    cursor: pointer; font-family: inherit; transition: all .15s; text-decoration: none;
   }
   .btn:hover { background: var(--bg); }
   .btn:disabled { opacity: .55; cursor: not-allowed; }
@@ -350,7 +350,7 @@ body { overflow-x: hidden; }
   <div class="page-header">
     <div>
       <h1 class="page-title">👤 My Account</h1>
-      <p class="page-sub">Update your contact phone number and email address.</p>
+      <p class="page-sub">Your contact details on file with your landlord.</p>
     </div>
   </div>
 
@@ -378,17 +378,14 @@ body { overflow-x: hidden; }
     </div>
     <div class="card-body">
       <div class="form-group" style="max-width:360px;margin-bottom:14px;">
-        <label>Current Email</label>
+        <label for="currentEmailInput">Current Email</label>
         <input id="currentEmailInput" class="form-input" disabled />
       </div>
-      <div class="form-group" style="max-width:360px;">
-        <label>New Email</label>
-        <input id="newEmailInput" type="email" class="form-input" placeholder="you@newaddress.com" />
-      </div>
-      <div style="margin-top:14px;">
-        <button class="btn primary" id="btnSaveEmail" type="button">✉️ Send Confirmation to New Email</button>
-      </div>
-      <div class="status-msg" id="emailStatus"></div>
+      <p style="margin:0 0 14px;font-size:.88rem;color:#475569;line-height:1.5;max-width:520px;">
+        Your lease, payments and requests are filed under this email, so it can only be changed by your
+        landlord. Send them your new address and they'll update it for you.
+      </p>
+      <a class="btn primary" id="emailChangeLink" href="tenant-contact.html?subject=Please%20update%20my%20email%20address">✉️ Ask my landlord to update it</a>
     </div>
   </div>
 
@@ -578,35 +575,6 @@ body { overflow-x: hidden; }
       }
       tenant.phone = phone;
       setStatus('phoneStatus', 'ok', '✅ Phone number saved.');
-    });
-  });
-
-  $('btnSaveEmail').addEventListener('click', function () {
-    var btn = this;
-    var newEmail = $('newEmailInput').value.trim();
-    setStatus('emailStatus', '', '');
-
-    if (!newEmail) {
-      setStatus('emailStatus', 'err', 'Please enter a new email address.');
-      return;
-    }
-    if (newEmail.toLowerCase() === (user.email || '').toLowerCase()) {
-      setStatus('emailStatus', 'err', "That's already your current email.");
-      return;
-    }
-
-    btn.disabled = true; btn.textContent = 'Sending…';
-
-    sb.auth.updateUser({ email: newEmail }).then(function (res) {
-      btn.disabled = false; btn.textContent = '✉️ Send Confirmation to New Email';
-      if (res.error) {
-        setStatus('emailStatus', 'err', 'Could not start email change: ' + res.error.message);
-        return;
-      }
-      setStatus('emailStatus', 'info',
-        '📩 A confirmation link was sent to ' + newEmail + ". Your login email won't change until you click that link. " +
-        'Once confirmed, this page will show your new email automatically the next time you log in.');
-      $('newEmailInput').value = '';
     });
   });
 

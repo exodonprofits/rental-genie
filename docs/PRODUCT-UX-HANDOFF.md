@@ -482,3 +482,53 @@ Tenant Home/Repairs navigation and full-width footer consistency were corrected.
 This validates local simulated workflows, not live-service readiness. Next steps
 are owner design review, real-device accessibility checks and isolated-backend
 integration testing. Changes remain local and uncommitted; nothing was deployed.
+
+## Integration into the repository (Claude Code, 2026-11-08)
+
+The Codex commit `71fdc89` never reached GitHub (no write access from that workspace). The owner
+exported it with `git format-patch` and it was applied unchanged, author and message preserved, on top
+of `main` at `2af45f0`. Its hash differs (`160b937`) only because the base is newer: since the
+redesign branched, `main` gained Snap-it for repair invoices (PR #37: `expenses.maintenance_request_id`,
+the repair Invoice button, invoiced chips) and invoiced repair costs in Reports (PR #38). The patch
+applied cleanly with three-way merge and those features are intact in the redesigned pages.
+
+Review before applying: no secrets, no new external hosts or scripts, no `target="_blank"`; every new
+`innerHTML` is either fixed text or escaped through the page's `safe()` helper.
+
+Verification on the integrated tree (invented data, stubbed Supabase; not live-service evidence):
+
+| Check | Result |
+| --- | --- |
+| Inline scripts (`check-scripts.js`) plus `form-guide.js`, `tenant-resources.js`, `workspaces.js` | 110 blocks and 3 files parse |
+| Page suite (`run.js`), 390 and 1280px | 112 passed, 0 warnings |
+| Workspace suite (`workspaces.js`), 320 to 2560px plus failure cases | 77 passed |
+| Snap-it end to end on the redesigned repairs and expense pages | Invoice button, invoiced chip, presets, repair hint sent to `rg-snap`, linked insert with `maintenance_request_id`, repair marked Resolved, return to repairs; Complete pop-up "Snap the invoice instead"; no errors or overflow at 390px |
+| Reports maintenance costs | Invoiced totals, `est.` fallback and CSV columns unchanged at 1280 and 390px |
+| Screenshots inspected | Dashboard, Properties, Maintenance, Tenant home at 390 and 1920px |
+
+Changes made during integration:
+
+- `tests/smoke/fixtures.js`: properties gain `occupancy_status` (the live column the redesigned
+  Properties page reads; the fixture only had the older `status`). Both suites still pass.
+- `.github/workflows/smoke-tests.yml`: CI now also runs `workspaces.js`, so pull requests and every
+  deploy (which calls this workflow first) run the interaction and unavailable-data checks.
+
+### Status of the priorities in the Codex handoff
+
+1. **Push and deploy the redesign.** Pushed to `claude/blissful-lovelace-iaj1sb` with a pull request.
+   Not merged: merging deploys to rentalgenieai.com, and the regression review lists owner design
+   review as outstanding. After the owner merges, confirm the "Deploy to Bluehost" run (smoke tests
+   first, then upload) and that `rg-version.txt` serves the merge commit.
+2. **Real-device, accessibility, isolated-backend testing.** Not started. Real iPhone Safari and
+   Android Chrome checks need the owner's devices. Isolated-backend integration needs a Supabase
+   development branch (billed separately; requires the owner's approval before creating one).
+3. **Maintenance completion timestamp.** Confirmed still present: `saveEdit()` sets `completed_at`
+   only for `Completed`/`Closed`, but the status selector submits `Resolved`, so resolving from the
+   edit form leaves `completed_at` empty. Next change, as its own pull request with a rolled-back
+   database test.
+4. **Reliable notifications** (workstream A). Needs a design pass with the owner before building:
+   new outbox/delivery tables, unique event keys, retry worker, preferences and failure alerts.
+5. **Maintenance coordination, rent reconciliation, lease lifecycle** (workstreams B to D). Not
+   started. Rent collection needs a payment-provider decision first.
+
+No production migrations, tenant communications, uploads or payments were made for this integration.

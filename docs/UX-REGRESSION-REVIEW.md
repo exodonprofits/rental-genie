@@ -3,6 +3,11 @@
 Date: 2026-11-07. Scope: local mobile/desktop UX changes documented in
 [PRODUCT-UX-HANDOFF.md](PRODUCT-UX-HANDOFF.md). No deployment performed.
 
+> **Update 2026-11-08:** the changes are now committed on top of `main` and re-verified there
+> (112 page checks, 77 workspace checks). See "Integration into the repository" in the product
+> handoff. Statements below that the work is local and uncommitted describe the Codex workspace
+> at review time.
+
 ## Result
 
 The redesigned screens pass the repository's complete simulated-data rendering

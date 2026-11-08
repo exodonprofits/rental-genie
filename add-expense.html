@@ -291,9 +291,21 @@ body { overflow-x: hidden; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>
+<style id="expense-entry-workspace-design">
+body.expense-entry-workspace {background:#f4f6f9}
+.expense-entry-workspace main.page {width:100%;max-width:none;box-sizing:border-box;padding:28px}
+.expense-entry-workspace .navbar,.expense-entry-workspace .footer-content {max-width:none}
+.expense-entry-workspace .snap-card {background:#102d35;box-shadow:none}
+.expense-entry-workspace .card {border-radius:14px;box-shadow:none}
+.expense-entry-workspace :is(input,select,button) {min-height:44px;box-sizing:border-box}
+.expense-entry-workspace .snap-btn input,.expense-entry-workspace .receipt-upload-btn input[type="file"] {display:block;position:absolute;width:1px;height:1px;min-height:0;overflow:hidden;clip-path:inset(50%)}
+.expense-entry-workspace :is(a,button,input,select,textarea):focus-visible,.expense-entry-workspace .snap-btn:focus-within,.expense-entry-workspace .receipt-upload-btn:focus-within {outline:3px solid #b97016;outline-offset:3px}
+@media(max-width:600px){.expense-entry-workspace main.page {padding:20px 16px calc(110px + env(safe-area-inset-bottom))}.expense-entry-workspace .grid {grid-template-columns:1fr}.expense-entry-workspace .receipt-upload-row {flex-wrap:wrap}.expense-entry-workspace .receipt-upload-row input[type="text"] {flex-basis:100%;min-width:0}.expense-entry-workspace input,.expense-entry-workspace select,.expense-entry-workspace textarea {font-size:16px}}
+@media(prefers-reduced-motion:reduce){.expense-entry-workspace * {animation:none !important;transition:none !important}}
+</style>
 </head>
 
-<body class="auth-guest">
+<body class="auth-guest expense-entry-workspace">
 <!-- ═══ SUPABASE BOOTSTRAP (body-first: avoids tracking-prevention blocking safeStorage) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -444,7 +456,7 @@ function setProgress(pct, statusText, activeStep) {
 <main class="page">
   <div class="page-hero">
     <h1>💸 Add Expense</h1>
-    <p>Track repairs, utilities, HOA, management fees, supplies, and more. Saved to the <span class="badge">expenses</span> table.</p>
+    <p>Capture a receipt or enter the details below. Review the property, date, category, and amount before saving.</p>
   </div>
 
   <div class="card repair-card" id="repairCard" style="display:none">
@@ -462,7 +474,7 @@ function setProgress(pct, statusText, activeStep) {
       📸 Snap receipt
       <input type="file" id="snapFile" accept="image/*,application/pdf,.pdf" />
     </label>
-    <div class="snap-status" id="snapStatus"></div>
+    <div class="snap-status" id="snapStatus" role="status"></div>
   </div>
 
   <div class="card">
@@ -526,7 +538,7 @@ function setProgress(pct, statusText, activeStep) {
         </div>
 
         <div class="receipt-field">
-          <label>🧾 Receipt / Attachment</label>
+          <label for="receiptUrl">🧾 Receipt / Attachment</label>
           <div class="receipt-upload-row">
             <input type="text" id="receiptUrl"
                    placeholder="Paste a URL, or click 📎 to upload a file…" />

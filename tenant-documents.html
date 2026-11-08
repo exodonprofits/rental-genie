@@ -515,8 +515,10 @@ body { overflow-x: hidden; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>
+<link rel="stylesheet" href="shared/css/tenant-workspace.css">
+<script src="shared/js/tenant-resources.js" defer></script>
 </head>
-<body>
+<body class="tenant-workspace tenant-resources">
 
 <!-- ═══ SUPABASE (body-first) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -683,12 +685,14 @@ window.rgFiles = (function () {
     </div>
     <div class="card-body">
       <div class="search-row">
+        <label for="search" class="tenant-search-label">Find a document</label>
         <input id="search" class="search-input" placeholder="🔍 Search by title, type, property…" type="search"/>
       </div>
+      <div class="tenant-repair-view"><label for="documentType">Document type</label><select id="documentType"><option value="all">All types</option><option value="lease">Lease</option><option value="receipt">Receipt</option><option value="notice">Notice</option><option value="other">Other</option></select><p id="documentResults" role="status"></p></div>
       <div class="table-wrap">
-        <table class="rg-stack">
+        <table class="rg-stack" role="table" aria-label="Shared documents">
           <thead>
-            <tr><th>Date</th><th>Type</th><th>Title</th><th>Property</th><th>Open</th></tr>
+            <tr><th scope="col">Date</th><th scope="col">Type</th><th scope="col">Title</th><th scope="col">Property</th><th scope="col">Open</th></tr>
           </thead>
           <tbody id="docBody">
             <tr><td colspan="5"><span class="skel" style="width:60%;height:16px;"></span></td></tr>
@@ -802,15 +806,18 @@ window.rgFiles = (function () {
   function render(){
     const q=($('search').value||'').trim().toLowerCase();
     const prop=propertyFromUrl;
-    const filtered=(q||prop)?docs.filter(d=>{
+    let filtered=(q||prop)?docs.filter(d=>{
       const txt=(safe(d.title)+safe(d.doc_type||d.type)+safe(d.property_name)).toLowerCase();
       const matchQ=!q||txt.includes(q);
       const matchP=!prop||(safe(d.property_name).toLowerCase().includes(prop.toLowerCase()));
       return matchQ&&matchP;
     }):docs;
+    const type=$('documentType').value;
+    filtered=filtered.filter(function(doc){const value=String(doc.doc_type||doc.type||'').toLowerCase();return type==='all'||(type==='other'?!['lease','receipt','notice'].some(key=>value.includes(key)):value.includes(type))});
+    $('documentResults').textContent=filtered.length+' document'+(filtered.length===1?'':'s')+' in this view';
     const body=$('docBody');
     if(!filtered.length){
-      body.innerHTML='<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📁</div><p>No documents found.<br>Your landlord will share files here.</p></div></td></tr>';
+      body.innerHTML='<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">📁</div><p>No documents match this view. Try another search or document type. Files shared by your landlord appear here.</p></div></td></tr>';
       return;
     }
     body.innerHTML=filtered.map(d=>`
@@ -821,6 +828,8 @@ window.rgFiles = (function () {
         <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safe(d.property_name)||'—'}</td>
         <td>${(d.file_path||safeDocUrl(d.file_url||d.url))?`<a class="open-btn" href="#"${rgFiles.attr('tenant-documents', d.file_path||safeDocUrl(d.file_url||d.url))} target="_blank" rel="noopener noreferrer">↗ Open</a>`:'—'}</td>
       </tr>`).join('');
+    const labels=['Date','Type','Title','Property','Open'];
+    Array.from(body.rows).forEach(function(row){row.setAttribute('role','row');Array.from(row.cells).forEach(function(cell,index){cell.dataset.label=labels[index];cell.setAttribute('role','cell')})});
     rgFiles.hydrate(sb, body);
   }
 
@@ -831,7 +840,7 @@ window.rgFiles = (function () {
       : sb.from('tenant_documents').select('*').eq('tenant_email', user.email);
     if(propertyFromUrl) q=q.eq('property_name',decodeURIComponent(propertyFromUrl));
     const {data,error}=await q;
-    if(error){ $('docBody').innerHTML=`<tr><td colspan="5" style="color:var(--danger)">${safe(error.message)}</td></tr>`; return; }
+    if(error){ $('documentResults').textContent='Documents unavailable. Try Refresh.'; ['kpiLease','kpiReceipts','kpiNotices','kpiTotal'].forEach(id=>$(id).textContent='—'); $('docBody').innerHTML=`<tr><td colspan="5" style="color:var(--danger)">${safe(error.message)}</td></tr>`; return; }
     // Sort client-side by whichever date column exists in this table
     docs=(data||[]).sort((a,b)=>{
       const da=new Date(a.date_uploaded||a.uploaded_at||a.created_at||0);
@@ -842,6 +851,7 @@ window.rgFiles = (function () {
     render();
   }
 
+  $('documentType').addEventListener('change',render);
   $('btnRefresh').addEventListener('click',loadData);
   $('search').addEventListener('input',render);
 

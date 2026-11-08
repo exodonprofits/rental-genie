@@ -19,7 +19,7 @@
 <link rel="dns-prefetch" href="https://xqmnaeujwumlcoyhgzuk.supabase.co">
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <!-- ════════════════════════════════════════════════════ -->
-<title>🏘️ Property Management – Rental Genie</title>
+<title>Your properties – Rental Genie</title>
 <style>
 /* -------------------------------------------------------------
    GLOBAL (matches index.html)
@@ -1726,9 +1726,65 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   }
 }
 </style>
+<style id="portfolio-workspace-design">
+body.portfolio-workspace { background:#f4f6f9; }
+body.portfolio-workspace main.page { width:100% !important; max-width:none !important; box-sizing:border-box; padding:28px !important; }
+.portfolio-workspace .navbar,.portfolio-workspace .footer-content,.portfolio-workspace .footer-bottom { max-width:none !important; }
+.portfolio-workspace h1 { font-size:clamp(1.5rem,3vw,2rem) !important; letter-spacing:-.04em; }
+.portfolio-eyebrow { font-size:.72rem; font-weight:700; letter-spacing:.12em; color:#52647a; }
+.portfolio-workspace .filter-card { border-radius:16px !important; box-shadow:none !important; gap:16px !important; }
+.portfolio-workspace .filter-grid { flex:2 !important; }
+.portfolio-status-field { flex:1; min-width:160px; }
+.portfolio-workspace .filter-field input,.portfolio-workspace .filter-field select { min-height:48px; box-sizing:border-box; width:100%; }
+.portfolio-workspace .kpis { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:12px; }
+.portfolio-workspace .kpi { border-radius:14px !important; box-shadow:none !important; }
+.portfolio-followups { margin:16px 0; border:1px solid #dce3eb; border-radius:12px; background:white; padding:0 16px; }
+.portfolio-followups summary { cursor:pointer; padding:16px 0; font-weight:600; color:#213b50; font-size:.85rem; }
+.portfolio-followups summary span { display:block; font-weight:400; color:#52647a; font-size:.75rem; margin-top:5px; }
+.portfolio-results { color:#52647a; font-size:.85rem; margin:22px 0 14px; }
+.portfolio-workspace .cards { grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr)) !important; gap:20px !important; align-items:start; }
+.portfolio-workspace .portfolio-property { padding:24px !important; border:1px solid #dce3eb !important; border-radius:16px !important; box-shadow:none !important; min-width:0; }
+.portfolio-card-head { display:flex; align-items:start; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.portfolio-card-head > div { min-width:0; flex:1 1 180px; }
+.portfolio-card-head h2 { margin:0; font-size:1.2rem; overflow-wrap:anywhere; }
+.portfolio-property-title { color:#102d35; text-decoration:none; }
+.portfolio-property-title:hover { text-decoration:underline; }
+.portfolio-workspace .addr { font-size:.85rem; line-height:1.5; overflow-wrap:anywhere; }
+.portfolio-occupancy { font-size:.72rem; padding:7px 10px; border-radius:999px; background:#edf3f4; color:#244e54; font-weight:700; }
+.portfolio-occupancy.vacant { background:#fff4da; color:#795000; }
+.portfolio-card-metrics { display:grid; grid-template-columns:1fr 1fr; gap:20px 14px; margin:24px 0; }
+.portfolio-card-metrics dt { color:#52647a; font-size:.77rem; margin-bottom:6px; }
+.portfolio-card-metrics dd { margin:0; font-weight:700; color:#152d42; overflow-wrap:anywhere; }
+.portfolio-next { padding:14px; background:#f4f7f9; border-radius:10px; }
+.portfolio-next.attention { background:#fff8e9; border-left:3px solid #b97016; }
+.portfolio-next-label { font-size:.65rem; letter-spacing:.1em; color:#52647a; font-weight:700; }
+.portfolio-next p { margin:5px 0 0; font-size:.85rem; color:#213b50; }
+.portfolio-card-actions { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0; }
+.portfolio-workspace .btn { min-height:44px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; }
+.portfolio-workspace .btn-primary { background:#164c45 !important; color:white !important; }
+.portfolio-more { border-top:1px solid #e2e8f0; padding-top:4px; }
+.portfolio-more summary { cursor:pointer; padding:12px 0; font-size:.82rem; color:#52647a; }
+.portfolio-more-links { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+.portfolio-more-links a { color:#213b50; padding:12px 8px; font-size:.85rem; border-radius:8px; }
+.portfolio-workspace a:focus-visible,.portfolio-workspace button:focus-visible,.portfolio-workspace summary:focus-visible,.portfolio-workspace input:focus-visible,.portfolio-workspace select:focus-visible { outline:3px solid #b97016 !important; outline-offset:3px; }
+@media(max-width:680px) {
+ body.portfolio-workspace main.page { padding:20px 16px calc(110px + env(safe-area-inset-bottom)) !important; }
+ .portfolio-workspace .portfolio-property { padding:18px !important; }
+ .portfolio-workspace .kpis { gap:6px; }
+ .portfolio-workspace .kpi { display:flex !important; flex-direction:column !important; align-items:start !important; gap:10px; padding:12px !important; min-width:0; }
+ .portfolio-workspace .kpi .value { padding:4px 8px !important; }
+ .portfolio-workspace .kpi strong { font-size:.8rem; }
+ .portfolio-workspace .kpi small { font-size:.68rem; }
+ .portfolio-workspace .filter-card { display:flex !important; flex-direction:column; }
+ .portfolio-workspace .filter-grid { width:100%; }
+ .portfolio-status-field { width:100%; }
+ .portfolio-card-actions a { flex:1; }
+}
+@media(prefers-reduced-motion:reduce) { .portfolio-workspace * { animation:none !important; transition:none !important; } }
+</style>
 </head>
 
-<body class="auth-guest">
+<body class="portfolio-workspace auth-guest">
 <!-- ═══ SUPABASE (body-first) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -1849,15 +1905,16 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
 </div>
 
 <main class="page">
+  <p class="portfolio-eyebrow">PORTFOLIO WORKSPACE</p>
   <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px;">
     <div>
-      <h1>🏘️ Property Management</h1>
-      <p class="subtitle" style="margin:4px 0 0;">Manage your rental portfolio — properties, tenants, leases, and maintenance.</p>
+      <h1>Your properties</h1>
+      <p class="subtitle" style="margin:4px 0 0;">Find a property, review its next step, and keep your portfolio moving.</p>
     </div>
   </div>
 
   <!-- 🧞 Genie Zone -->
-  <section id="genieZone" class="genie-zone" style="display:none;"></section>
+
 
   <div class="filter-card toolbar" aria-label="Filters">
     <div class="filter-grid">
@@ -1867,8 +1924,19 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
       </div>
       <div class="filter-field">
         <label for="searchInput">Search</label>
-        <input id="searchInput" type="search" placeholder="Search by name, address, occupancy…" autocomplete="off" />
+        <input id="searchInput" type="search" placeholder="Search property, address, or tenant…" autocomplete="off" />
       </div>
+    </div>
+    <div class="filter-field portfolio-status-field">
+      <label for="statusFilter">Show properties</label>
+      <select id="statusFilter">
+        <option value="all">All properties</option>
+        <option value="attention">Needs attention</option>
+        <option value="occupied">Occupied</option>
+        <option value="vacant">Vacant</option>
+        <option value="renovation">Renovation</option>
+        <option value="off_market">Off market</option>
+      </select>
     </div>
     <div class="filter-actions">
       <button class="btn btn-secondary" id="refreshBtn" type="button">🔄 Refresh</button>
@@ -1882,10 +1950,15 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
     <div class="kpi"><div><strong>Vacant</strong><small>Needs attention</small></div><div class="value" id="kpiVacant">—</div></div>
   </section>
 
+  <details class="portfolio-followups">
+    <summary>Portfolio follow-ups <span>Review suggestions across your properties</span></summary>
+    <section id="genieZone" class="genie-zone" style="display:none;"></section>
+  </details>
   <div id="banner" style="display:none;"></div>
 
   <section id="emptyState" style="display:none;"></section>
 
+  <p id="portfolioResults" class="portfolio-results" role="status">Loading your properties…</p>
   <section class="cards" id="propertyCards" aria-label="Property cards"></section>
 </main>
 
@@ -1912,6 +1985,11 @@ const kpiVacant = document.getElementById("kpiVacant");
 let companies = [];
 let selectedCompanyId = null;
 let properties = [];
+let rentStatusByProperty = new Map();
+let repairCountByProperty = new Map();
+let portfolioSignalsReady = false;
+const statusFilter = document.getElementById("statusFilter");
+statusFilter.value = new URLSearchParams(location.search).get("filter") === "vacant" ? "vacant" : "all";
 let activeLeaseByProperty = new Map(); // property_id -> {tenant_name, rent_amount}
 let lastRentByProperty = new Map(); // property_id -> {date_paid, amount}
 let ytdByProperty = new Map();      // property_id -> {rent, exp, net} for this year (was all-properties-summary)
@@ -2201,72 +2279,99 @@ function renderEmptyState(kind){
   emptyEl.style.display = "none";
 }
 
+function propertyLink(page, property) {
+  const url = new URL(page, location.origin);
+  url.searchParams.set("property_id", property.id);
+  url.searchParams.set("company_id", selectedCompanyId || "");
+  url.searchParams.set("property", property.name || "");
+  return url.pathname + url.search;
+}
+
+function propertyNextStep(property) {
+  const balance = Number(rentStatusByProperty.get(property.id)?.balance || 0);
+  const repairs = repairCountByProperty.get(property.id) || 0;
+  const status = String(property.occupancy_status || "").toLowerCase();
+  if (portfolioSignalsReady && balance > 0) return {text: money(balance) + " outstanding rent to review", label: "Review rent", page: "lease-rent-center.html", attention: true};
+  if (portfolioSignalsReady && repairs > 0) return {text: repairs + " open repair" + (repairs === 1 ? "" : "s") + " to follow up", label: "Review repairs", page: "maintenance-requests.html", attention: true};
+  if (status === "vacant") return {text: "Vacant · review your listing", label: "Manage listing", page: "publish-listing.html", attention: true};
+  if (status === "tenant_occupied" && !activeLeaseByProperty.has(property.id)) return {text: "Tenant occupied · add the lease record", label: "Review lease", page: "lease-rent-center.html", attention: true};
+  if (!portfolioSignalsReady) return {text: "Follow-up data unavailable", label: "Open workspace", page: "property-overview.html", attention: false};
+  return {text: "Open the workspace for property details", label: "Open workspace", page: "property-overview.html", attention: false};
+}
+
 function renderCards(list){
   emptyEl.style.display = "none";
-  cardsEl.innerHTML = list.map(p => {
-    const lease = activeLeaseByProperty.get(p.id);
-    const last = lastRentByProperty.get(p.id);
-    const ytd = ytdByProperty.get(p.id);
-
-    const tenant = lease?.tenant_name ? lease.tenant_name : (String(p.occupancy_status||"").toLowerCase()==="owner_occupied" ? "Owner" : "Vacant");
-    const rent = lease?.rent_amount ? money(lease.rent_amount) + "/mo" : "—";
-
-    const lastRent = last?.date_paid ? `${new Date(last.date_paid).toLocaleDateString()} • ${money(last.amount)}` : "—";
-
-    const moreId = `more-${p.id}`;
-
-    return `
-      <article class="card" data-property-id="${escHtml(p.id)}">
-        <div class="card-top">
-          <div>
-            <h3>🏠 ${safeHtml(p.name)}</h3>
-            <p class="addr">${safeHtml(p.address)}</p>
-          </div>
-          <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
-            ${pillForStatus(p.occupancy_status)}${pillForType(p.use_type)}
-          </div>
-        </div>
-
-        <div class="meta" aria-label="Property details">
-          <div class="metaItem">
-            <span>Tenant</span>
-            <strong>${safeHtml(tenant)}</strong>
-          </div>
-          <div class="metaItem">
-            <span>Rent</span>
-            <strong>${safeHtml(rent)}</strong>
-          </div>
-          <div class="metaItem">
-            <span>Units</span>
-            <strong>${safeHtml(p.units)}</strong>
-          </div>
-          <div class="metaItem">
-            <span>Last payment</span>
-            <strong>${safeHtml(lastRent)}</strong>
-          </div>
-        </div>
-        ${ytd ? `<div class="ytd-line">This year: Rent <b>${escHtml(money(ytd.rent))}</b> · Expenses <b>${escHtml(money(ytd.exp))}</b> · Net <b class="${ytd.net >= 0 ? "pos" : "neg"}">${escHtml((ytd.net >= 0 ? "+" : "") + money(ytd.net))}</b></div>` : ""}
-
-        <div class="card-actions">
-          <a class="btn btn-secondary" href="property-overview.html?property_id=${encodeURIComponent(p.id)}&company_id=${encodeURIComponent(selectedCompanyId||"")}&property=${encodeURIComponent(p.name||"")}">👀 Overview</a>
-          ${lease
-            ? `<a class="btn btn-primary-soft" href="lease-rent-center.html?property_id=${encodeURIComponent(p.id)}&company_id=${encodeURIComponent(selectedCompanyId||"")}">📄 View Lease</a>`
-            : `<a class="btn btn-ghost-dashed" href="lease-rent-center.html?property_id=${encodeURIComponent(p.id)}&company_id=${encodeURIComponent(selectedCompanyId||"")}">➕ Add Lease</a>`
-          }
-          <div class="menu">
-            <button class="btn btn-secondary menu-btn" type="button" data-more-btn aria-expanded="false" aria-controls="${moreId}">⋯ More</button>
-            <div class="menu-panel" id="${moreId}" role="menu">
-              <a role="menuitem" href="add-property.html?edit=1&property_id=${encodeURIComponent(p.id)}&company_id=${encodeURIComponent(selectedCompanyId||"")}">✏️ Edit Property</a>
-              <a role="menuitem" href="maintenance-requests.html?property_id=${encodeURIComponent(p.id)}&company_id=${encodeURIComponent(selectedCompanyId||"")}">🛠 Maintenance</a>
-              <a role="menuitem" href="expense-tracking.html?property=${encodeURIComponent(p.name||"")}&company_id=${encodeURIComponent(selectedCompanyId||"")}">💸 Expenses</a>
-              <a role="menuitem" href="reports-analytics.html?property_id=${encodeURIComponent(p.id)}&company_id=${encodeURIComponent(selectedCompanyId||"")}">📈 Reports</a>
-            </div>
-          </div>
-        </div>
-      </article>
-    `;
-  }).join("");
+  cardsEl.replaceChildren();
+  function el(tag, cls, text) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+  list.forEach(function(property) {
+    const lease = activeLeaseByProperty.get(property.id);
+    const next = propertyNextStep(property);
+    const status = String(property.occupancy_status || "").toLowerCase();
+    const labels = {tenant_occupied:"Tenant occupied", owner_occupied:"Owner occupied", vacant:"Vacant", renovation:"Renovation", off_market:"Off market"};
+    const card = el("article", "card portfolio-property");
+    card.dataset.propertyId = property.id;
+    const head = el("div", "portfolio-card-head");
+    const identity = el("div");
+    const title = el("h2");
+    const titleLink = el("a", "portfolio-property-title", safe(property.name));
+    titleLink.href = propertyLink("property-overview.html", property);
+    title.appendChild(titleLink);
+    identity.append(title, el("p", "addr", safe(property.address)));
+    head.append(identity, el("span", "portfolio-occupancy " + (status === "vacant" ? "vacant" : ""), labels[status] || "Occupancy not set"));
+    card.appendChild(head);
+    const metrics = el("dl", "portfolio-card-metrics");
+    const balance = rentStatusByProperty.get(property.id)?.balance;
+    const values = [
+      ["Tenant", lease?.tenant_name || (status === "owner_occupied" ? "Owner" : "No current tenant recorded")],
+      ["Monthly rent", lease ? money(lease.rent_amount) : "—"],
+      ["Outstanding rent", portfolioSignalsReady ? money(balance || 0) : "Unavailable"],
+      ["Open repairs", portfolioSignalsReady ? String(repairCountByProperty.get(property.id) || 0) : "Unavailable"]
+    ];
+    values.forEach(function(pair) { const group = el("div"); group.append(el("dt", "", pair[0]), el("dd", "", pair[1])); metrics.appendChild(group); });
+    card.appendChild(metrics);
+    const step = el("div", "portfolio-next" + (next.attention ? " attention" : ""));
+    step.append(el("span", "portfolio-next-label", "NEXT STEP"), el("p", "", next.text));
+    card.appendChild(step);
+    const actions = el("div", "portfolio-card-actions");
+    const primary = el("a", "btn btn-primary", next.label);
+    primary.href = propertyLink(next.page, property);
+    actions.appendChild(primary);
+    if(next.page !== "property-overview.html") { const overview = el("a", "btn btn-secondary", "Workspace"); overview.href = propertyLink("property-overview.html", property); actions.appendChild(overview); }
+    const more = el("details", "portfolio-more");
+    more.appendChild(el("summary", "", "More actions"));
+    const links = el("div", "portfolio-more-links");
+    [["Edit property","add-property.html"],["Lease & tenant","lease-rent-center.html"],["Repairs","maintenance-requests.html"],["Expenses","expense-tracking.html"],["Documents","property-documents.html"],["Reports","reports-analytics.html"]].forEach(function(pair) {
+      const link = el("a", "", pair[0]);
+      link.href = propertyLink(pair[1], property);
+      if(pair[1] === "add-property.html") link.href += "&edit=1";
+      links.appendChild(link);
+    });
+    more.appendChild(links);
+    card.append(actions, more);
+    cardsEl.appendChild(card);
+  });
 }
+
+async function loadPortfolioSignals() {
+  const [rent, repairs] = await Promise.all([
+    sb.rpc("rg_rent_status", {p_company_id: selectedCompanyId, p_as_of: todayISO()}),
+    sb.from("maintenance_requests").select("property_id, status").eq("company_id", selectedCompanyId).is("archived_at", null)
+  ]);
+  if(rent.error || repairs.error) throw rent.error || repairs.error;
+  rentStatusByProperty = new Map((rent.data || []).map(row => [row.property_id, row]));
+  repairCountByProperty = new Map();
+  (repairs.data || []).forEach(function(row) {
+    if(!row.property_id || !["open", "in progress"].includes(String(row.status || "").toLowerCase())) return;
+    repairCountByProperty.set(row.property_id, (repairCountByProperty.get(row.property_id) || 0) + 1);
+  });
+  portfolioSignalsReady = true;
+}
+
 
 async function loadCompanies(){
   const { data, error } = await sb
@@ -2383,19 +2488,29 @@ async function loadLastRent(propertyIds){
 
 function applySearch(){
   const q = String(searchInput.value || "").trim().toLowerCase();
-  const list = !q ? properties : properties.filter(p => {
-    const hay = `${p.name||""} ${p.address||""} ${p.occupancy_status||""} ${p.use_type||""}`.toLowerCase();
-    return hay.includes(q);
+  const mode = statusFilter.value;
+  const list = properties.filter(function(property) {
+    const lease = activeLeaseByProperty.get(property.id);
+    const hay = [property.name, property.address, property.occupancy_status, property.use_type, lease?.tenant_name].join(" ").toLowerCase();
+    const status = String(property.occupancy_status || "").toLowerCase();
+    const matchesStatus = mode === "all" || (mode === "attention" ? propertyNextStep(property).attention : mode === "occupied" ? ["tenant_occupied", "owner_occupied"].includes(status) : status === mode);
+    return hay.includes(q) && matchesStatus;
   });
-  computeKpis(list);
-  updateGenieInsights(list);
-  if(list.length === 0 && properties.length > 0){
-    // search empty state
-    cardsEl.innerHTML = `<div class="notice"><strong>No matches</strong><p>Try a different search.</p></div>`;
-    return;
-  }
+  computeKpis(properties);
+  document.getElementById("portfolioResults").textContent = "Showing " + list.length + " of " + properties.length + " properties" + (mode === "attention" && !portfolioSignalsReady ? ". Follow-up data unavailable; refresh to retry." : "");
+  // Insights are based on the full portfolio, independent of search filters.
+  updateGenieInsights(properties);
   renderCards(list);
+  if(list.length === 0 && properties.length > 0){
+    const notice = document.createElement("div"); notice.className = "notice";
+    const title = document.createElement("strong"); title.textContent = "No matching properties";
+    const description = document.createElement("p"); description.textContent = "Try another search or reset your filters.";
+    const reset = document.createElement("button"); reset.type = "button"; reset.className = "btn btn-secondary"; reset.textContent = "Reset filters";
+    reset.addEventListener("click", function() { searchInput.value = ""; statusFilter.value = "all"; applySearch(); searchInput.focus(); });
+    notice.append(title, description, reset); cardsEl.appendChild(notice);
+  }
 }
+statusFilter.addEventListener("change", applySearch);
 
 async function createWorkspace(){
   try{
@@ -2465,9 +2580,15 @@ async function loadYtd(propertyIds){
 async function refreshAll(){
   try{
     clearBanner();
+    refreshBtn.disabled = true;
+    document.getElementById("portfolioResults").textContent = "Loading your properties…";
+    cardsEl.setAttribute("aria-busy", "true");
+    portfolioSignalsReady = false;
+    rentStatusByProperty = new Map(); repairCountByProperty = new Map();
 
     if(!selectedCompanyId){
       renderEmptyState("noCompany");
+      document.getElementById("portfolioResults").textContent = "Create a workspace to start your portfolio.";
       computeKpis([]);
       return;
     }
@@ -2478,7 +2599,11 @@ async function refreshAll(){
     await Promise.all([
       loadActiveLeases(ids),
       loadLastRent(ids),
-      loadYtd(ids)
+      loadYtd(ids),
+      loadPortfolioSignals().catch(function(error) {
+        console.warn("Portfolio follow-up data unavailable", error);
+        setBanner("warn", "Some follow-up data is unavailable", "Property records are available. Refresh to retry rent balances and repair counts.");
+      })
     ]);
 
     computeKpis(properties);
@@ -2486,6 +2611,7 @@ async function refreshAll(){
 
     if(properties.length === 0){
       renderEmptyState("noProperties");
+      document.getElementById("portfolioResults").textContent = "Your workspace is ready for its first property.";
       return;
     }
 
@@ -2503,6 +2629,11 @@ async function refreshAll(){
 
     cardsEl.innerHTML = '';
     emptyEl.style.display = 'none';
+    document.getElementById("portfolioResults").textContent = "Properties could not load. Try Refresh.";
+    [kpiTotal, kpiOccupied, kpiVacant].forEach(function(node) { node.textContent = "—"; });
+  } finally {
+    refreshBtn.disabled = false;
+    cardsEl.setAttribute("aria-busy", "false");
   }
 }
 

@@ -2039,9 +2039,74 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   input[type="search"], input[type="text"], select { max-width: 100%; box-sizing: border-box; }
 }
 </style>
+<style id="rent-workspace-design">
+body.rent-workspace { background:#f4f6f9; }
+body.rent-workspace > main.page { max-width:none !important; width:100% !important; padding:28px !important; box-sizing:border-box; }
+.rent-workspace .navbar,.rent-workspace .footer-content,.rent-workspace .footer-bottom { max-width:none !important; }
+.rent-eyebrow { font-size:.72rem; font-weight:700; letter-spacing:.12em; color:#52647a; }
+.rent-workspace h1 { font-size:clamp(1.5rem,3vw,2rem) !important; letter-spacing:-.04em; }
+.rent-workspace .filter-card,.rent-workspace .card,.rent-workspace .qp-card { box-shadow:none !important; border-radius:14px !important; }
+.rent-workspace .filter-field select { min-height:48px; }
+.rent-context { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:16px 0; font-size:.85rem; color:#52647a; }
+.rent-context a { color:#164c45; font-weight:600; min-height:44px; display:inline-flex; align-items:center; }
+.rent-context a[hidden] { display:none; }
+.rent-workspace .tabs { background:white !important; border:1px solid #dce3eb; padding:6px !important; border-radius:14px !important; gap:6px; }
+.rent-workspace .tab-btn { min-height:48px; }
+.rent-workspace .tab-btn.active { background:#164c45 !important; color:white !important; }
+.rent-workspace .quick-peek { grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:12px; }
+.rent-workspace .qp-main { overflow-wrap:anywhere; }
+.rent-workspace .attention-filter-bar { flex-wrap:wrap; gap:16px; }
+.rent-workspace .attention-filter-chip { min-height:44px; }
+.rent-workspace .attention-search { min-width:0; flex:1 1 230px; }
+.rent-search-label { display:block; font-size:.75rem; color:#52647a; margin-bottom:6px; }
+.rent-workspace #attentionSearchInput { min-height:48px; box-sizing:border-box; width:100%; }
+.rent-followups { margin:18px 0; background:white; border:1px solid #dce3eb; border-radius:14px; padding:0 16px; }
+.rent-followups > summary { cursor:pointer; padding:16px 0; font-weight:600; color:#213b50; font-size:.9rem; }
+.rent-followups > summary span { display:block; font-weight:400; font-size:.75rem; color:#52647a; margin-top:5px; }
+.rent-ledger-toolbar { display:flex; justify-content:space-between; align-items:end; flex-wrap:wrap; gap:12px; margin:18px 0 10px; }
+.rent-ledger-toolbar label { display:block; font-size:.75rem; color:#52647a; margin-bottom:6px; }
+.rent-ledger-toolbar select { min-height:44px; padding:10px 36px 10px 12px; border:1px solid #cbd5e1; border-radius:10px; background:white; color:#213b50; font:inherit; }
+#ledgerResults,.rent-recording-note { font-size:.8rem; color:#52647a; line-height:1.5; }
+.rent-workspace .rent-table { min-width:0; }
+.rent-workspace .rent-table td { vertical-align:top; }
+.rent-workspace .rent-table tr[hidden] { display:none !important; }
+.rent-workspace .row-actions { flex-wrap:wrap; }
+.rent-workspace button,.rent-workspace .header-actions a { min-height:44px; box-sizing:border-box; }
+.rent-workspace .add-btn,.rent-workspace .row-actions button.primary { background:#164c45 !important; color:white !important; }
+.rent-workspace :is(a,button,input,select,textarea):focus-visible { outline:3px solid #b97016 !important; outline-offset:3px; }
+.rent-workspace #markPaidModal input,.rent-workspace #markPaidModal select { min-height:48px; box-sizing:border-box; }
+@media(max-width:1000px) { .rent-workspace .quick-peek { grid-template-columns:repeat(2,minmax(0,1fr)) !important; } }
+@media(max-width:760px) {
+ body.rent-workspace > main.page { padding:20px 16px calc(110px + env(safe-area-inset-bottom)) !important; }
+ .rent-workspace .qp-main { font-size:1.15rem !important; }
+ .rent-workspace .qp-label { font-size:.72rem !important; }
+ .rent-workspace .qp-meta { font-size:.75rem !important; }
+ .rent-workspace .attention-filter-chips { flex-wrap:wrap; }
+ .rent-workspace .attention-queue-row { display:flex !important; flex-wrap:wrap; gap:12px; }
+ .rent-workspace .attention-queue-property { flex:1 1 100%; }
+ .rent-workspace .rent-ledger-card { padding:0 !important; border:0 !important; background:transparent !important; }
+ .rent-workspace .rent-table-container { overflow:visible; }
+ .rent-workspace .rent-table { display:block; width:100%; }
+ .rent-workspace .rent-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+ .rent-workspace .rent-table tbody { display:grid; gap:16px; }
+ .rent-workspace .rent-table tbody tr { display:grid; grid-template-columns:1fr 1fr; gap:14px 16px; background:white; border:1px solid #dce3eb; border-radius:14px; padding:18px; }
+ .rent-workspace .rent-table td { display:block; padding:0 !important; border:0 !important; text-align:left !important; white-space:normal !important; overflow-wrap:anywhere; min-width:0; }
+ .rent-workspace .rent-table td[data-label]::before { content:attr(data-label); display:block; color:#52647a; font-size:.72rem; font-weight:400; margin-bottom:6px; }
+ .rent-workspace .rent-table td:first-child { font-weight:700; color:#102d35; }
+ .rent-workspace .rent-table td:last-child,.rent-workspace .rent-table td[colspan] { grid-column:1 / -1; }
+ .rent-workspace .rent-table td:nth-child(4),.rent-workspace .rent-table td:nth-child(5) { font-size:.8rem; }
+ .rent-workspace .rent-table td:nth-child(10) { font-weight:800; color:#102d35; }
+ .rent-workspace .row-actions { display:flex; gap:8px; }
+ .rent-workspace .row-actions > button { flex:1 1 120px; }
+ .rent-workspace .header-actions { flex-wrap:wrap; gap:8px; }
+ .rent-workspace .lease-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+ .rent-workspace .lease-v { overflow-wrap:anywhere; }
+}
+@media(prefers-reduced-motion:reduce) { .rent-workspace * { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+</style>
 </head>
 
-<body class="auth-guest">
+<body class="auth-guest rent-workspace">
 
 <!-- ═══ SUPABASE BOOTSTRAP (body-first: avoids tracking-prevention blocking safeStorage) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2155,9 +2220,10 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
 </div>
 
 <main class="page">
-  <h1>💼 Lease & Rent Center</h1>
+  <p class="rent-eyebrow">RENTAL OPERATIONS</p>
+  <h1>Lease &amp; rent</h1>
   <p class="page-intro">
-    Manage leases and track rent in one place — clear tabs so users don’t get confused.
+    Review rent, record received payments, and manage your tenant’s lease.
   </p>
 
   <!-- Workspace Empty State (shown only when user has no company access) -->
@@ -2204,16 +2270,20 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   </div>
 
   
+  <div class="rent-context">
+    <span id="rentPropertyContext" role="status">Choose a property to review its rent and lease.</span>
+    <a id="rentWorkspaceLink" hidden>Open property workspace →</a>
+  </div>
   <!-- Tabs -->
     <!-- Tabs -->
   <div class="tabs" role="tablist" aria-label="Lease and Rent tabs">
     <button class="tab-btn active" id="tabBtnRent" type="button" role="tab" aria-selected="true" aria-controls="tabRent">
       <span class="tab-ico">💰</span>
-      <span class="tab-label">Rent</span>
+      <span class="tab-label">Rent &amp; payments</span>
     </button>
     <button class="tab-btn" id="tabBtnLease" type="button" role="tab" aria-selected="false" aria-controls="tabLease">
       <span class="tab-ico">📝</span>
-      <span class="tab-label">Lease</span><span class="tab-badge" id="leaseBadge" style="display:none;">!</span>
+      <span class="tab-label">Lease &amp; tenant</span><span class="tab-badge" id="leaseBadge" style="display:none;">!</span>
       
     </button>
   </div>
@@ -2316,13 +2386,13 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
     </article>
 
     <article class="qp-card">
-      <div class="qp-label">🧾 Balance/Status</div>
+      <div class="qp-label">Outstanding balance</div>
       <div class="qp-main" id="qp-balance">$0.00</div>
       <div class="qp-pill pending" id="qp-status-pill">No Lease</div>
     </article>
 
     <article class="qp-card">
-      <div class="qp-label">⬇️ Last Payment</div>
+      <div class="qp-label">Last recorded payment</div>
       <div class="qp-main" id="qp-last-payment-amount">—</div>
       <div class="qp-meta" id="qp-last-payment-date">—</div>
     </article>
@@ -2337,16 +2407,19 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
       </div>
     </div>
 
+    <details class="rent-followups" id="rentFollowups" open>
+      <summary>Portfolio rent follow-ups <span>Review other properties without leaving this ledger</span></summary>
     <div class="attention-workspace" id="attentionWorkspace">
       <div class="attention-filter-bar">
         <div class="attention-filter-chips" id="attentionFilterChips">
-          <button class="attention-filter-chip" type="button" data-filter="all">All Properties</button>
+          <button class="attention-filter-chip" type="button" data-filter="all">All follow-ups</button>
           <button class="attention-filter-chip" type="button" data-filter="attention">Needs Attention</button>
           <button class="attention-filter-chip" type="button" data-filter="unpaid">Unpaid</button>
           <button class="attention-filter-chip" type="button" data-filter="partial">Partial</button>
           <button class="attention-filter-chip" type="button" data-filter="late">Late</button>
         </div>
         <div class="attention-search">
+          <label class="rent-search-label" for="attentionSearchInput">Find a property or tenant</label>
           <input id="attentionSearchInput" type="search" placeholder="Search property or tenant">
         </div>
       </div>
@@ -2354,7 +2427,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
       <div class="attention-queue-card">
         <div class="attention-queue-head">
           <div>
-            <h3>⚠️ Properties Needing Attention</h3>
+            <h3>Portfolio rent follow-ups</h3>
             <div class="attention-queue-sub" id="attentionQueueSub">Choose a filter to review rent issues across properties.</div>
           </div>
         </div>
@@ -2364,30 +2437,38 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
       </div>
     </div>
 
+  </details>
   <div class="card-header">
     <div><h2 id="rentLedgerTitle">📌 Rent Ledger</h2><div id="rentLedgerContextNote" style="display:none; margin-top:6px; color:#475569; font-size:14px;"></div></div>
     <div class="header-actions">
       <button class="secondary-btn" id="refreshBtn">🔄 Refresh</button>
-      <button class="add-btn" id="addPaymentBtn">➕ New Payment</button>
+      <button class="add-btn" id="addPaymentBtn">+ Record payment</button>
     </div>
   </div>
 
-  <div class="card">
+  <div class="rent-ledger-toolbar">
+    <div><label for="ledgerView">Show rent periods</label>
+      <select id="ledgerView"><option value="all">All periods</option><option value="outstanding" selected>Outstanding</option><option value="paid">Paid</option><option value="upcoming">Upcoming</option></select>
+    </div>
+    <p id="ledgerResults" role="status">Choose a property to load rent periods.</p>
+  </div>
+  <p class="rent-recording-note">Record payments you have received. This screen does not collect money. Late fees shown are informational and are not added to the rent balance.</p>
+  <div class="card rent-ledger-card">
     <div class="rent-table-container">
-      <table class="rent-table">
+      <table class="rent-table" role="table" aria-label="Rent periods for selected lease">
         <thead>
           <tr>
-            <th>Due Date</th>
-            <th>Tenant</th>
-            <th>Rent</th>
+            <th scope="col">Due Date</th>
+            <th scope="col">Tenant</th>
+            <th scope="col">Rent</th>
             <th title="From the lease terms. Not added to the balance.">Late Fee*</th>
-            <th>Total Due</th>
-            <th>Status</th>
-            <th>Paid Date</th>
-            <th>Method</th>
-            <th>Paid Total</th>
-            <th>Balance</th>
-            <th>Actions</th>
+            <th scope="col">Total Due</th>
+            <th scope="col">Status</th>
+            <th scope="col">Paid Date</th>
+            <th scope="col">Method</th>
+            <th scope="col">Paid Total</th>
+            <th scope="col">Balance</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody id="dueLedgerBody">
@@ -2966,11 +3047,17 @@ function renderAttentionQueue(){
   const activeFilter = (currentAttentionFilter || "all").toLowerCase();
   chipsWrap.querySelectorAll("[data-filter]").forEach(btn => {
     btn.classList.toggle("active", String(btn.dataset.filter || "").toLowerCase() === activeFilter);
+    btn.setAttribute("aria-pressed", String(String(btn.dataset.filter || "").toLowerCase() === activeFilter));
   });
 
   const filtered = filterAttentionQueueItems();
   const hasAttention = (rentAttentionQueue || []).length > 0;
   const hasSelection = !!currentProperty;
+  const followups = document.getElementById("rentFollowups");
+  if(!followups.dataset.initialized) {
+    followups.open = !hasSelection || activeFilter !== "all";
+    followups.dataset.initialized = "true";
+  }
 
   workspace.style.display = (hasAttention || activeFilter !== "all" || !hasSelection) ? "" : "none";
   sub.textContent = filtered.length
@@ -3072,6 +3159,18 @@ function togglePrimaryActions() {
 // The ledger load started by the latest property change (openPaymentFromUrl waits for it)
 let propertyLoad = Promise.resolve();
 function applyCurrentProperty() {
+  const context = document.getElementById("rentPropertyContext");
+  context.textContent = currentProperty ? "Selected property: " + currentProperty : "Choose a property to review its rent and lease.";
+  const workspaceLink = document.getElementById("rentWorkspaceLink");
+  const propertyMeta = propertyMetaByName.get(currentProperty);
+  workspaceLink.hidden = !propertyMeta?.id;
+  if(propertyMeta?.id) {
+    const destination = new URL("property-overview.html", location.origin);
+    destination.searchParams.set("property_id", propertyMeta.id);
+    destination.searchParams.set("company_id", propertyMeta.company_id || activeCompanyId || "");
+    destination.searchParams.set("property", currentProperty);
+    workspaceLink.href = destination.pathname + destination.search;
+  }
   const selectEl = document.getElementById("propertySelect");
   const labelEl = document.getElementById("currentPropertyLabel");
 
@@ -3093,6 +3192,7 @@ function applyCurrentProperty() {
   if (labelEl) labelEl.textContent = "Viewing: " + currentProperty;
   if (selectEl) selectEl.value = currentProperty;
 
+  document.getElementById("rentFollowups").open = currentAttentionFilter !== "all";
   togglePrimaryActions();
   selectedLease = null;
 
@@ -3993,7 +4093,22 @@ function renderNeedsAttentionFromState({ lease, hasLease, todayMid }) {
 /* -------------------------------------------------------------
    Ledger Render
 ------------------------------------------------------------- */
+function applyLedgerView() {
+  const mode = document.getElementById("ledgerView").value;
+  const rows = Array.from(document.querySelectorAll('#dueLedgerBody tr[data-period]'));
+  let visible = 0;
+  rows.forEach(function(row) {
+    row.hidden = mode !== "all" && row.dataset[mode] !== "true";
+    if(!row.hidden) visible++;
+  });
+  document.getElementById("ledgerResults").textContent = rows.length
+    ? visible + " of " + rows.length + " rent periods" + (visible ? "" : ". Try another view.")
+    : "No rent periods to display.";
+}
+document.getElementById("ledgerView").addEventListener("change", applyLedgerView);
+
 async function renderDueLedger() {
+  document.getElementById("ledgerResults").textContent = "No rent periods to display.";
   const body = document.getElementById("dueLedgerBody");
   if (!body) return;
 
@@ -4059,7 +4174,7 @@ async function renderDueLedger() {
       : (summary.methods && summary.methods.size > 1 ? "Multiple" : (payment?.method || "—"));
 
     const actions = `
-      ${balance > 0 ? `<button class="primary" data-action="markPaid" data-due="${dueISO}" data-suggest="${balance.toFixed(2)}">➕ Add Payment</button>` : ``}
+      ${balance > 0 ? `<button class="primary" data-action="markPaid" data-due="${dueISO}" data-suggest="${balance.toFixed(2)}">+ Record payment</button>` : ``}
 
       <button data-action="viewPayments" data-due="${dueISO}">🧾 Manage Payments (${paymentsCount})</button>
 
@@ -4093,6 +4208,21 @@ async function renderDueLedger() {
       </tr>
     `;
   }).join("");
+
+  const columnLabels = ["Due date", "Tenant", "Rent", "Late fee (informational)", "Total rent due", "Status", "Paid date", "Method", "Paid total", "Balance", "Actions"];
+  Array.from(body.rows).forEach(function(tableRow, index) {
+    const period = ledgerRows[index];
+    tableRow.dataset.period = period.dueISO;
+    tableRow.dataset.outstanding = String(!period.upcoming && period.balance > 0);
+    tableRow.dataset.paid = String(period.paid > 0 && period.balance <= 0);
+    tableRow.dataset.upcoming = String(period.upcoming);
+    Array.from(tableRow.cells).forEach(function(cell, cellIndex) {
+      cell.dataset.label = columnLabels[cellIndex];
+      cell.setAttribute("role", "cell");
+    });
+    tableRow.setAttribute("role", "row");
+  });
+  applyLedgerView();
 
   body.querySelectorAll("button[data-action]").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -4345,6 +4475,7 @@ function setPaymentMethod(value) {
 }
 
 // mode: "new" (pick the month), "due" (a ledger row's Add Payment) or "edit" (paymentId)
+let paymentReturnFocus = null;
 async function openPaymentModal({ mode = "new", dueISO = "", paymentId = "" } = {}) {
   initMarkPaidModal();
   if (!currentProperty) { showToast("Select a property to add a payment.", "💰"); return; }
@@ -4388,8 +4519,10 @@ async function openPaymentModal({ mode = "new", dueISO = "", paymentId = "" } = 
     updateLatePreview();
   }
 
+  paymentReturnFocus = document.activeElement;
   document.getElementById("markPaidOverlay").style.display = "block";
   document.getElementById("markPaidModal").style.display = "block";
+  document.getElementById("markPaidModal").focus();
 }
 
 // Kept for the ledger row button
@@ -4400,6 +4533,7 @@ function openMarkPaidModal({ dueISO }) {
 function closeMarkPaidModal() {
   document.getElementById("markPaidOverlay").style.display = "none";
   document.getElementById("markPaidModal").style.display = "none";
+  if(paymentReturnFocus?.isConnected) paymentReturnFocus.focus();
 }
 
 function setLateChoiceEnabled(enabled) {
@@ -4603,7 +4737,16 @@ async function updateAll() {
 /* Escape closes the payment modal */
 function initPaymentDrawer() {
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeMarkPaidModal();
+    const dialog = document.getElementById("markPaidModal");
+    if(dialog.style.display === "none") return;
+    if (e.key === "Escape") { e.preventDefault(); closeMarkPaidModal(); }
+    if(e.key === "Tab") {
+      const controls = Array.from(dialog.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]')).filter(node => node.getClientRects().length > 0);
+      const first = controls[0], last = controls[controls.length - 1];
+      if(!first) { e.preventDefault(); return; }
+      if(e.shiftKey && (document.activeElement === first || document.activeElement === dialog)) { e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && (document.activeElement === last || document.activeElement === dialog)) { e.preventDefault(); first.focus(); }
+    }
   });
 }
 
@@ -4739,6 +4882,8 @@ function setActiveTab(which){
   btnRent.classList.toggle("active", isRent);
   btnLease.classList.toggle("active", !isRent);
 
+  btnRent.tabIndex = isRent ? 0 : -1;
+  btnLease.tabIndex = isRent ? -1 : 0;
   btnRent.setAttribute("aria-selected", isRent ? "true" : "false");
   btnLease.setAttribute("aria-selected", !isRent ? "true" : "false");
 
@@ -4788,6 +4933,15 @@ function initTabs(){
   btnRent.addEventListener("click", (e)=>{ e.preventDefault(); setActiveTab("rent"); });
   btnLease.addEventListener("click", (e)=>{ e.preventDefault(); setActiveTab("lease"); });
 
+  [btnRent, btnLease].forEach(function(button) {
+    button.addEventListener("keydown", function(event) {
+      if(!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+      event.preventDefault();
+      const lease = event.key === "End" || (event.key !== "Home" && button === btnRent);
+      setActiveTab(lease ? "lease" : "rent");
+      (lease ? btnLease : btnRent).focus();
+    });
+  });
   // "Add tab" is cosmetic for now; keep it friendly
   if(btnAdd){
     btnAdd.addEventListener("click", ()=> alert("Coming soon: custom tabs / shortcuts 😊"));
@@ -5044,10 +5198,10 @@ if (!window.__rgPayMenuBound) {
 <!-- Mark Paid Modal -->
 <div id="markPaidOverlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.35); z-index:3000;"></div>
 
-<div id="markPaidModal" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(520px,92vw); background:white; border:1px solid #e2e8f0; border-radius:16px; box-shadow:0 18px 40px rgba(0,0,0,0.22); z-index:3001; max-height:calc(100dvh - 24px); overflow-y:auto;">
+<div id="markPaidModal" role="dialog" aria-modal="true" aria-labelledby="mpTitle" tabindex="-1" style="display:none; position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); width:min(520px,92vw); background:white; border:1px solid #e2e8f0; border-radius:16px; box-shadow:0 18px 40px rgba(0,0,0,0.22); z-index:3001; max-height:calc(100dvh - 24px); overflow-y:auto;">
   <div style="padding:14px 16px; border-bottom:1px solid #e5e7eb; display:flex; align-items:center; justify-content:space-between; gap:10px;">
     <div style="font-weight:800; color:#0f172a;" id="mpTitle">💵 Record Payment</div>
-    <button id="markPaidCloseBtn" type="button" style="border:1px solid #cbd5e1; background:white; border-radius:999px; padding:6px 10px; cursor:pointer; font-weight:700;">✖</button>
+    <button id="markPaidCloseBtn" type="button" aria-label="Close payment form" style="border:1px solid #cbd5e1; background:white; border-radius:999px; padding:6px 10px; cursor:pointer; font-weight:700;">✖</button>
   </div>
 
   <div style="padding:14px 16px;">

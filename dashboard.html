@@ -2769,9 +2769,75 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   #nav-login { display: none !important; }
 }
 </style>
+
+<style id="workspace-design">
+/* Dashboard pilot: scoped so later page migrations can be reviewed independently. */
+.dashboard-workspace { background:#f4f6f9; }
+body.dashboard-workspace > main.page { width:100% !important; max-width:none !important; padding:0 28px 48px; }
+@media(min-width:861px) {
+ .dashboard-workspace .navbar, .dashboard-workspace .footer-content, .dashboard-workspace .footer-bottom { max-width:none !important; }
+}
+.workspace-heading { display:flex; justify-content:space-between; align-items:center; gap:20px; margin:30px 0 24px; }
+.workspace-eyebrow { color:#52647a; font-size:.72rem; font-weight:700; letter-spacing:.12em; margin:0 0 8px; }
+.dashboard-workspace .workspace-heading h1 { margin:0; font-size:clamp(1.4rem,3vw,2rem) !important; }
+.dashboard-workspace .workspace-heading .subtitle { margin:8px 0 0 !important; }
+.workspace-primary { background:#164c45; color:white; text-decoration:none; border-radius:999px; padding:13px 20px; font-weight:700; white-space:nowrap; }
+.dashboard-workspace .assistant-hero { display:grid; grid-template-columns:1fr 1.25fr; gap:28px; background:#102d35 !important; box-shadow:none !important; padding:28px !important; }
+.dashboard-workspace .assistant-greeting { font-size:1.5rem !important; }
+.dashboard-workspace .assistant-sub { color:#e0ecee !important; margin-bottom:12px !important; }
+.workspace-updated { color:#c4d9dc; font-size:.78rem; margin:0; }
+.workspace-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; align-items:stretch; }
+.workspace-metrics a { display:flex; flex-direction:column; justify-content:center; padding:16px; border:1px solid #597078; border-radius:12px; color:white; text-decoration:none; min-width:0; }
+.workspace-metrics span { font-size:.78rem; color:#e0ecee; }
+.workspace-metrics strong { font-size:clamp(1.3rem,2.6vw,2rem); margin:12px 0 8px; overflow-wrap:anywhere; }
+.workspace-metrics small { font-size:.72rem; color:#c4d9dc; }
+.workspace-shortcuts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:20px 0 26px; }
+.workspace-shortcuts a { display:flex; align-items:center; gap:10px; padding:14px; background:white; border:1px solid #dce3eb; border-radius:12px; color:#213b50; font-weight:600; text-decoration:none; }
+.workspace-shortcuts span { color:#287168; font-size:1.2rem; }
+.dashboard-workspace .assistant-board { padding:24px !important; box-shadow:none !important; border:1px solid #dce3eb !important; }
+.dashboard-workspace .assistant-board-title { font-size:1.2rem !important; }
+.dashboard-workspace .assistant-list { gap:12px; }
+.dashboard-workspace .assistant-card { box-shadow:none !important; }
+.dashboard-workspace .assistant-small-btn,.dashboard-workspace .assistant-action,.dashboard-workspace .property-row-action { min-height:44px; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; }
+.workspace-tool-finder { background:white; border:1px solid #dce3eb; border-radius:14px; margin:18px 0; }
+.workspace-tool-finder summary { padding:18px; cursor:pointer; font-weight:600; color:#213b50; }
+.workspace-tool-finder summary span { font-weight:400; color:#52647a; font-size:.8rem; margin-left:12px; }
+.workspace-tool-finder .assistant-ask { background:white !important; border:0 !important; padding:0 18px 18px !important; }
+.workspace-tool-finder label { display:block; color:#213b50; margin-bottom:10px; }
+.workspace-tool-finder .assistant-ask-hint { color:#52647a !important; }
+.workspace-tool-finder .assistant-ask-input { background:#f4f6f9 !important; color:#102d35 !important; min-height:48px; border:1px solid #9bacbc !important; }
+.workspace-tool-finder .assistant-ask-input::placeholder { color:#52647a !important; }
+.dashboard-workspace a:focus-visible,.dashboard-workspace button:focus-visible,.dashboard-workspace summary:focus-visible,.dashboard-workspace input:focus-visible { outline:3px solid #b97016 !important; outline-offset:4px; }
+.workspace-skip { position:absolute; left:16px; top:-100px; z-index:3000; padding:12px; background:white; color:#102d35; }
+.workspace-skip:focus { top:12px; }
+#assistantAssignments { scroll-margin-top:100px; }
+@media(min-width:1000px) { .dashboard-workspace .assistant-list { display:grid; grid-template-columns:1fr 1fr; } .dashboard-workspace .assistant-card-property-row { flex-wrap:wrap; } .dashboard-workspace .property-row-right { flex-wrap:wrap; } }
+@media(max-width:860px) { .dashboard-workspace .assistant-hero { grid-template-columns:1fr; gap:20px; } .workspace-heading { margin-top:20px; } .workspace-primary { padding:12px 16px; } }
+@media(max-width:600px) {
+ .dashboard-workspace .page { padding-left:16px !important; padding-right:16px !important; }
+ .workspace-heading { flex-wrap:wrap; gap:16px; margin-bottom:20px; }
+ .workspace-primary { font-size:.85rem; }
+ .dashboard-workspace .assistant-hero { padding:20px !important; border-radius:16px !important; }
+ .workspace-metrics { grid-template-columns:1fr; gap:0; }
+ .workspace-metrics a { display:grid; grid-template-columns:1fr auto; gap:3px 12px; border:0; border-top:1px solid #597078; border-radius:0; padding:14px 0; }
+ .workspace-metrics strong { grid-column:2; grid-row:1 / 3; align-self:center; margin:0; font-size:1.5rem; }
+ .workspace-shortcuts { grid-template-columns:1fr 1fr; gap:8px; margin:16px 0 20px; }
+ .workspace-shortcuts a { font-size:.8rem; padding:12px; min-height:48px; box-sizing:border-box; }
+ .dashboard-workspace .assistant-board { padding:16px !important; }
+ .dashboard-workspace .assistant-board-actions { width:100%; flex-wrap:wrap; }
+ .dashboard-workspace .assistant-board-actions > * { flex:1; }
+ .dashboard-workspace .mobile-nav { padding-left:4px; padding-right:4px; }
+ .dashboard-workspace .mobile-nav-inner { gap:2px; }
+ .dashboard-workspace .mnav { min-height:48px; padding:7px 2px; font-size:10px; }
+ .dashboard-workspace .mnav-label { display:block !important; }
+ .workspace-tool-finder .assistant-ask-row { flex-wrap:wrap; }
+ .workspace-tool-finder .assistant-ask-input { width:100%; box-sizing:border-box; flex-basis:100%; }
+}
+@media(prefers-reduced-motion:reduce) { .dashboard-workspace *, .dashboard-workspace *::before, .dashboard-workspace *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }
+</style>
 </head>
 
-<body class="auth-guest">
+<body class="auth-guest dashboard-workspace">
 
 <!-- ═══ SUPABASE BOOTSTRAP (body-first: avoids tracking-prevention blocking safeStorage) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -2887,39 +2953,55 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
 <!-- ================= PAGE CONTENT ================= -->
 <main class="page">
 
-  
-  <h1>🧞 Rental Genie – Daily Assignments</h1>
-  <p class="subtitle">Open this page each day. Genie turns your portfolio into a simple to‑do list and jumps you into the right tool when needed.</p>
-
-  <!-- Assistant-first hero -->
-  <section class="assistant-hero" aria-label="Rental Genie daily command center">
+  <a class="workspace-skip" href="#assistantAssignments">Skip to attention list</a>
+  <header class="workspace-heading">
+    <div><p class="workspace-eyebrow">YOUR DAILY WORKSPACE</p><h1>Your portfolio, at a glance</h1>
+    <p class="subtitle">Review what needs you, then get on with your day.</p></div>
+    <a class="workspace-primary" href="lease-rent-center.html?action=log">+ Record rent</a>
+  </header>
+  <section class="assistant-hero" aria-label="Portfolio overview">
     <div class="assistant-hero-left">
-      <div class="assistant-chip">🧠 Assistant Mode</div>
+      <div class="assistant-chip">Portfolio overview</div>
       <h2 class="assistant-greeting" id="heroGreeting">Welcome back</h2>
-      <p class="assistant-sub" id="heroSub">
-        Here’s what needs attention. Click <strong>Do it</strong> to take action, or <strong>Open tool</strong> to handle it manually.
-      </p>
+      <p class="assistant-sub" id="heroSub">Loading your portfolio summary…</p>
+      <p class="workspace-updated" id="workspaceUpdated" role="status">Waiting for portfolio data</p>
+    </div>
+    <div class="workspace-metrics" aria-label="Current portfolio totals">
+      <a href="lease-rent-center.html?filter=attention&amp;view=ledger"><span>Outstanding rent</span><strong id="workspaceRent">—</strong><small>Balance to review</small></a>
+      <a href="maintenance-requests.html"><span>Open repairs</span><strong id="workspaceRepairs">—</strong><small>Across your portfolio</small></a>
+      <a href="lease-rent-center.html"><span>Renewals ahead</span><strong id="workspaceRenewals">—</strong><small>Leases ending in 60 days</small></a>
+    </div>
+  </section>
+  <nav class="workspace-shortcuts" aria-label="Common tasks">
+    <a href="add-expense.html"><span aria-hidden="true">＋</span> Add expense</a>
+    <a href="add-maintenance-request.html"><span aria-hidden="true">＋</span> Log repair</a>
+    <a href="property-management.html"><span aria-hidden="true">⌂</span> View properties</a>
+    <a href="tenant-messages.html"><span aria-hidden="true">↗</span> Tenant messages</a>
+  </nav>
+  <!-- First-run setup checklist (hidden once the basics are in place) -->
+  <div class="card" id="setupCard" aria-label="Finish setting up Rental Genie">
+    <div class="card-header">
+      <h2 class="card-title"><span aria-hidden="true">🧭</span> Finish setting up</h2>
+      <span class="tag-pill" id="setupProgress">0 of 4</span>
+    </div>
+    <div class="setup-steps" id="setupSteps"></div>
+  </div>
 
-      <div class="assistant-quick">
-        <a class="assistant-pill" href="lease-rent-center.html">💰 Rent</a>
-        <a class="assistant-pill" href="maintenance-requests.html">🛠 Maintenance</a>
-        <a class="assistant-pill" href="expense-tracking.html">💸 Expenses</a>
-        <a class="assistant-pill" href="reports-analytics.html">📈 Reports</a>
-        <a class="assistant-pill" href="property-management.html">🏘️ Properties</a>
-        <a class="assistant-pill" href="listings.html">🌐 Browse Network</a>
+  <!-- Assignment board -->
+  <section class="assistant-board" id="assistantAssignments" aria-label="Needs your attention" tabindex="-1">
+    <div class="assistant-board-head">
+      <div>
+        <div class="assistant-board-title">Needs your attention</div>
+        <div class="assistant-board-sub" id="assistantBoardSub" role="status">Loading your to‑dos…</div>
+      </div>
+      <div class="assistant-board-actions">
+        <button class="assistant-small-btn" id="refreshAssignmentsBtn" type="button">🔄 Refresh</button>
+        <a class="assistant-small-btn" href="#manualMode" style="text-decoration:none;">View portfolio details</a>
       </div>
     </div>
 
-    <div class="assistant-hero-right">
-      <div class="assistant-ask">
-        <div class="assistant-ask-title">🤖 Ask Rental Genie</div>
-        <div class="assistant-ask-row">
-          <input id="assistantAskInput" class="assistant-ask-input" type="text"
-                 placeholder="Example: “Who is late this month?” or “Show maintenance costs last 30 days”" />
-          <button id="assistantAskBtn" class="assistant-ask-btn" type="button">Ask</button>
-        </div>
-        <div class="assistant-ask-hint">Tip: Genie can also open the right page for you.</div>
-      </div>
+    <div id="assignmentList" class="assistant-list">
+      <div class="assistant-empty">Loading…</div>
     </div>
   </section>
 
@@ -2935,39 +3017,24 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
     <div class="pi-setup" id="payInboxSetup"></div>
   </div>
 
-  <!-- First-run setup checklist (hidden once the basics are in place) -->
-  <div class="card" id="setupCard" aria-label="Finish setting up Rental Genie">
-    <div class="card-header">
-      <h2 class="card-title"><span aria-hidden="true">🧭</span> Finish setting up</h2>
-      <span class="tag-pill" id="setupProgress">0 of 4</span>
-    </div>
-    <div class="setup-steps" id="setupSteps"></div>
-  </div>
-
-  <!-- Assignment board -->
-  <section class="assistant-board" id="assistantAssignments" aria-label="Today's assignments">
-    <div class="assistant-board-head">
-      <div>
-        <div class="assistant-board-title">🎯 Today’s Assignments</div>
-        <div class="assistant-board-sub" id="assistantBoardSub">Loading your to‑dos…</div>
+  <details class="workspace-tool-finder">
+    <summary>Find a tool <span>Search by topic</span></summary>
+    <div class="assistant-ask">
+      <label for="assistantAskInput">What would you like to work on?</label>
+      <div class="assistant-ask-row">
+        <input id="assistantAskInput" class="assistant-ask-input" type="text" placeholder="Rent, repairs, expenses, reports…" />
+        <button id="assistantAskBtn" class="assistant-ask-btn" type="button">Open tool</button>
       </div>
-      <div class="assistant-board-actions">
-        <button class="assistant-small-btn" id="refreshAssignmentsBtn" type="button">🔄 Refresh</button>
-        <a class="assistant-small-btn" href="#manualMode" style="text-decoration:none;">🧰 Manual Mode</a>
-      </div>
+      <p class="assistant-ask-hint">Opens the matching page. For balances and details, use the portfolio links above.</p>
     </div>
-
-    <div id="assignmentList" class="assistant-list">
-      <div class="assistant-empty">Loading…</div>
-    </div>
-  </section>
+  </details>
 
 <!-- 🧞 Genie Insights (Proactive guidance) -->
 
-  <details id="manualMode" class="manual-mode" open>
+  <details id="manualMode" class="manual-mode">
     <summary>
-      <span aria-hidden="true">🧰</span> Manual Mode (Dashboards & Detailed Tools)
-      <span class="manual-hint">Open if you want the traditional screens and deeper numbers.</span>
+      <span aria-hidden="true">🧰</span> Portfolio details & reports
+      <span class="manual-hint">Explore finances, recent activity, and portfolio reports.</span>
     </summary>
 
   <!--section id="genieInsights" class="genie-insights" style="display:none;">
@@ -3585,7 +3652,7 @@ function buildAssignmentsFromData(data){
       meta: [`${money(data.rentCollected)} rent`, `${money(data.maintenanceSpent)} maintenance`, `${money(noi)} NOI`],
       actions: [
         { label: "📈 Open Reports", href: "reports-analytics.html", secondary: true },
-        { label: "🧰 Manual Mode", href: "#manualMode", secondary: true }
+        { label: "View portfolio details", href: "#manualMode", secondary: true }
       ]
     });
   }
@@ -3620,7 +3687,7 @@ function renderAssignments(items){
   const arr = items || [];
   if(!arr.length){
     sub.textContent = "All clear ✅ Nothing urgent right now.";
-    list.innerHTML = `<div class="assistant-empty">✅ You’re good today. If you want details, open <a href="#manualMode">Manual Mode</a>.</div>`;
+    list.innerHTML = `<div class="assistant-empty">✅ You’re good today. If you want details, open <a href="#manualMode">portfolio details</a>.</div>`;
     return;
   }
 
@@ -3680,6 +3747,11 @@ function renderAssignments(items){
    Assistant UI wiring (Ask + Refresh)
 ------------------------------------------------------------- */
 function setupAssistantUI(){
+  document.querySelectorAll('a[href="#manualMode"]').forEach(function(link) {
+    link.addEventListener("click", function() {
+      document.getElementById("manualMode").open = true;
+    });
+  });
   const askInput = document.getElementById("assistantAskInput");
   const askBtn = document.getElementById("assistantAskBtn");
   const refreshBtn = document.getElementById("refreshAssignmentsBtn");
@@ -3722,13 +3794,15 @@ function setupAssistantUI(){
   refreshBtn?.addEventListener("click", async ()=>{
     try{
       refreshBtn.disabled = true;
-      refreshBtn.textContent = "⏳ Refreshing…";
+      refreshBtn.textContent = "Refreshing…";
+      document.getElementById("workspaceUpdated").textContent = "Refreshing portfolio…";
       const { data } = await window.sb.auth.getUser();
       if(!data?.user) return;
       const d = await fetchDashboardData(data.user);
       updateDashboard(d);
     }catch(e){
       console.warn("Refresh failed:", e);
+      document.getElementById("workspaceUpdated").textContent = "Refresh failed. Displayed figures may be out of date. Try again.";
     }finally{
       refreshBtn.disabled = false;
       refreshBtn.textContent = "🔄 Refresh";
@@ -4495,6 +4569,10 @@ function renderSetupChecklist(data){
    Dashboard Renderer
 ------------------------------------------------------------- */
 function updateDashboard(data) {
+  document.getElementById("workspaceRent").textContent = formatCurrency(Number(data.rentOverdue || 0));
+  document.getElementById("workspaceRepairs").textContent = String(Number(data.openTotal || 0));
+  document.getElementById("workspaceRenewals").textContent = String((data.expiringLeases || []).length);
+  document.getElementById("workspaceUpdated").textContent = "Updated " + new Date().toLocaleTimeString([], {hour: "numeric", minute: "2-digit"});
   // Remove loading shimmer from all stat cards
   document.querySelectorAll('.stat-value.loading, .stat-note.loading, li.loading').forEach(function(el) {
     el.classList.remove('loading');
@@ -4512,7 +4590,7 @@ function updateDashboard(data) {
     if(_parts.length){
       _heroSub.innerHTML = "You have " + _parts.join(" and ") + ". Click a card below to act.";
     } else {
-      _heroSub.innerHTML = "Everything looks good. No urgent items today.";
+      _heroSub.innerHTML = "Review your attention list for renewals, vacancies, and other follow-ups.";
     }
   }
 
@@ -4748,6 +4826,10 @@ async function initDashboardPage(preResolvedUser){
     };
   } catch (error) {
     console.error("Error fetching dashboard data:", error);
+    document.getElementById("workspaceUpdated").textContent = "Portfolio could not load. Try refreshing.";
+    document.getElementById("heroSub").textContent = "Your portfolio summary is unavailable.";
+    document.getElementById("assistantBoardSub").textContent = "Attention list unavailable. Try Refresh.";
+    document.getElementById("assignmentList").textContent = "We could not load your portfolio. Your records have not been changed.";
     document.getElementById("financialStats").innerHTML =
       `<div class="empty-state" style="grid-column: 1 / -1; color: red;">
          Error loading data. Check console.
@@ -4879,9 +4961,9 @@ function setProgress(pct, statusText, activeStep) {
 <!-- ═══ Dashboard logic scripts ═══ -->
 
 <!-- ===== MOBILE BOTTOM NAV ===== -->
-<nav class="mobile-nav" aria-label="GenieSphere mobile navigation">
+<nav class="mobile-nav" aria-label="Rental Genie mobile navigation">
   <div class="mobile-nav-inner">
-    <a class="mnav" href="dashboard.html" data-nav="household"><div class="ico">📊</div><span class="mnav-label">Home</span></a>
+    <a class="mnav" href="dashboard.html" aria-current="page" data-nav="household"><div class="ico">📊</div><span class="mnav-label">Home</span></a>
     <a class="mnav" href="property-management.html" data-nav="household"><div class="ico">🏘️</div><span class="mnav-label">Properties</span></a>
     <a class="mnav" href="lease-rent-center.html" data-nav="business"><div class="ico">💰</div><span class="mnav-label">Rent</span></a>
     <!--a class="mnav" href="lease-rent-center.html" data-nav="investment"><div class="ico">💰</div></a-->

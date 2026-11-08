@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://cdn.jsdelivr.net">
 <!-- ════════════════════════════════════════════════════ -->
   
-    <title>💸 Expense Tracking – Rental Genie</title>
+    <title>Expenses & receipts – Rental Genie</title>
 
   <style>
 :root{
@@ -1619,9 +1619,48 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   input[type="search"], input[type="text"], select { max-width: 100%; box-sizing: border-box; }
 }
 </style>
+<style id="expenses-workspace-design">
+body.expenses-workspace {background:#f4f6f9}
+body.expenses-workspace > main.page {width:100% !important;max-width:none !important;box-sizing:border-box;padding:28px !important}
+.expenses-workspace .navbar,.expenses-workspace .footer-content,.expenses-workspace .footer-bottom {max-width:none !important}
+.expense-eyebrow {font-size:.72rem;letter-spacing:.12em;font-weight:700;color:#52647a}
+.expenses-workspace h1 {font-size:clamp(1.5rem,3vw,2rem) !important}
+.expenses-workspace .card,.expenses-workspace .filter-card,.expenses-workspace .summary-card {border-radius:14px !important;box-shadow:none !important}
+.expense-review-filters {display:flex;flex-wrap:wrap;gap:16px;background:white;border:1px solid #dce3eb;border-radius:14px;padding:18px;margin:18px 0}
+.expense-review-filters > div {flex:1 1 180px;min-width:0}
+.expense-review-filters .expense-search {flex:2 1 240px}
+.expense-review-filters label {display:block;font-size:.75rem;color:#52647a;margin-bottom:7px}
+.expense-review-filters input,.expense-review-filters select {width:100%;min-height:48px;border:1px solid #cbd5e1;border-radius:9px;background:white;padding:10px;box-sizing:border-box;font:inherit}
+.expense-summary-note,#expenseResults {font-size:.8rem;color:#52647a;line-height:1.5}
+.expense-kind {display:block;font-size:.7rem;color:#164c45;margin-top:8px;font-weight:600}
+.expense-vendor {font-size:.8rem;color:#52647a;margin:6px 0}
+.expense-repair-link {display:block;font-size:.8rem;color:#164c45;margin-top:8px}
+.expenses-workspace button,.expenses-workspace .action-btn {min-height:44px;min-width:44px}
+.expenses-workspace .action-btn {width:auto !important;padding:10px !important}
+.expense-secondary {background:white;border:1px solid #dce3eb;border-radius:999px;padding:10px 18px;color:#213b50}
+.expenses-workspace .add-btn {background:#164c45 !important;color:white !important}
+.expenses-workspace :is(a,button,input,select):focus-visible {outline:3px solid #b97016 !important;outline-offset:3px}
+@media(max-width:760px){
+ body.expenses-workspace > main.page {padding:20px 16px calc(100px + env(safe-area-inset-bottom)) !important}
+ .expenses-workspace .filter-subrow .preset-hint {flex:none !important;min-width:0 !important}
+ .expenses-workspace .summary-card-grid {grid-template-columns:1fr 1fr !important;gap:10px}
+ .expenses-workspace .summary-value {font-size:1.25rem !important;overflow-wrap:anywhere}
+ .expenses-workspace .expense-table-container {overflow:visible}
+ .expenses-workspace .expense-table {display:block;width:100%;min-width:0 !important}
+ .expenses-workspace .expense-table thead {position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ .expenses-workspace .expense-table tbody {display:grid;gap:16px}
+ .expenses-workspace .expense-table tr {display:grid !important;grid-template-columns:1fr 1fr;gap:16px;padding:18px;background:white;border:1px solid #dce3eb;border-radius:14px}
+ .expenses-workspace .expense-table td {display:block !important;padding:0 !important;border:0 !important;min-width:0;overflow-wrap:anywhere;text-align:left !important;white-space:normal !important}
+ .expenses-workspace .expense-table td::before {content:attr(data-label);display:block;color:#52647a;font-size:.7rem;margin-bottom:6px;font-weight:400}
+ .expenses-workspace .expense-table td:last-child,.expenses-workspace .expense-table td[colspan] {grid-column:1 / -1}
+ .expenses-workspace .expense-table td:nth-child(5) {font-weight:800;color:#102d35}
+ .expenses-workspace .card-header {flex-wrap:wrap;gap:12px}
+}
+@media(prefers-reduced-motion:reduce){.expenses-workspace * {animation:none !important;transition:none !important}}
+</style>
 </head>
 
-<body class="auth-guest">
+<body class="auth-guest expenses-workspace">
 
 <!-- ═══ SUPABASE BOOTSTRAP (body-first: avoids tracking-prevention blocking safeStorage) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1818,12 +1857,13 @@ window.rgFiles = (function () {
 
 
 <main class="page">
+  <p class="expense-eyebrow">PORTFOLIO FINANCES</p>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;">
         <div>
-          <h1 style="margin:0 0 4px;">💸 Expense Tracking</h1>
-          <p style="margin:0;color:var(--rg-muted,#64748b);font-size:.88rem;">Track every property expense — filter by date, category, and property.</p>
+          <h1 style="margin:0 0 4px;">Expenses & receipts</h1>
+          <p style="margin:0;color:var(--rg-muted,#64748b);font-size:.88rem;">Review recorded costs, keep planned spending separate, and find the receipts behind your numbers.</p>
         </div>
-        <button class="add-btn" id="addExpenseBtnTop" style="align-self:flex-start;white-space:nowrap;">➕ New Expense</button>
+        <button class="add-btn" id="addExpenseBtnTop" style="align-self:flex-start;white-space:nowrap;">+ Add expense</button>
       </div>
 
       <div id="workspaceEmptyState" style="display:none; margin-top:12px;">
@@ -1893,10 +1933,16 @@ window.rgFiles = (function () {
         </div>
       </div>
 
+      <div class="expense-review-filters">
+        <div><label for="expenseKind">Expense type</label><select id="expenseKind"><option value="recorded">Recorded</option><option value="planned">Planned</option><option value="all">Recorded &amp; planned</option></select></div>
+        <div><label for="expenseReceipt">Receipt</label><select id="expenseReceipt"><option value="all">All records</option><option value="missing">Missing receipt</option><option value="attached">Receipt attached</option></select></div>
+        <div class="expense-search"><label for="expenseSearch">Find an expense</label><input id="expenseSearch" type="search" placeholder="Vendor, property, category, or note…" /></div>
+      </div>
+      <p class="expense-summary-note">Totals reflect the records in the current view. Planned amounts are not evidence of payment.</p>
       <section class="summary-card-grid">
 
         <article class="summary-card">
-          <div class="summary-label">Total Expenses (Selected)</div>
+          <div class="summary-label">Amount in current view</div>
           <div class="summary-value" id="totalExpenses">$0.00</div>
         </article>
 
@@ -1917,22 +1963,22 @@ window.rgFiles = (function () {
       </section>
 
       <div class="card-header">
-        <h2>📒 Expense Ledger</h2>
-        <button class="add-btn" id="addExpenseBtn">➕ New Expense</button>
+        <div><h2>Expense records</h2><p id="expenseResults" role="status">Loading expenses…</p></div><button class="expense-secondary" id="refreshExpenses" type="button">Refresh</button>
+        <button class="add-btn" id="addExpenseBtn">+ Add expense</button>
       </div>
 
       <div class="card">
         <div class="expense-table-container">
-          <table class="rg-stack expense-table">
+          <table class="rg-stack expense-table" role="table" aria-label="Expense records">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Property</th>
-                <th>Category</th>
-                <th>Description</th>
-                <th>Amount</th>
+                <th scope="col">Date</th>
+                <th scope="col">Property</th>
+                <th scope="col">Category</th>
+                <th scope="col">Description</th>
+                <th scope="col">Amount</th>
                 <th style="text-align:center">Receipt</th>
-                <th>Actions</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody id="expenseTableBody">
@@ -2404,6 +2450,10 @@ function setupFilters() {
     function applyFilters() {
       const url = new URL(window.location.href);
       url.search = ""; // Clear existing params
+      if(activeCompanyId)url.searchParams.set("company_id",activeCompanyId);
+      url.searchParams.set("kind",document.getElementById("expenseKind").value);
+      url.searchParams.set("receipt",document.getElementById("expenseReceipt").value);
+      if(document.getElementById("expenseSearch").value)url.searchParams.set("q",document.getElementById("expenseSearch").value);
 
       if (currentFilters.property) url.searchParams.set("property", currentFilters.property);
       if (currentFilters.category) url.searchParams.set("category", currentFilters.category);
@@ -2415,7 +2465,10 @@ function setupFilters() {
       loadExpenses();
     }
 
+    let expenseLoadVersion = 0;
     async function loadExpenses() {
+  const version = ++expenseLoadVersion;
+  document.getElementById("expenseResults").textContent = "Loading expenses…";
   const body = document.getElementById("expenseTableBody");
   const totalEl = document.getElementById("totalExpenses");
   const maintEl = document.getElementById("maintenanceTotal");
@@ -2425,11 +2478,11 @@ function setupFilters() {
   body.innerHTML = '<tr><td colspan="7">Loading expenses...</td></tr>';
   
   [totalEl, maintEl, mgmtEl, utilEl].forEach(el => {
-    if (el) el.textContent = formatMoney(0);
+    if (el) el.textContent = "—";
   });
 
   // Use the real date column: date_paid
-  let query = client.from("expenses").select("id, date_paid, property_name, category, amount, company_id, note, receipt_url, receipt_path").eq("company_id", activeCompanyId).is("archived_at", null);
+  let query = client.from("expenses").select("id, date_paid, property_name, category, amount, company_id, note, receipt_url, receipt_path, vendor, is_planned, maintenance_request_id").eq("company_id", activeCompanyId).is("archived_at", null);
 
   if (currentFilters.property) {
     query = query.eq("property_name", currentFilters.property);
@@ -2446,15 +2499,30 @@ function setupFilters() {
   
   query = query.order("date_paid", { ascending: false });
 
-  const { data, error } = await query;
+  let response;
+  try { response = await query; } catch(error) { response = {error}; }
+  if(version !== expenseLoadVersion) return;
+  let {data, error} = response;
 
   if (error) {
     console.error("Error loading expenses:", error);
-    body.innerHTML = `<tr><td colspan='7'>Error loading data: ${escapeHtml(error.message || "Unknown error")}</td></tr>`;
+    body.innerHTML = '<tr><td colspan="7">Expenses could not load. Try Refresh.</td></tr>';
+    document.getElementById("expenseResults").textContent = "Expenses unavailable. Try Refresh.";
     return;
   }
 
-  if (!data?.length) {
+  const kind = document.getElementById("expenseKind").value;
+  const receipt = document.getElementById("expenseReceipt").value;
+  const search = document.getElementById("expenseSearch").value.trim().toLowerCase();
+  data = (data || []).filter(function(row) {
+    const hasReceipt = !!(row.receipt_path || row.receipt_url);
+    return (kind === "all" || (kind === "planned" ? row.is_planned === true : row.is_planned !== true)) &&
+      (receipt === "all" || (receipt === "attached" ? hasReceipt : !hasReceipt)) &&
+      [row.vendor, row.property_name, row.category, row.note].join(" ").toLowerCase().includes(search);
+  });
+  document.getElementById("expenseResults").textContent = data.length + " expense record" + (data.length === 1 ? "" : "s") + " in this view";
+  if (!data.length) {
+    [totalEl, maintEl, mgmtEl, utilEl].forEach(el=>{if(el)el.textContent=formatMoney(0)});
     body.innerHTML = '<tr><td colspan="7">No expenses found for the selected filters.</td></tr>';
     return;
   }
@@ -2465,13 +2533,13 @@ function setupFilters() {
   let utilitiesTotal = 0;
 
   body.innerHTML = data.map(r => {
-    total += r.amount || 0;
+    total += Number(r.amount) || 0;
     
     // Update summary totals
     switch (summaryTileFor(r.category)) {
-      case "maintenance": maintenanceTotal += r.amount || 0; break;
-      case "management":  managementTotal  += r.amount || 0; break;
-      case "utilities":   utilitiesTotal   += r.amount || 0; break;
+      case "maintenance": maintenanceTotal += Number(r.amount) || 0; break;
+      case "management":  managementTotal  += Number(r.amount) || 0; break;
+      case "utilities":   utilitiesTotal   += Number(r.amount) || 0; break;
     }
 
     return `
@@ -2495,6 +2563,20 @@ function setupFilters() {
       </tr>
     `;
   }).join("");
+  const labels = ["Date", "Property", "Category / type", "Description / vendor", "Amount", "Receipt", "Actions"];
+  Array.from(body.rows).forEach(function(row,index) {
+    row.setAttribute("role","row");
+    Array.from(row.cells).forEach(function(cell,column) {cell.dataset.label=labels[column];cell.setAttribute("role","cell")});
+    const item=data[index];
+    const kind=document.createElement("small");kind.className="expense-kind";kind.textContent=item.is_planned ? "Planned" : "Recorded";row.cells[2].appendChild(kind);
+    if(item.vendor){const vendor=document.createElement("p");vendor.className="expense-vendor";vendor.textContent=item.vendor;row.cells[3].appendChild(vendor)}
+    if(item.maintenance_request_id){const link=document.createElement("a"),url=new URL("maintenance-requests.html",location.origin);url.searchParams.set("company_id",item.company_id);url.searchParams.set("property",item.property_name || "");link.href=url.pathname+url.search;link.textContent="Linked repair #"+item.maintenance_request_id;link.className="expense-repair-link";row.cells[3].appendChild(link)}
+    const edit=row.querySelector('.action-btn.edit'),archive=row.querySelector('.action-btn.delete');
+    if(edit){edit.textContent="Edit";edit.setAttribute("aria-label","Edit expense")}
+    if(archive){archive.textContent="Archive";archive.title="Archive expense";archive.setAttribute("aria-label","Archive expense")}
+    if(!item.receipt_path&&!item.receipt_url)row.cells[5].textContent="Not attached";
+    else {const link=row.cells[5].querySelector('a');if(link){link.textContent="View receipt";link.style.fontSize=".85rem"}}
+  });
   rgFiles.hydrate(client || window._rgClient, body);
 
   if (totalEl) totalEl.textContent = formatMoney(total);
@@ -2503,12 +2585,23 @@ function setupFilters() {
   if (utilEl) utilEl.textContent = formatMoney(utilitiesTotal);
 }
 
+    const reviewParams = new URLSearchParams(location.search);
+    for(const [id,key] of [["expenseKind","kind"],["expenseReceipt","receipt"]]) {
+      const select=document.getElementById(id),value=reviewParams.get(key);
+      if(Array.from(select.options).some(option=>option.value===value))select.value=value;
+      select.addEventListener("change",applyFilters);
+    }
+    document.getElementById("expenseSearch").value=reviewParams.get("q") || "";
+    let expenseSearchTimer;
+    document.getElementById("expenseSearch").addEventListener("input",function(){clearTimeout(expenseSearchTimer);expenseSearchTimer=setTimeout(applyFilters,200)});
+    document.getElementById("refreshExpenses").addEventListener("click",loadExpenses);
+
     // Setup Add Expense button
     const addExpenseBtn = document.getElementById("addExpenseBtn");
     if (addExpenseBtn) {
         addExpenseBtn.onclick = () => {
           const p = currentFilters.property ? `?property=${encodeURIComponent(currentFilters.property)}&embedded=1` : `?embedded=1`;
-          openExpenseDrawer(`add-expense.html${p}`, "➕ New Expense");
+          openExpenseDrawer(`add-expense.html${p}`, "+ Add expense");
         };
     }
 

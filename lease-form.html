@@ -434,8 +434,10 @@ body { overflow-x: hidden; }
 .mnav-label { display: block; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 360px) { .mnav-label { font-size: 9px; letter-spacing: -.2px; } .mnav { padding-left: 2px !important; padding-right: 2px !important; } }
 </style>
+<link rel="stylesheet" href="shared/css/form-guide.css">
+<script src="shared/js/form-guide.js" defer></script>
 </head>
-<body>
+<body data-entry-guide="lease">
 
 <!-- ── Header ────────────────────────────────────────────────── -->
 <header class="header-container">
@@ -505,7 +507,7 @@ body { overflow-x: hidden; }
     <!-- Page header -->
     <div class="page-header">
       <div>
-        <div class="page-title" id="formTitle">📝 Create Lease</div>
+        <div class="page-title" id="formTitle" role="heading" aria-level="1">📝 Create Lease</div>
         <div class="page-sub" id="formSub">Fill in the details below to create a new lease record.</div>
       </div>
       <div class="page-actions">

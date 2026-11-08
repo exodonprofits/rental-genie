@@ -514,8 +514,10 @@ body { overflow-x: hidden; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>
+<link rel="stylesheet" href="shared/css/tenant-workspace.css">
+<script src="shared/js/tenant-resources.js" defer></script>
 </head>
-<body>
+<body class="tenant-workspace tenant-resources">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -593,7 +595,7 @@ body { overflow-x: hidden; }
 <main id="app" class="hidden">
   <div class="page-header">
     <div>
-      <h1 class="page-title">💬 Contact</h1>
+      <h1 class="page-title">Messages</h1>
       <p class="page-sub">Message your landlord or property manager. We save a copy for your records.</p>
     </div>
     <div class="page-header-right">
@@ -602,17 +604,18 @@ body { overflow-x: hidden; }
     </div>
   </div>
 
+  <p class="tenant-emergency">For immediate danger, contact local emergency services or the appropriate utility. For urgent repairs, contact your landlord directly and report the issue through Repair Requests.</p>
   <div class="contact-info-grid">
     <div class="info-card"><div class="info-card-label">📧 Your Email</div><div class="info-card-value" id="meEmail">—</div></div>
-    <div class="info-card"><div class="info-card-label">⏱ Response Time</div><div class="info-card-value">1–2 business days</div></div>
-    <div class="info-card"><div class="info-card-label">📬 Messages Sent</div><div class="info-card-value" id="msgCount">—</div></div>
+    <div class="info-card"><div class="info-card-label">Response time</div><div class="info-card-value">Confirm with your landlord</div></div>
+    <div class="info-card"><div class="info-card-label">Recent messages</div><div class="info-card-value" id="msgCount">—</div></div>
   </div>
 
   <div class="section-card" style="margin-bottom:20px;">
     <div class="card-head">
       <div class="card-head-left">
         <div class="card-title">📝 Send a Message</div>
-        <div class="card-sub">Fill in the details and we'll notify your property manager.</div>
+        <div class="card-sub">Send a message to your landlord’s portal inbox. Email or SMS delivery is not confirmed here.</div>
       </div>
     </div>
     <div class="card-body">
@@ -625,23 +628,23 @@ body { overflow-x: hidden; }
       </div>
       <div class="form-grid" style="margin-bottom:14px;">
         <div class="form-group">
-          <label>🏠 Property</label>
+          <label for="property">🏠 Property</label>
           <input id="property" class="form-input" placeholder="Auto-filled from your lease" readonly style="background:#f8fafc;"/>
         </div>
         <div class="form-group">
-          <label>📝 Subject *</label>
+          <label for="subject">📝 Subject *</label>
           <input id="subject" class="form-input" placeholder="e.g., Question about rent due date"/>
         </div>
       </div>
       <div class="form-group" style="margin-bottom:14px;">
-        <label>💬 Message *</label>
+        <label for="message">💬 Message *</label>
         <textarea id="message" class="form-input" placeholder="Write your message here. Be as detailed as possible…"></textarea>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <button class="btn primary" id="btnSend" type="button">📨 Send Message</button>
         <button class="btn" id="btnEmail" type="button">✉️ Open Email App</button>
       </div>
-      <div class="status-msg" id="statusMsg"></div>
+      <div class="status-msg" id="statusMsg" role="status"></div>
     </div>
   </div>
 
@@ -649,10 +652,11 @@ body { overflow-x: hidden; }
     <div class="card-head">
       <div class="card-head-left">
         <div class="card-title">📬 Message History</div>
-        <div class="card-sub">Messages you've sent through the portal.</div>
+        <div class="card-sub">Up to 20 recent messages and replies, newest first.</div>
       </div>
     </div>
     <div class="card-body">
+      <label class="tenant-search-label" for="messageSearch">Find a recent message</label><input id="messageSearch" class="form-input" type="search" placeholder="Subject or message…"><p id="messageResults" role="status"></p>
       <div id="msgHistory"><div class="empty-state"><span class="skel" style="width:40%;height:16px;"></span></div></div>
     </div>
   </div>
@@ -732,20 +736,26 @@ body { overflow-x: hidden; }
 
   function renderHistory(){
     const el=$('msgHistory');
-    if(!messages.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">💬</div><p>No messages sent yet.<br>Use the form above to contact your landlord.</p></div>';return;}
-    el.innerHTML=messages.map(m=>{
+    const q=($('messageSearch').value||'').trim().toLowerCase();
+    const visible=messages.filter(m=>[m.subject,m.message,m.body].join(' ').toLowerCase().includes(q));
+    $('messageResults').textContent=visible.length+' recent message'+(visible.length===1?'':'s');
+    if(!visible.length){el.innerHTML='<div class="empty-state"><div class="empty-icon">💬</div><p>No messages sent yet.<br>Use the form above to contact your landlord.</p></div>';return;}
+    el.innerHTML=visible.map(m=>{
       const fromLandlord = m.sender === 'landlord';
       const rowClass = fromLandlord ? 'msg-row from-landlord' : 'msg-row';
       const senderLabel = fromLandlord ? '<div class="msg-sender-label">🏠 Your Landlord</div>' : '';
       const chip = fromLandlord ? '<span class="chip info" style="margin-top:6px;display:inline-flex;">📩 Received</span>' : '<span class="chip good" style="margin-top:6px;display:inline-flex;">✅ Sent</span>';
       return `<div class="${rowClass}"><div style="flex:1;min-width:0;">${senderLabel}<div class="msg-subject">${safe(m.subject||'No subject')}</div><div class="msg-body">${safe(m.message||m.body||'').slice(0,200)}${(m.message||m.body||'').length>200?'…':''}</div></div><div style="text-align:right;flex-shrink:0;"><div class="msg-meta">${fmtDate(m.created_at||m.sent_at)}</div>${chip}</div></div>`;
     }).join('');
+    Array.from(el.querySelectorAll('.msg-row')).forEach(function(row,index){const message=visible[index];if(String(message.message||message.body||'').length<=200)return;const details=document.createElement('details'),summary=document.createElement('summary'),text=document.createElement('p');summary.textContent='Read full message';text.textContent=message.message||message.body;details.append(summary,text);row.firstElementChild.appendChild(details)});
   }
+  $('messageSearch').addEventListener('input',renderHistory);
 
   async function loadHistory(){
-    const {data} = tenant
+    const {data,error} = tenant
       ? await sb.from('tenant_messages').select('*').eq('tenant_id',tenant.id).order('created_at',{ascending:false}).limit(20)
       : await sb.from('tenant_messages').select('*').eq('tenant_email',user.email).order('created_at',{ascending:false}).limit(20);
+    if(error){$('msgCount').textContent='—';$('messageResults').textContent='Message history unavailable. Try Refresh.';$('msgHistory').textContent='Your recent messages could not load.';return;}
     messages=data||[];
     $('msgCount').textContent=messages.length||'0';
     renderHistory();
@@ -827,7 +837,7 @@ body { overflow-x: hidden; }
     const payload={tenant_email:user.email,tenant_id:tenant?tenant.id:null,company_id:leaseData[0].company_id,property_name:property_name||leaseData[0].property_name,subject,message,sender:'tenant'};
     const {error}=await sb.from('tenant_messages').insert([payload]);
     if(error){setMsg('Error: '+safe(error.message),'err');btn.disabled=false;btn.textContent='📨 Send Message';return;}
-    setMsg('✅ Message sent! Your landlord will respond within 1–2 business days.','ok');
+    setMsg('Message recorded in your portal. Check here for replies or contact your landlord directly if time-sensitive.','ok');
     $('subject').value='';$('message').value='';
     btn.disabled=false;btn.textContent='📨 Send Message';
     await loadHistory();

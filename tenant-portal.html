@@ -472,8 +472,10 @@ body { overflow-x: hidden; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>
+<link rel="stylesheet" href="shared/css/tenant-workspace.css">
+<script src="shared/js/tenant-resources.js" defer></script>
 </head>
-<body>
+<body class="tenant-workspace">
 <!-- ═══ SUPABASE BOOTSTRAP (body-first) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ══════════════════════════════════════════ -->
@@ -558,7 +560,7 @@ body { overflow-x: hidden; }
   <!-- Page header -->
   <div class="page-header">
     <div>
-      <div class="page-title" id="portalTitle">🏠 Tenant Portal</div>
+      <div class="page-title" id="portalTitle" role="heading" aria-level="1">🏠 Tenant Portal</div>
       <div class="page-sub" id="portalSub">Loading your rental snapshot…</div>
     </div>
     <div class="page-header-right">
@@ -576,7 +578,8 @@ body { overflow-x: hidden; }
   </div>
 
   <!-- ── Hero stats ─────────────────────────────────────────── -->
-  <div class="hero-stats">
+  <div class="hero-stats tenant-home-stats">
+    <div class="hero-stat"><div class="stat-label">Outstanding rent</div><div class="stat-value mono" id="tenantBalance">—</div><div class="stat-sub">Due periods only · check recorded payments</div></div>
     <div class="hero-stat" id="statRent">
       <div class="stat-label">💰 Monthly Rent</div>
       <div class="stat-value mono" id="qpRent">—</div>
@@ -591,6 +594,45 @@ body { overflow-x: hidden; }
       <div class="stat-label">📄 Lease Status</div>
       <div class="stat-value" id="qpLeaseStatus" style="font-size:1.1rem">—</div>
       <div class="stat-sub" id="qpLeaseTerm">Term: —</div>
+    </div>
+  </div>
+
+  <!-- ── Quick actions ──────────────────────────────────────── -->
+  <div class="section-card">
+    <div class="card-head">
+      <div class="card-head-left">
+        <div class="card-title">⚡ Quick Actions</div>
+        <div class="card-sub">Jump straight to what you need</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="action-grid">
+        <a class="action-card" id="leaseLink" href="tenant-lease.html">
+          <div class="action-icon">📄</div>
+          <div class="action-label">My Lease</div>
+          <div class="action-hint" id="leaseHint">View lease details</div>
+        </a>
+        <a class="action-card" id="paymentLink" href="tenant-payments.html">
+          <div class="action-icon">💵</div>
+          <div class="action-label">Payments</div>
+          <div class="action-hint" id="payHint">View balance and payment instructions</div>
+        </a>
+        <a class="action-card" id="maintenanceLink" href="tenant-repair-requests.html">
+          <div class="action-icon">🛠️</div>
+          <div class="action-label">Request Repair</div>
+          <div class="action-hint" id="repairHint">Report a problem or check progress</div>
+        </a>
+        <a class="action-card" id="docsLink" href="tenant-documents.html">
+          <div class="action-icon">📁</div>
+          <div class="action-label">Documents</div>
+          <div class="action-hint">Download your files</div>
+        </a>
+        <a class="action-card" id="contactLink" href="tenant-contact.html">
+          <div class="action-icon">💬</div>
+          <div class="action-label">Contact</div>
+          <div class="action-hint">Message your landlord</div>
+        </a>
+      </div>
     </div>
   </div>
 
@@ -629,45 +671,6 @@ body { overflow-x: hidden; }
           <div class="info-cell-label">Lease Status</div>
           <div class="info-cell-value" id="qpStatus">—</div>
         </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── Quick actions ──────────────────────────────────────── -->
-  <div class="section-card">
-    <div class="card-head">
-      <div class="card-head-left">
-        <div class="card-title">⚡ Quick Actions</div>
-        <div class="card-sub">Jump straight to what you need</div>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="action-grid">
-        <a class="action-card" id="leaseLink" href="tenant-lease.html">
-          <div class="action-icon">📄</div>
-          <div class="action-label">My Lease</div>
-          <div class="action-hint" id="leaseHint">View lease details</div>
-        </a>
-        <a class="action-card" id="paymentLink" href="tenant-payments.html">
-          <div class="action-icon">💵</div>
-          <div class="action-label">Payments</div>
-          <div class="action-hint" id="payHint">See your history</div>
-        </a>
-        <a class="action-card" id="maintenanceLink" href="tenant-repair-requests.html">
-          <div class="action-icon">🛠️</div>
-          <div class="action-label">Request Repair</div>
-          <div class="action-hint" id="repairHint">Report an issue fast</div>
-        </a>
-        <a class="action-card" id="docsLink" href="tenant-documents.html">
-          <div class="action-icon">📁</div>
-          <div class="action-label">Documents</div>
-          <div class="action-hint">Download your files</div>
-        </a>
-        <a class="action-card" id="contactLink" href="tenant-contact.html">
-          <div class="action-icon">💬</div>
-          <div class="action-label">Contact</div>
-          <div class="action-hint">Message your landlord</div>
-        </a>
       </div>
     </div>
   </div>
@@ -869,8 +872,7 @@ body { overflow-x: hidden; }
   function loadMySchedule() {
     var now = new Date();
     return sb.rpc('rg_my_rent_schedule', { p_as_of: ymdLocal(new Date(now.getFullYear(), now.getMonth() + 2, 0)) })
-      .then(function (r) { if (r.error) { console.warn('Rent schedule load failed:', r.error); return []; } return r.data || []; })
-      .catch(function () { return []; });
+      .then(function (r) { if (r.error) throw r.error; return r.data || []; });
   }
 
   /* ── Hero stat accent ───────────────────────────────────── */
@@ -998,6 +1000,7 @@ body { overflow-x: hidden; }
       var last = rows.length ? rows[0] : null;
 
       /* ── Hero stats ── */
+      setText('tenantBalance', fmtMoney(balanceDue));
       setText('qpRent', rentAmount ? fmtMoney(rentAmount) : '—');
       setText('qpNextDue', nextDue ? 'Next due: ' + fmtDate(nextDue) + (dueDay ? ' (day ' + dueDay + ')' : '') : (lease ? 'No rent due' : 'Due day not set'));
       setText('qpPaidMonth', fmtMoney(paidThisMonth));
@@ -1087,7 +1090,8 @@ body { overflow-x: hidden; }
 
     }).catch(function (err) {
       console.error('Dashboard load error:', err);
-      setAlert('danger', 'Error loading your portal data. Please try refreshing.');
+      setText('tenantBalance', 'Unavailable');
+      setAlert('danger', 'Your rental information could not load. Please refresh before relying on the displayed figures.');
     });
     }); // end resolveTenant().then()
   }
@@ -1096,13 +1100,13 @@ body { overflow-x: hidden; }
   function loadRepairsSnapshot(user, tenant, propName) {
     var q = tenant
       ? sb.from('maintenance_requests')
-          .select('id, property_name, issue_description, status, created_at')
+          .select('id, property_name, issue_description, status, created_at').is('archived_at', null)
           .eq('tenant_id', tenant.id)
           .neq('status', 'Resolved')
           .order('created_at', { ascending: false })
           .limit(5)
       : sb.from('maintenance_requests')
-          .select('id, property_name, issue_description, status, created_at')
+          .select('id, property_name, issue_description, status, created_at').is('archived_at', null)
           .eq('tenant_email', user.email)
           .neq('status', 'Resolved')
           .order('created_at', { ascending: false })
@@ -1115,7 +1119,7 @@ body { overflow-x: hidden; }
       var open = (res.data || []).filter(function (r) {
         return String(r.status || '') !== 'Resolved';
       });
-      if (!open.length) { var rc = $('repairsCard'); if (rc) rc.style.display = 'none'; return; }
+      if (!open.length) { $('repairsCard').style.display = 'block'; $('repairsSubtitle').textContent = 'No open requests in this snapshot'; $('repairsList').textContent = 'You can report a new problem or view your request history.'; return; }
 
       var card = $('repairsCard');
       var list = $('repairsList');
@@ -1134,7 +1138,7 @@ body { overflow-x: hidden; }
           + '</div>';
       }).join('');
     }).catch(function () {
-      var rc = $('repairsCard'); if (rc) rc.style.display = 'none';
+      var rc = $('repairsCard'); if (rc) rc.style.display = 'block'; $('repairsSubtitle').textContent = 'Repair snapshot unavailable'; $('repairsList').textContent = 'Open All Requests or refresh to try again.';
     });
   }
 

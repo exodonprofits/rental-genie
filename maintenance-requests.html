@@ -1399,9 +1399,77 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
 .reimb-tab:hover { background:#f8fafc; }
 .reimb-tab.active { border-color:#60a5fa; background:#eff6ff; color:#1e40af; box-shadow:0 3px 8px rgba(59,130,246,.15); }
 </style>
+<style id="maintenance-workspace-design">
+body.maintenance-workspace { background:#f4f6f9; }
+body.maintenance-workspace > main.page { max-width:none !important; width:100% !important; box-sizing:border-box; padding:28px !important; }
+.maintenance-workspace .navbar,.maintenance-workspace .footer-content,.maintenance-workspace .footer-bottom { max-width:none !important; }
+.maintenance-eyebrow { font-size:.72rem; letter-spacing:.12em; font-weight:700; color:#52647a; }
+.maintenance-workspace h1 { font-size:clamp(1.5rem,3vw,2rem) !important; letter-spacing:-.04em; }
+.maintenance-intro { color:#52647a; line-height:1.5; }
+.maintenance-emergency { border:1px solid #efd5a2; background:#fff8e9; color:#714b14; padding:14px 18px; border-radius:12px; font-size:.85rem; line-height:1.5; margin:20px 0; }
+.maintenance-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.maintenance-summary > div { display:flex; justify-content:space-between; align-items:center; gap:10px; background:white; border:1px solid #dce3eb; padding:18px; border-radius:14px; }
+.maintenance-summary span { color:#52647a; font-size:.85rem; }
+.maintenance-summary strong { font-size:1.5rem; color:#102d35; }
+.maintenance-summary-note { font-size:.75rem; color:#52647a; }
+.maintenance-quick { display:flex; flex-wrap:wrap; gap:8px; margin:20px 0; }
+.maintenance-quick button { border:1px solid #dce3eb; border-radius:999px; background:white; color:#213b50; padding:10px 16px; font-weight:600; }
+.maintenance-quick button.active { background:#164c45; color:white; border-color:#164c45; }
+.maintenance-workspace .filters-card,.maintenance-workspace .card { border-radius:14px !important; box-shadow:none !important; }
+.maintenance-workspace .filters-grid { grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); }
+.maintenance-workspace .filter-search { grid-column:span 2; }
+.maintenance-workspace .filters-grid input,.maintenance-workspace .filters-grid select { min-height:48px; box-sizing:border-box; }
+#maintenanceResults { color:#52647a; font-size:.8rem; font-weight:400; }
+.maintenance-workspace .add-btn { background:#164c45; color:white; }
+.maintenance-workspace .maintenance-secondary { background:white; color:#213b50; border:1px solid #dce3eb; }
+.maintenance-workspace button { min-height:44px; box-sizing:border-box; }
+.maintenance-workspace .requests-table { min-width:0; }
+.maintenance-workspace .requests-table td { vertical-align:top; }
+.maintenance-workspace .maintenance-emergency-row { background:#fff8f4; }
+.maintenance-plan { min-width:220px; }
+.maintenance-plan dl { margin:0; display:grid; gap:8px; }
+.maintenance-plan dt { font-size:.7rem; color:#52647a; }
+.maintenance-plan dd { margin:3px 0 0; font-size:.8rem; color:#213b50; overflow-wrap:anywhere; }
+.maintenance-next-step { margin:12px 0; padding:10px; border-radius:8px; background:#edf5f3; color:#164c45; font-size:.8rem; line-height:1.5; white-space:normal; }
+.maintenance-plan-btn { color:#164c45; font-weight:700; }
+.maintenance-reimbursements { background:white; border:1px solid #dce3eb; border-radius:14px; padding:0 18px; margin:24px 0; }
+.maintenance-reimbursements > summary { cursor:pointer; padding:18px 0; font-weight:600; color:#213b50; }
+.maintenance-reimbursements > summary span { display:block; font-size:.75rem; font-weight:400; color:#52647a; margin-top:6px; }
+.maintenance-workspace :is(a,button,input,select,textarea,summary):focus-visible { outline:3px solid #b97016 !important; outline-offset:3px; }
+.maintenance-workspace .modal { max-height:calc(100dvh - 32px); overflow:auto; box-sizing:border-box; }
+.maintenance-workspace .modal :is(input,select,textarea) { box-sizing:border-box; min-height:44px; }
+@media(max-width:900px) {
+ .maintenance-workspace .requests-table { display:block; width:100%; }
+ .maintenance-workspace .requests-table-container { overflow:visible; }
+ .maintenance-workspace .requests-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+ .maintenance-workspace .requests-table tbody { display:grid; gap:16px; }
+ .maintenance-workspace .requests-table tr { display:grid !important; grid-template-columns:1fr 1fr; gap:14px; border:1px solid #dce3eb; border-radius:14px; padding:18px; background:white; }
+ .maintenance-workspace .requests-table td { display:block !important; padding:0 !important; border:0 !important; text-align:left !important; min-width:0; overflow-wrap:anywhere; white-space:normal !important; }
+ .maintenance-workspace .requests-table td::before { content:attr(data-label); display:block; font-size:.7rem; color:#52647a; font-weight:400; margin-bottom:5px; }
+ .maintenance-workspace #requestsTableBody td:nth-child(4),.maintenance-workspace .requests-table td:last-child,.maintenance-workspace .requests-table td[colspan],.maintenance-workspace .maintenance-plan { grid-column:1 / -1; }
+ .maintenance-workspace .maintenance-plan { min-width:0; }
+ .maintenance-plan dl { grid-template-columns:1fr 1fr; }
+ .maintenance-workspace .actions { display:flex; flex-wrap:wrap; gap:8px; }
+ .maintenance-workspace .actions > button { flex:1 1 100px; }
+ .maintenance-workspace .requests-table tbody tr:hover { transform:none; }
+}
+@media(max-width:600px) {
+ body.maintenance-workspace > main.page { padding:20px 16px calc(110px + env(safe-area-inset-bottom)) !important; }
+ .maintenance-summary { gap:6px; }
+ .maintenance-summary > div { flex-direction:column; align-items:start; padding:12px; }
+ .maintenance-summary span { font-size:.72rem; }
+ .maintenance-workspace .filters-grid { grid-template-columns:1fr 1fr; }
+ .maintenance-workspace .filter-search { grid-column:1 / -1; }
+ .maintenance-workspace .filters-card { padding:14px !important; }
+ .maintenance-workspace .card-header { flex-wrap:wrap; gap:12px; }
+ .maintenance-workspace .card-header > div { flex-wrap:wrap; }
+ .maintenance-workspace .modal .form-grid { grid-template-columns:1fr; }
+}
+@media(prefers-reduced-motion:reduce) { .maintenance-workspace * { animation:none !important; transition:none !important; } }
+</style>
 </head>
 
-<body class="auth-guest">
+<body class="auth-guest maintenance-workspace">
 
 <!-- ═══ SUPABASE BOOTSTRAP (body-first: avoids tracking-prevention blocking safeStorage) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1571,7 +1639,24 @@ window.rgFiles = (function () {
 </div>
 
 <main class="page">
-      <h1>🛠 Maintenance Requests</h1>
+      <p class="maintenance-eyebrow">PROPERTY OPERATIONS</p>
+      <h1>Maintenance</h1>
+      <p class="maintenance-intro">Keep repairs moving: review urgency, plan the work, and follow through to completion.</p>
+      <div class="maintenance-emergency"><strong>Immediate danger?</strong> Contact local emergency services or the appropriate utility. Recording a request does not dispatch help.</div>
+      <section class="maintenance-summary" aria-label="Requests in current view">
+        <div><span>Open</span><strong id="openCount">—</strong></div>
+        <div><span>In progress</span><strong id="inProgressCount">—</strong></div>
+        <div><span>High priority · open</span><strong id="highPriorityCount">—</strong></div>
+      </section>
+      <p class="maintenance-summary-note">Counts reflect the current filters. Resolved requests remain available in the status filter.</p>
+      <div class="maintenance-quick" id="quickChips" role="group" aria-label="Repair shortcuts">
+        <button type="button" data-chip="clear">All requests</button>
+        <button type="button" data-chip="open">Open</button>
+        <button type="button" data-chip="inprogress">In progress</button>
+        <button type="button" data-chip="unassigned">Unassigned</button>
+        <button type="button" data-chip="unscheduled">Unscheduled</button>
+        <button type="button" data-chip="overdue">Unresolved 7+ days</button>
+      </div>
 
       <div id="workspaceEmptyState" style="display:none; margin-top:12px;">
         <div class="card" style="border-left:5px solid #0ea5e9;">
@@ -1640,7 +1725,7 @@ window.rgFiles = (function () {
 
           <div class="filter-item filter-search">
             <label for="searchInput">Search</label>
-            <input id="searchInput" type="text" placeholder="Search issue, tenant email, notes…" />
+            <input id="searchInput" type="text" placeholder="Search property, issue, vendor, or tenant…" />
           </div>
 
         </div>
@@ -1648,25 +1733,28 @@ window.rgFiles = (function () {
 
 
       <div class="card-header">
-        <h2>Request Ledger</h2>
+        <div><h2>Repair worklist</h2><p id="maintenanceResults" role="status">Loading repair requests…</p></div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="add-btn maintenance-secondary" id="resetMaintenanceFilters" type="button">Reset filters</button>
+          <button class="add-btn maintenance-secondary" id="refreshMaintenance" type="button">Refresh</button>
           <button class="add-btn" id="exportCsvBtn" type="button" style="background:#fff;color:#0c1e3a;border:1px solid #cbd5e1;">⬇️ Export CSV</button>
-          <button class="add-btn" id="addRequestBtn">➕ Log New Request</button>
+          <button class="add-btn" id="addRequestBtn">+ Log repair</button>
         </div>
       </div>
 
       <div class="card">
         <div class="requests-table-container">
-          <table class="requests-table">
+          <table class="requests-table" role="table" aria-label="Repair worklist">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Property</th>
-                <th>Tenant</th>
-                <th>Issue Summary</th>
-                <th>Priority</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th scope="col">Date</th>
+                <th scope="col">Property</th>
+                <th scope="col">Tenant</th>
+                <th scope="col">Issue Summary</th>
+                <th scope="col">Priority</th>
+                <th scope="col">Status</th>
+                <th scope="col">Work plan</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody id="requestsTableBody">
@@ -1675,8 +1763,10 @@ window.rgFiles = (function () {
         </div>
       </div>
 
+      <details class="maintenance-reimbursements" id="maintenanceReimbursements">
+        <summary>Tenant reimbursements <span>Review receipts and reimbursement decisions</span></summary>
       <div class="card-header">
-        <h2>💰 Reimbursement Requests</h2>
+        <h2>Reimbursement requests</h2>
       </div>
 
       <div class="card">
@@ -1690,14 +1780,14 @@ window.rgFiles = (function () {
           <table class="requests-table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Property</th>
-                <th>Tenant</th>
-                <th>Repair</th>
-                <th>Amount</th>
-                <th>Receipt</th>
-                <th>Status</th>
-                <th>Actions</th>
+                <th scope="col">Date</th>
+                <th scope="col">Property</th>
+                <th scope="col">Tenant</th>
+                <th scope="col">Repair</th>
+                <th scope="col">Amount</th>
+                <th scope="col">Receipt</th>
+                <th scope="col">Status</th>
+                <th scope="col">Actions</th>
               </tr>
             </thead>
             <tbody id="reimbTableBody">
@@ -1708,26 +1798,27 @@ window.rgFiles = (function () {
       </div>
 
 
+  </details>
   <!-- Edit / Update Modal -->
   <div class="modal-overlay" id="editModal">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="editModalTitle">
       <div class="modal-header">
-        <h3 id="editModalTitle">✏️ Edit Maintenance Request</h3>
-        <button class="btn-mini" id="closeEditModalBtn">✖</button>
+        <h3 id="editModalTitle">Plan & update repair</h3>
+        <button class="btn-mini" id="closeEditModalBtn" aria-label="Close repair form">✖</button>
       </div>
       <div class="modal-body">
         <div class="form-grid">
           <div class="field">
-            <label>🏠 Property</label>
+            <label for="edit_name">🏠 Property</label>
             <select id="edit_name"></select>
           </div>
           <div class="field">
-            <label>📧 Tenant Email</label>
+            <label for="edit_tenant_email">📧 Tenant Email</label>
             <input id="edit_tenant_email" type="email" placeholder="tenant@email.com" />
           </div>
 
           <div class="field">
-            <label>🚦 Priority</label>
+            <label for="edit_urgency_level">🚦 Priority</label>
             <select id="edit_urgency_level">
               <option value="Emergency">Emergency</option>
               <option value="High">High</option>
@@ -1736,7 +1827,7 @@ window.rgFiles = (function () {
             </select>
           </div>
           <div class="field">
-            <label>📌 Status</label>
+            <label for="edit_status">📌 Status</label>
             <select id="edit_status">
               <option value="Open">Open</option>
               <option value="In Progress">In Progress</option>
@@ -1745,30 +1836,30 @@ window.rgFiles = (function () {
           </div>
 
           <div class="field" style="grid-column:1/-1;">
-            <label>📝 Issue Description</label>
+            <label for="edit_issue_description">📝 Issue Description</label>
             <textarea id="edit_issue_description" placeholder="Describe the issue…"></textarea>
           </div>
 
           <div class="field" style="grid-column:1/-1;">
-            <label>🗒 Notes (optional)</label>
+            <label for="edit_notes">🗒 Notes (optional)</label>
             <textarea id="edit_notes" placeholder="Internal notes, vendor info, tenant availability…"></textarea>
           </div>
 
           <div class="field">
-            <label>👷 Assigned Vendor (optional)</label>
+            <label for="edit_assigned_vendor">👷 Assigned Vendor (optional)</label>
             <input id="edit_assigned_vendor" type="text" placeholder="ABC Plumbing" />
           </div>
           <div class="field">
-            <label>💵 Estimated Cost (optional)</label>
+            <label for="edit_estimated_cost">💵 Estimated Cost (optional)</label>
             <input id="edit_estimated_cost" type="number" step="0.01" placeholder="0.00" />
           </div>
 
           <div class="field">
-            <label>🗓 Scheduled At (optional)</label>
+            <label for="edit_scheduled_at">🗓 Scheduled At (optional)</label>
             <input id="edit_scheduled_at" type="datetime-local" />
           </div>
           <div class="field">
-            <label>✅ Completed At (auto)</label>
+            <label for="edit_completed_at">✅ Completed At (auto)</label>
             <input id="edit_completed_at" type="text" disabled />
           </div>
         </div>
@@ -2196,8 +2287,9 @@ if (hamburgerBtn && mobileDrawer) {
       if(!wrap) return;
       wrap.querySelectorAll('button[data-chip]').forEach(b=>{
         const chip = b.getAttribute('data-chip');
-        if(chip === 'clear') return b.classList.remove('active');
-        b.classList.toggle('active', currentFilters.quick === chip);
+        const active = chip === 'clear' ? !currentFilters.quick : currentFilters.quick === chip;
+        b.classList.toggle('active', active);
+        b.setAttribute('aria-pressed', String(active));
       });
     }
 
@@ -2389,6 +2481,7 @@ if (hamburgerBtn && mobileDrawer) {
     function applyFilters() {
       const url = new URL(window.location.href);
       url.search = ""; // Clear existing params
+      if(activeCompanyId) url.searchParams.set("company_id", activeCompanyId);
 
       if (currentFilters.property) url.searchParams.set("property", currentFilters.property);
       if (currentFilters.status) url.searchParams.set("status", currentFilters.status);
@@ -2403,16 +2496,19 @@ if (hamburgerBtn && mobileDrawer) {
       loadRequests();
     }
 
+    let maintenanceLoadVersion = 0;
     async function loadRequests() {
+      const version = ++maintenanceLoadVersion;
+      document.getElementById("maintenanceResults").textContent = "Loading repair requests…";
       const body = document.getElementById("requestsTableBody");
       const openEl = document.getElementById("openCount");
       const inProgressEl = document.getElementById("inProgressCount");
       const highPriorityEl = document.getElementById("highPriorityCount");
       const avgCompletionEl = document.getElementById("avgCompletion");
 
-      body.innerHTML = '<tr><td colspan="7">Loading maintenance requests...</td></tr>';
+      body.innerHTML = '<tr><td colspan="8">Loading maintenance requests…</td></tr>';
       [openEl, inProgressEl, highPriorityEl, avgCompletionEl].forEach(el => {
-        if (el) el.textContent = "0";
+        if (el) el.textContent = "—";
       });
 
       let query = client.from("maintenance_requests").select("*");
@@ -2442,11 +2538,19 @@ if (hamburgerBtn && mobileDrawer) {
             // Order by created_at instead of date_submitted
       query = query.order("created_at", { ascending: false });
 
-      const { data, error } = await query;
+      let response;
+      try { response = await query; } catch(error) { response = {error}; }
+      if(version !== maintenanceLoadVersion) return;
+      const {data, error} = response;
 
       if (error) {
         console.error("Error loading requests:", error);
-        body.innerHTML = `<tr><td colspan='6'>Error loading data: ${error.message}</td></tr>`;
+        requestsCache = []; lastRenderedRows = [];
+        body.replaceChildren();
+        const row = document.createElement("tr"), cell = document.createElement("td");
+        cell.colSpan = 8; cell.textContent = "Repair requests could not load. Try Refresh.";
+        row.appendChild(cell); body.appendChild(row);
+        document.getElementById("maintenanceResults").textContent = "Requests unavailable. Try Refresh.";
         return;
       }
 
@@ -2468,7 +2572,7 @@ if (hamburgerBtn && mobileDrawer) {
       const q2 = (document.getElementById("searchInput")?.value || "").trim().toLowerCase();
       if (q2) {
         rows = rows.filter((r) => {
-          const hay = [r.property_name, r.tenant_email, r.issue_description, r.notes, r.urgency_level, r.status]
+          const hay = [r.property_name, r.tenant_email, r.tenant_name, r.issue_description, r.notes, r.urgency_level, r.status, r.assigned_vendor]
             .filter(Boolean)
             .join(" ")
             .toLowerCase();
@@ -2490,9 +2594,19 @@ if (hamburgerBtn && mobileDrawer) {
           return ageDays >= 7;
         });
       }
+      if (currentFilters.quick === "unassigned") rows = rows.filter(r => !r.archived_at && normalizeStatus(r.status) !== "Resolved" && !String(r.assigned_vendor || "").trim());
+      if (currentFilters.quick === "unscheduled") rows = rows.filter(r => !r.archived_at && normalizeStatus(r.status) !== "Resolved" && !r.scheduled_at);
+      const urgencyOrder = {Emergency:0, High:1, Normal:2, Low:3};
+      rows.sort(function(a,b) {
+        const aDone = !!a.archived_at || normalizeStatus(a.status) === "Resolved";
+        const bDone = !!b.archived_at || normalizeStatus(b.status) === "Resolved";
+        return Number(aDone) - Number(bDone) || (urgencyOrder[a.urgency_level] ?? 4) - (urgencyOrder[b.urgency_level] ?? 4);
+      });
       lastRenderedRows = rows;
+      document.getElementById("maintenanceResults").textContent = rows.length + " repair request" + (rows.length === 1 ? "" : "s") + " in this view";
       if (!rows.length) {
-        body.innerHTML = '<tr><td colspan="7">No requests found for the selected filters.</td></tr>';
+        body.innerHTML = '<tr><td colspan="8">No repairs match this view. Try another filter or log a new repair.</td></tr>';
+        [openEl, inProgressEl, highPriorityEl].forEach(el => { if(el) el.textContent = "0"; });
         return;
       }
 
@@ -2528,6 +2642,7 @@ if (hamburgerBtn && mobileDrawer) {
         })
         .join("");
 
+      attachMaintenanceWorkPlans(body, rows);
       rgFiles.hydrate(client, body);
       loadInvoicedTotals(rows);
       if (openEl) openEl.textContent = openCount.toString();
@@ -2548,6 +2663,49 @@ if (hamburgerBtn && mobileDrawer) {
       }
       if (avgCompletionEl) avgCompletionEl.textContent = avgText;
     }
+
+    function maintenanceNextStep(request) {
+      if(request.archived_at) return "Archived · restore only if follow-up is needed";
+      if(normalizeStatus(request.status) === "Resolved") return "Review invoice and completion records";
+      if(String(request.urgency_level).toLowerCase() === "emergency") return "Contact the appropriate responder and confirm arrangements";
+      if(!String(request.assigned_vendor || "").trim()) return "Choose a vendor or record who will handle the repair";
+      if(!request.scheduled_at) return "Arrange a visit and record the appointment";
+      const appointment = new Date(request.scheduled_at);
+      if(Number.isFinite(appointment.getTime()) && appointment < new Date()) return "Follow up on the visit and update the repair status";
+      return "Confirm access and follow up after the visit";
+    }
+    function attachMaintenanceWorkPlans(body, rows) {
+      Array.from(body.rows).forEach(function(tableRow, index) {
+        const request = rows[index];
+        tableRow.dataset.requestId = String(request.id);
+        if(!request.archived_at && normalizeStatus(request.status) !== "Resolved" && request.urgency_level === "Emergency") tableRow.classList.add("maintenance-emergency-row");
+        tableRow.setAttribute("role", "row");
+        const plan = document.createElement("td"); plan.dataset.label = "Work plan"; plan.className = "maintenance-plan";
+        const list = document.createElement("dl");
+        const appointment = request.scheduled_at ? new Date(request.scheduled_at) : null;
+        const fields = [
+          ["Assigned to", String(request.assigned_vendor || "").trim() || "Not assigned"],
+          ["Appointment", appointment && Number.isFinite(appointment.getTime()) ? appointment.toLocaleString([], {dateStyle:"medium", timeStyle:"short"}) : "Not scheduled"],
+          ["Estimate", request.estimated_cost == null ? "Not recorded" : money(request.estimated_cost)]
+        ];
+        fields.forEach(function(pair) { const group=document.createElement("div"), label=document.createElement("dt"), value=document.createElement("dd"); label.textContent=pair[0]; value.textContent=pair[1]; group.append(label,value); list.appendChild(group); });
+        const next = document.createElement("p"); next.className="maintenance-next-step"; next.textContent="Next: " + maintenanceNextStep(request);
+        plan.append(list,next);
+        if(!request.archived_at) {
+          const edit=document.createElement("button"); edit.type="button"; edit.className="btn-mini maintenance-plan-btn"; edit.textContent="Plan / update";
+          edit.addEventListener("click", function(){openEditModal(request.id)}); plan.appendChild(edit);
+        }
+        tableRow.insertBefore(plan, tableRow.lastElementChild);
+        Array.from(tableRow.cells).forEach(cell=>cell.setAttribute("role", "cell"));
+      });
+    }
+    document.getElementById("refreshMaintenance").addEventListener("click", loadRequests);
+    document.getElementById("resetMaintenanceFilters").addEventListener("click", function() {
+      currentFilters = {property:"", status:"", priority:"", view:"active", quick:""};
+      ["propertySelect","statusSelect","prioritySelect","searchInput"].forEach(id=>document.getElementById(id).value="");
+      document.getElementById("viewSelect").value="active";
+      syncChipsUI(); applyFilters();
+    });
 
     // Setup Add Request button
     const addRequestBtn = document.getElementById("addRequestBtn");
@@ -2787,12 +2945,23 @@ if (hamburgerBtn && mobileDrawer) {
 
       document.getElementById("edit_completed_at").value = r.completed_at ? formatDate(r.completed_at) : "—";
 
-      const close = () => { modal.classList.remove("active"); editingRequestId = null; };
+      const returnFocus = document.activeElement;
+      const close = () => { modal.classList.remove("active"); editingRequestId = null; if(returnFocus?.isConnected) returnFocus.focus(); };
+      modal.onkeydown = function(event) {
+        if(event.key === "Escape") { event.preventDefault(); close(); }
+        if(event.key === "Tab") {
+          const controls=Array.from(modal.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled])')).filter(node=>node.getClientRects().length);
+          const first=controls[0],last=controls[controls.length-1];
+          if(event.shiftKey && document.activeElement===first) {event.preventDefault();last.focus();}
+          else if(!event.shiftKey && document.activeElement===last) {event.preventDefault();first.focus();}
+        }
+      };
       closeBtn.onclick = close;
       cancelBtn.onclick = close;
       modal.onclick = (e) => { if(e.target === modal) close(); };
 
       modal.classList.add("active");
+      closeBtn.focus();
     }
 
     async function saveEdit(){

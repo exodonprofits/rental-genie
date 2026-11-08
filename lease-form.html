@@ -1500,8 +1500,10 @@ function saveLease() {
 
     if (isEdit && leaseId) {
       // Edit: fetch existing row to get real column set, strip unknowns, update
+      var oldEmail = null;
       db.from('leases').select('*').eq('id', leaseId).single()
         .then(function(probeRes) {
+          if (probeRes.data) oldEmail = probeRes.data.tenant_email || '';
           var knownCols = (probeRes.data && !probeRes.error)
             ? new Set(Object.keys(probeRes.data))
             : null;
@@ -1515,6 +1517,18 @@ function saveLease() {
         })
         .then(function(result) {
           if (result && result.error) throw result.error;
+          // Tenant email changed: update the tenant's record and unlink the old login too (rg_19),
+          // so the tenant pages and sign-in follow the new address.
+          if (oldEmail !== null && oldEmail.trim().toLowerCase() !== email.toLowerCase()) {
+            return db.rpc('rg_update_tenant_email', { p_lease_id: leaseId, p_email: email }).then(function (r) {
+              if (r.error) {
+                setStatus('⚠️ Lease saved, but the tenant\'s login email wasn\'t updated: ' + (r.error.message || 'unknown error'), 'err');
+                btn.disabled = false; btn.innerHTML = '💾 Save Lease';
+                return;
+              }
+              doRedirect();
+            });
+          }
           doRedirect();
         })
         .catch(onSaveError);

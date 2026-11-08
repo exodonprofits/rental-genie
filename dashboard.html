@@ -3684,14 +3684,18 @@ function buildAssignmentsFromData(data){
       if(/Resend 4\d\d/.test(err)) return "the address was rejected";
       return "the email service couldn't be reached";
     };
+    const _what = { maintenance_ack: "repair confirmation to", landlord_repair: "your repair alert to", landlord_message: "your message alert to" };
     const _facts = _failed.slice(0,5).map(function(n){
-      return (n.property_name ? n.property_name + " -- " : "") + (n.recipient || "tenant") + ": " + _why(n.last_error);
+      return (n.property_name ? n.property_name + " -- " : "") + (_what[n.kind] || "email to") + " " + (n.recipient || "tenant") + ": " + _why(n.last_error);
     });
+    const _toTenants = _failed.every(function(n){ return n.kind === "maintenance_ack"; });
     if(_failed.length > 5) _facts.push((_failed.length-5) + " more...");
     items.unshift({
       level: "top",
-      title: "✉️ " + _failed.length + " repair confirmation email" + (_failed.length===1?"":"s") + " didn't send",
-      desc: "The tenant still has the in-app message. If they don't use the app, contact them directly, then mark this handled.",
+      title: "✉️ " + _failed.length + (_toTenants ? " repair confirmation email" : " email") + (_failed.length===1?"":"s") + " didn't send",
+      desc: _toTenants
+        ? "The tenant still has the in-app message. If they don't use the app, contact them directly, then mark this handled."
+        : "Some emails, including alerts to you, couldn't be delivered. Check the details, fix the address if needed, then mark this handled.",
       facts: _facts,
       actions: [
         { label: "🛠 Open repairs", href: "maintenance-requests.html" },
@@ -3930,7 +3934,7 @@ async function fetchDashboardData(user) {
     String(_todayLocal.getDate()).padStart(2, "0");
   // Tenant emails that failed for good (notification log, rg_17). Not fatal if it can't load.
   let failedNotifQuery = sb.from("notifications")
-    .select("id, property_id, recipient, last_error, created_at, maintenance_request_id")
+    .select("id, kind, property_id, recipient, last_error, created_at, maintenance_request_id")
     .eq("channel", "email").eq("status", "failed").is("dismissed_at", null)
     .order("created_at", { ascending: false }).limit(20);
   if (activeCompanyId) failedNotifQuery = failedNotifQuery.eq("company_id", activeCompanyId);
@@ -4104,7 +4108,7 @@ async function fetchDashboardData(user) {
     vacantProperties,
     failedNotifications: (failedNotifRows || []).map(function(n){
       const prop = (propertiesData || []).find(function(p){ return p.id === n.property_id; });
-      return { id: n.id, property_name: prop ? prop.name : "", recipient: n.recipient || "", last_error: n.last_error || "" };
+      return { id: n.id, kind: n.kind || "maintenance_ack", property_name: prop ? prop.name : "", recipient: n.recipient || "", last_error: n.last_error || "" };
     }),
     pendingMaintenance: openTotal,
     highPriorityMaintenance: openHigh,

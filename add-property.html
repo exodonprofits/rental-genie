@@ -513,8 +513,10 @@ body { overflow-x: hidden; }
 }
 .adv-body .section-card:last-child { border-bottom: none; }
 </style>
+<link rel="stylesheet" href="shared/css/form-guide.css">
+<script src="shared/js/form-guide.js" defer></script>
 </head>
-<body>
+<body data-entry-guide="property">
 <!-- ═══ SUPABASE BOOTSTRAP (body-first: avoids tracking-prevention blocking safeStorage) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -625,7 +627,7 @@ body { overflow-x: hidden; }
   <!-- Page header -->
   <div class="page-header">
     <div>
-      <div class="page-title" id="pageTitle">🏠 Add Property</div>
+      <div class="page-title" id="pageTitle" role="heading" aria-level="1">🏠 Add Property</div>
       <div class="page-sub"  id="pageIntro">Add a new rental property to your portfolio, including purchase details and financing info.</div>
     </div>
     <div class="page-actions">

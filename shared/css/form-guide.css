@@ -1,0 +1,28 @@
+body[data-entry-guide] { background:#f4f6f9; }
+body[data-entry-guide] main,body[data-entry-guide] .shell { max-width:none !important;width:100%;box-sizing:border-box; }
+body[data-entry-guide] main {padding:28px !important;}
+body[data-entry-guide] .navbar,body[data-entry-guide] .footer-content {max-width:none;}
+body[data-entry-guide] .section-card {border-radius:14px;box-shadow:none;scroll-margin-top:100px;}
+.entry-guide-intro {color:#52647a;font-size:.85rem;line-height:1.5;margin:18px 0;}
+.entry-guide-nav {display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 24px;padding:14px;background:white;border:1px solid #dce3eb;border-radius:14px;}
+.entry-guide-nav a {display:flex;align-items:center;min-height:44px;padding:8px 14px;border-radius:999px;background:#edf5f3;color:#164c45;text-decoration:none;font-size:.8rem;font-weight:600;}
+.entry-review {padding:22px;margin:22px 0;background:white;border:1px solid #dce3eb;}
+.entry-review h2 {font-size:1.1rem;color:#102d35;margin:0 0 10px;}
+.entry-review p {font-size:.8rem;color:#52647a;line-height:1.5;}
+.entry-review-summary {display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px;}
+.entry-review-summary dt {font-size:.75rem;color:#52647a;margin-bottom:6px;}
+.entry-review-summary dd {margin:0;font-weight:600;color:#213b50;overflow-wrap:anywhere;}
+body[data-entry-guide] :is(input,select,button) {min-height:44px;box-sizing:border-box;}
+body[data-entry-guide] :is(a,button,input,select,textarea,[tabindex]):focus-visible {outline:3px solid #b97016;outline-offset:3px;}
+body[data-entry-guide] .snap-btn input {display:block;position:absolute;width:1px;height:1px;min-height:0;overflow:hidden;clip-path:inset(50%);}
+body[data-entry-guide] .snap-btn:focus-within {outline:3px solid #b97016;outline-offset:3px;}
+@media(max-width:600px){
+ body[data-entry-guide] main {padding:20px 16px calc(110px + env(safe-area-inset-bottom)) !important;}
+ body[data-entry-guide] .shell {padding:0;}
+ body[data-entry-guide] .form-grid,body[data-entry-guide] .form-grid.cols-3 {grid-template-columns:1fr !important;}
+ .entry-guide-nav {display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px;}
+ .entry-guide-nav a {padding:8px 10px;font-size:.75rem;overflow-wrap:anywhere;}
+ .entry-review-summary {grid-template-columns:1fr 1fr;gap:16px;}
+ body[data-entry-guide] :is(input,select,textarea) {font-size:16px;max-width:100%;}
+}
+@media(prefers-reduced-motion:reduce){body[data-entry-guide] * {animation:none !important;transition:none !important;scroll-behavior:auto !important;}}

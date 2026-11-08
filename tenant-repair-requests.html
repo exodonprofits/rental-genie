@@ -571,8 +571,10 @@ body { overflow-x: hidden; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 </style>
+<link rel="stylesheet" href="shared/css/tenant-workspace.css">
+<script src="shared/js/tenant-resources.js" defer></script>
 </head>
-<body>
+<body class="tenant-workspace">
 
 <!-- ═══ SUPABASE (body-first) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -743,6 +745,7 @@ window.rgFiles = (function () {
     </div>
   </div>
 
+  <div class="tenant-emergency"><strong>Immediate danger?</strong> Contact local emergency services or the appropriate utility. Submitting this form does not dispatch help. For urgent repairs, also contact your landlord directly.</div>
   <!-- Submit Form -->
   <div class="section-card" style="margin-bottom:20px;">
     <div class="card-head">
@@ -778,7 +781,7 @@ window.rgFiles = (function () {
       </div>
       <div class="submit-row">
         <button class="btn primary" id="btnSubmit" type="button">📨 Submit Request</button>
-        <div class="status-msg" id="statusMsg"></div>
+        <div class="status-msg" id="statusMsg" role="status"></div>
       </div>
     </div>
   </div>
@@ -793,18 +796,20 @@ window.rgFiles = (function () {
     </div>
     <div class="card-body">
       <div class="search-row">
+        <label for="search" class="tenant-search-label">Find a repair request</label>
         <input id="search" class="search-input" placeholder="🔍 Search issue, status, property…" type="search"/>
       </div>
+      <div class="tenant-repair-view"><label for="tenantRepairView">Show requests</label><select id="tenantRepairView"><option value="all">All requests</option><option value="open">Unresolved</option><option value="resolved">Resolved</option></select><p id="tenantRepairResults" role="status"></p></div>
       <div class="table-wrap">
-        <table class="rg-stack">
+        <table class="rg-stack" role="table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Property</th>
-              <th>Issue</th>
-              <th>Urgency</th>
-              <th>Status</th>
-              <th>Reimbursement</th>
+              <th scope="col">Date</th>
+              <th scope="col">Property</th>
+              <th scope="col">Issue</th>
+              <th scope="col">Urgency</th>
+              <th scope="col">Status</th>
+              <th scope="col">Reimbursement</th>
             </tr>
           </thead>
           <tbody id="reqBody">
@@ -825,14 +830,14 @@ window.rgFiles = (function () {
     </div>
     <div class="card-body">
       <div class="table-wrap">
-        <table class="rg-stack">
+        <table class="rg-stack" role="table">
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Related Repair</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Receipt</th>
+              <th scope="col">Date</th>
+              <th scope="col">Related Repair</th>
+              <th scope="col">Amount</th>
+              <th scope="col">Status</th>
+              <th scope="col">Receipt</th>
             </tr>
           </thead>
           <tbody id="reimbBody">
@@ -1095,10 +1100,13 @@ window.rgFiles = (function () {
 
   function render(){
     const q = ($('search').value||'').trim().toLowerCase();
-    const filtered = q ? requests.filter(r=>(safe(r.issue_description)+safe(r.issue_summary)+safe(r.issue)+safe(r.status)+safe(r.property_name)).toLowerCase().includes(q)) : requests;
+    let filtered = q ? requests.filter(r=>(safe(r.issue_description)+safe(r.issue_summary)+safe(r.issue)+safe(r.status)+safe(r.property_name)).toLowerCase().includes(q)) : requests;
+    const view = $('tenantRepairView').value;
+    filtered = filtered.filter(function(row) {const done = ['resolved','completed','closed'].includes(String(row.status || '').toLowerCase());return view === 'all' || (view === 'resolved' ? done : !done)});
+    $('tenantRepairResults').textContent = filtered.length + ' request' + (filtered.length === 1 ? '' : 's') + ' in this view';
     const body = $('reqBody');
     if(!filtered.length){
-      body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🛠</div><p>No requests yet.<br>Submit your first one above.</p></div></td></tr>';
+      body.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🛠</div><p>No requests match this view. Try another search or view, or submit a new request.</p></div></td></tr>';
       return;
     }
     body.innerHTML = filtered.map(r=>{
@@ -1117,7 +1125,10 @@ window.rgFiles = (function () {
         <td>${reimbCell}</td>
       </tr>`;
     }).join('');
+    const labels = ['Date','Property','Issue','Urgency','Status','Reimbursement'];
+    Array.from(body.rows).forEach(function(row){row.setAttribute('role','row');Array.from(row.cells).forEach(function(cell,index){cell.dataset.label=labels[index];cell.setAttribute('role','cell')})});
   }
+  $('tenantRepairView').addEventListener('change',render);
 
   function renderReimbursements(){
     const body = $('reimbBody');
@@ -1137,6 +1148,8 @@ window.rgFiles = (function () {
         <td>${(r.receipt_path || r.receipt_url) ? `<a class="btn sm" href="#"${rgFiles.attr('receipts', r.receipt_path || r.receipt_url)} target="_blank" rel="noopener noreferrer">🧾 View</a>` : '—'}</td>
       </tr>`;
     }).join('');
+    const labels = ['Date','Related repair','Amount','Status','Receipt'];
+    Array.from(body.rows).forEach(function(row){row.setAttribute('role','row');Array.from(row.cells).forEach(function(cell,index){cell.dataset.label=labels[index];cell.setAttribute('role','cell')})});
     rgFiles.hydrate(sb, body);
   }
 
@@ -1145,7 +1158,7 @@ window.rgFiles = (function () {
     const {data,error} = tenant
       ? await sb.from('maintenance_requests').select('*').eq('tenant_id',tenant.id).order('created_at',{ascending:false})
       : await sb.from('maintenance_requests').select('*').eq('tenant_email',user.email).order('created_at',{ascending:false});
-    if(error){ $('reqBody').innerHTML=`<tr><td colspan="6" style="color:var(--danger)">${safe(error.message)}</td></tr>`; return; }
+    if(error){ $('tenantRepairResults').textContent='Requests unavailable. Try Refresh.'; ['kpiTotal','kpiOpen','kpiDone'].forEach(id=>$(id).textContent='—'); $('reqBody').innerHTML=`<tr><td colspan="6" style="color:var(--danger)">${safe(error.message)}</td></tr>`; return; }
     requests = data||[];
     updateKpis();
 
@@ -1278,6 +1291,11 @@ window.rgFiles = (function () {
   $('btnSubmit').addEventListener('click', submitRequest);
   $('btnRefresh').addEventListener('click', loadData);
   $('search').addEventListener('input', render);
+  document.querySelectorAll('.urgency-pill').forEach(function(button) {
+    button.setAttribute('aria-pressed',String(button.classList.contains('selected')));
+    button.addEventListener('click',function(){document.querySelectorAll('.urgency-pill').forEach(other=>other.setAttribute('aria-pressed',String(other===button)))});
+  });
+  document.querySelectorAll('.form-group').forEach(function(group){const label=group.querySelector('label'),control=group.querySelector('input[id],select[id],textarea[id]');if(label&&control&&!label.htmlFor)label.htmlFor=control.id});
   $('photoPickBtn').addEventListener('click', ()=> $('photoInput').click());
   $('photoInput').addEventListener('change', function(){ addPhotoFiles(this.files); this.value=''; });
 

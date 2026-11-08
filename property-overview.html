@@ -605,8 +605,37 @@ body { overflow-x: hidden; }
 .pm-contact-btn:hover { background: var(--info-bdr); }
 
 </style>
+<style id="property-workspace-design">
+body.property-workspace { background:#f4f6f9; }
+.property-workspace main { max-width:none; width:100%; padding:28px; box-sizing:border-box; }
+.property-workspace .navbar,.property-workspace .footer-content { max-width:none; }
+.property-workspace .page-title { font-size:clamp(1.5rem,3vw,2rem); letter-spacing:-.04em; }
+.property-back { display:inline-flex; align-items:center; min-height:44px; color:#164c45; font-weight:600; text-decoration:none; margin-bottom:12px; }
+.property-workspace .selector-card { background:white; border-radius:14px; box-shadow:none; flex-wrap:wrap; }
+.property-workspace .selector-select { min-height:48px; }
+.property-workspace-nav { display:flex; flex-wrap:wrap; gap:8px; margin:18px 0; padding:8px; border:1px solid #dce3eb; border-radius:14px; background:white; }
+.property-workspace-nav[hidden] { display:none; }
+.property-workspace-nav a { display:flex; align-items:center; justify-content:center; min-height:44px; padding:0 18px; color:#344b60; text-decoration:none; border-radius:999px; font-weight:600; font-size:.85rem; }
+.property-workspace-nav a[aria-current] { background:#164c45; color:white; }
+.property-workspace .property-hero { background:#102d35; border-radius:16px; box-shadow:none; }
+.property-workspace .hero-action-btn { min-height:44px; }
+.property-finance-note { color:#52647a; font-size:.8rem; margin:12px 0 22px; line-height:1.5; }
+.property-workspace .kpi-card,.property-workspace .snapshot-card { border-radius:14px; box-shadow:none; }
+.property-workspace a:focus-visible,.property-workspace button:focus-visible,.property-workspace select:focus-visible { outline:3px solid #b97016; outline-offset:3px; }
+@media(min-width:1600px) { .property-workspace .snapshots-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:600px) {
+ .property-workspace main { padding:20px 16px calc(100px + env(safe-area-inset-bottom)); }
+ .property-workspace-nav { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+ .property-workspace-nav a { padding:0 8px; }
+ .property-workspace .selector-select { width:100%; min-width:0; flex-basis:100%; }
+ .property-workspace .selector-viewing { overflow-wrap:anywhere; }
+ .property-workspace .property-hero-top { gap:16px; }
+ .property-workspace .property-hero-name { overflow-wrap:anywhere; }
+}
+@media(prefers-reduced-motion:reduce) { .property-workspace * { animation:none !important; transition:none !important; } }
+</style>
 </head>
-<body>
+<body class="property-workspace">
 <!-- ═══ SUPABASE BOOTSTRAP (body-first: avoids tracking-prevention blocking safeStorage) ═══ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -720,11 +749,12 @@ body { overflow-x: hidden; }
   <!-- Page header -->
   <div class="page-header">
     <div>
-      <div class="page-title">📋 Property Overview</div>
-      <div class="page-sub">Everything about your selected rental property at a glance.</div>
+      <h1 class="page-title" style="margin:0">Property workspace</h1>
+      <div class="page-sub">Your lease, finances, repairs, and documents, connected to one property.</div>
     </div>
   </div>
 
+  <a class="property-back" href="property-management.html">← All properties</a>
   <!-- Property selector -->
   <div class="selector-card">
     <span class="selector-label">Property</span>
@@ -735,6 +765,14 @@ body { overflow-x: hidden; }
     <button class="btn sm" id="editPropertyBtn">✏️ Edit Property</button>
   </div>
 
+  <nav class="property-workspace-nav" id="propertyWorkspaceNav" aria-label="Selected property navigation" hidden>
+    <a data-workspace-page="property-overview.html" aria-current="page">Overview</a>
+    <a data-workspace-page="lease-rent-center.html">Lease &amp; tenant</a>
+    <a data-workspace-page="reports-analytics.html">Finances</a>
+    <a data-workspace-page="maintenance-requests.html">Repairs</a>
+    <a data-workspace-page="property-documents.html">Documents</a>
+    <a data-workspace-page="expense-tracking.html">Expenses</a>
+  </nav>
   <!-- ── Property hero ───────────────────────────────────────── -->
   <div class="property-hero" id="propertyHero" style="display:none">
     <div class="property-hero-inner">
@@ -763,13 +801,14 @@ body { overflow-x: hidden; }
           <div class="hero-stat-value" id="heroMortgage">—</div>
         </div>
         <div>
-          <div class="hero-stat-label">Net Cash Flow</div>
+          <div class="hero-stat-label">Rent less mortgage</div>
           <div class="hero-stat-value" id="heroCashflow">—</div>
         </div>
       </div>
     </div>
   </div>
 
+  <p class="property-finance-note">Rent less mortgage is a simple comparison; it excludes operating expenses and is not net operating income.</p>
   <!-- ── KPI strip ───────────────────────────────────────────── -->
   <div class="kpi-strip">
     <div class="kpi-card">
@@ -788,7 +827,7 @@ body { overflow-x: hidden; }
       <div class="kpi-label">💵 Financials</div>
       <div class="kpi-meta" id="qp-rent" style="font-size:.88rem;font-weight:600;color:var(--navy)">Rent: —</div>
       <div class="kpi-meta" id="qp-mortgage">Mortgage: —</div>
-      <div class="kpi-meta" id="qp-cashflow" style="font-weight:700;margin-top:4px">Net: —</div>
+      <div class="kpi-meta" id="qp-cashflow" style="font-weight:700;margin-top:4px">Rent less mortgage: —</div>
     </div>
   </div>
 
@@ -1205,6 +1244,7 @@ function loadProperties() {
 ============================================================ */
 function updateAll() {
   var labelEl = document.getElementById('currentPropertyLabel');
+  document.getElementById('propertyWorkspaceNav').hidden = !currentPropertyId || !currentPropertyData;
   if (!currentPropertyId || !currentPropertyData) {
     if (labelEl) labelEl.textContent = '';
     var hero = document.getElementById('propertyHero');
@@ -1212,6 +1252,7 @@ function updateAll() {
     return;
   }
   if (labelEl) labelEl.textContent = 'Viewing: ' + (currentPropertyData.name || 'Property');
+  document.querySelectorAll('[data-workspace-page]').forEach(function(link) { link.href = navUrl(link.dataset.workspacePage); });
   loadQuickPeekAndSnapshots();
   setMobileNavLinks();
 }
@@ -1306,8 +1347,8 @@ function loadQuickPeekAndSnapshots() {
       setText('qp-dates',  (L.lease_start || '?') + ' → ' + (L.lease_end || '?'));
       setText('qp-rent',   rent ? ('Rent: ' + money(rent)) : 'Rent: —');
       setText('qp-cashflow', net !== 0 || rent
-        ? ('Net: ' + (net >= 0 ? '+' : '') + money(net))
-        : 'Net: —');
+        ? ('Rent less mortgage: ' + (net >= 0 ? '+' : '') + money(net))
+        : 'Rent less mortgage: —');
 
       /* Hero stats */
       setText('heroRent',     rent ? money(rent) : '—');
@@ -1336,7 +1377,7 @@ function loadQuickPeekAndSnapshots() {
       setText('qp-tenant',   'No active lease');
       setText('qp-dates',    '—');
       setText('qp-rent',     'Rent: —');
-      setText('qp-cashflow', 'Net: —');
+      setText('qp-cashflow', 'Rent less mortgage: —');
       setText('heroRent',    '—');
       setText('heroCashflow','—');
       var statusEl2 = document.getElementById('qp-status');

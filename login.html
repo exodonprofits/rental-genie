@@ -652,7 +652,8 @@ body { overflow-x: hidden; }
   ============================================================ */
   var qs = new URLSearchParams(location.search);
   var ROLES = ['landlord', 'tenant', 'applicant'];
-  var role = ROLES.indexOf(qs.get('role')) >= 0 ? qs.get('role') : 'landlord';
+  var roleChosen = ROLES.indexOf(qs.get('role')) >= 0;
+  var role = roleChosen ? qs.get('role') : 'landlord';
 
   // Same-origin pages only: blocks javascript: URLs and open redirects to other sites
   function rgSafeReturn(value, fallback) {
@@ -810,10 +811,31 @@ body { overflow-x: hidden; }
     else location.replace(destinationFor(role));
   }
 
+  // Signed in without a chosen tab (e.g. from an email confirmation link, which lands here with no
+  // ?role): a company member goes to the dashboard, someone on a current lease to the tenant portal.
+  async function detectRole(user) {
+    try {
+      var mem = await sb.from('company_members').select('company_id').eq('user_id', user.id).limit(1);
+      if (mem.data && mem.data.length) return 'landlord';
+      var own = await sb.from('companies').select('id').eq('owner_user_id', user.id).limit(1);
+      if (own.data && own.data.length) return 'landlord';
+      if (user.email) {
+        var lease = await sb.from('leases').select('id')
+          .ilike('tenant_email', user.email.replace(/[\\%_]/g, function (c) { return '\\' + c; }))
+          .is('archived_at', null).limit(1);
+        if (lease.data && lease.data.length) return 'tenant';
+      }
+    } catch (e) {}
+    return 'landlord';
+  }
+
   (async function() {
     try {
       var res = await sb.auth.getUser();
-      if (res.data && res.data.user) goSignedIn();
+      var user = res.data && res.data.user;
+      if (!user) return;
+      if (!roleChosen && !returnTo) role = await detectRole(user);
+      goSignedIn();
     } catch(e) {}
   }());
 

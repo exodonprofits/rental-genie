@@ -227,6 +227,15 @@ footer{background:#081630;color:rgba(255,255,255,.6);padding:56px 0 30px;}
 </style>
 </head>
 <body>
+<script>
+// Supabase auth emails (sign-up confirmation, sign-in links) fall back to the Site URL, this page.
+// This page doesn't sign anyone in, so hand the link to the login page, which finishes the sign-in
+// and sends landlords and tenants to the right place.
+(function(){
+  var h = location.hash || '';
+  if (/[#&](access_token|refresh_token|error_description|error_code)=/.test(h)) location.replace('login.html' + h);
+}());
+</script>
 
 <nav class="site-nav" aria-label="Main">
   <div class="wrap">

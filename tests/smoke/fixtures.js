@@ -32,9 +32,9 @@ function base() {
     companies: [{ id: C, name: 'Smoke Test Rentals', owner_user_id: LANDLORD }],
     company_members: [{ company_id: C, user_id: LANDLORD, role: 'owner', companies: { id: C, name: 'Smoke Test Rentals' } }],
     properties: [
-      { id: P1, name: 'Oak Street', address: '1 Oak Street, Springfield', company_id: C, owner_id: LANDLORD, status: 'occupied',
+      { id: P1, name: 'Oak Street', address: '1 Oak Street, Springfield', company_id: C, owner_id: LANDLORD, status: 'occupied', occupancy_status: 'tenant_occupied',
         monthly_payment: 900, mortgage_pi: 700, archived_at: null, is_public_listing: false },
-      { id: P2, name: 'Elm Avenue', address: '2 Elm Avenue, Springfield', company_id: C, owner_id: LANDLORD, status: 'vacant',
+      { id: P2, name: 'Elm Avenue', address: '2 Elm Avenue, Springfield', company_id: C, owner_id: LANDLORD, status: 'vacant', occupancy_status: 'vacant',
         monthly_payment: 0, archived_at: null, is_public_listing: true, listing_application_mode: 'rental_genie' }
     ],
     leases: [{ id: L1, company_id: C, property_id: P1, property_name: 'Oak Street', tenant_id: T1, tenant_name: 'Test Tenant',

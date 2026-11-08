@@ -145,6 +145,11 @@ Function only delivers queued emails (`rg_notification_begin` → Resend with th
 2 min, 10 min, 1 h, 6 h, 5 attempts. Failures show on the dashboard until dismissed
 (`rg_dismiss_notification`). Landlords can only read their company's rows. New kinds of notification
 should go through the same table and key scheme, not a second sender.
+Landlord alerts (rg_20/rg_21): a tenant-filed repair (`landlord_repair:<id>`, "URGENT:" for
+High/Emergency) and a tenant message (`landlord_message:<id>`, sender = 'tenant') email the company
+owner's sign-in address. The owner's Account > Notifications switches (`user_metadata.notifications.
+maintenance` / `.messages`, missing = on) decide; a switched-off alert is logged as `skipped`. The other
+switches on that tab are labelled "Coming soon" and disabled; don't re-enable one until it's built.
 
 **Gotchas learned the hard way:**
 - `rent_log` has no `is_late_fee` column. Queries that ask for it fail silently and show empty data.

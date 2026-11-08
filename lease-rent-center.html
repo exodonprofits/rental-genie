@@ -308,7 +308,7 @@ select {
 .filter-field label {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #64748b;
+  color: #556275;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -329,7 +329,7 @@ select {
 }
 .filter-field select:focus,
 .filter-field input:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.25); }
-.filter-field select:disabled { background: #f1f5f9; color: #64748b; }
+.filter-field select:disabled { background: #f1f5f9; color: #556275; }
 @media (max-width: 980px) { .filter-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 600px) { .filter-grid { grid-template-columns: 1fr; } }
 
@@ -638,7 +638,7 @@ select {
   color:#0f172a;
 }
 .attention-queue-sub{
-  color:#64748b;
+  color:#556275;
   font-size:0.9rem;
 }
 .attention-queue-body{
@@ -665,7 +665,7 @@ select {
   font-size:0.95rem;
 }
 .attention-queue-property span{
-  color:#64748b;
+  color:#556275;
   font-size:0.85rem;
 }
 .attention-queue-meta{
@@ -707,7 +707,7 @@ select {
 .attention-open-btn:hover{ background:#f8fafc; }
 .attention-empty-state{
   padding:16px;
-  color:#64748b;
+  color:#556275;
 }
 @media (max-width: 860px){
   .attention-queue-row{
@@ -950,7 +950,7 @@ Used by:
   border-radius:14px;
   padding:12px;
 }
-.lease-k{ font-size:0.82rem; color:#64748b; font-weight:800; }
+.lease-k{ font-size:0.82rem; color:#556275; font-weight:800; }
 .lease-v{ margin-top:6px; font-size:1rem; font-weight:900; color:#0f172a; }
 
 @media (max-width: 900px){
@@ -1002,7 +1002,7 @@ Used by:
   --rg-surface:  #ffffff;
   --rg-border:   #e2e8f0;
   --rg-text:     #0c1e3a;
-  --rg-muted:    #64748b;
+  --rg-muted:    #556275;
   --rg-success:  #059669;
   --rg-warning:  #d97706;
   --rg-danger:   #dc2626;
@@ -1413,9 +1413,9 @@ button.secondary { border-radius: 999px !important; font-weight: 600 !important;
   border-top: none !important;
 }
 .footer-section h4 { color: rgba(255,255,255,0.75) !important; font-size:0.75rem !important; text-transform:uppercase !important; letter-spacing:.8px !important; }
-.footer-section a, .footer-section p { color: rgba(255,255,255,0.4) !important; font-size: 0.82rem !important; }
+.footer-section a, .footer-section p { color:rgba(255,255,255,.62) !important; font-size: 0.82rem !important; }
 .footer-section a:hover { color: rgba(255,255,255,0.85) !important; }
-.footer-bottom { color: rgba(255,255,255,0.28) !important; border-top: 1px solid rgba(255,255,255,0.08) !important; }
+.footer-bottom { color:rgba(255,255,255,.62) !important; border-top: 1px solid rgba(255,255,255,0.08) !important; }
 
 /* ── Scrollbar ───────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -1436,12 +1436,12 @@ button.secondary { border-radius: 999px !important; font-weight: 600 !important;
   --sky:        #2d8cf0;
   --sky-light:  #e8f0fe;
   --slate:      #475569;
-  --slate-light:#64748b;
+  --slate-light:#556275;
   --border:     #e2e8f0;
   --bg:         #f1f4f8;
   --card-bg:    #ffffff;
   --text:       #0c1e3a;
-  --muted:      #64748b;
+  --muted:      #556275;
   --success:    #10b981;
   --warning:    #f59e0b;
   --danger:     #ef4444;
@@ -1759,7 +1759,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
 }
 .footer-brand .footer-name { font-size: 1.1rem; font-weight: 700; color: #fff; }
-.footer-brand p { font-size: 0.83rem; color: rgba(255,255,255,.45); line-height: 1.55; max-width: 220px; margin: 0; }
+.footer-brand p { font-size: 0.83rem; color:rgba(255,255,255,.62); line-height: 1.55; max-width: 220px; margin: 0; }
 
 .footer-section h4 {
   font-size: 0.72rem !important; font-weight: 700 !important;
@@ -1767,20 +1767,20 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   letter-spacing: 1px !important; margin: 0 0 14px !important;
 }
 .footer-section a {
-  display: block; color: rgba(255,255,255,.5) !important;
+  display: block; color:rgba(255,255,255,.62) !important;
   text-decoration: none; font-size: 0.85rem !important;
   margin-bottom: 9px !important; transition: color .15s !important;
 }
 .footer-section a:hover { color: rgba(255,255,255,.9) !important; }
-.footer-section p { color: rgba(255,255,255,.45) !important; font-size: 0.83rem !important; margin-bottom: 8px !important; }
+.footer-section p { color:rgba(255,255,255,.62) !important; font-size: 0.83rem !important; margin-bottom: 8px !important; }
 
 .footer-bottom {
   max-width: 1440px; margin: 20px auto 0;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-  color: rgba(255,255,255,.3) !important; font-size: 0.78rem !important;
+  color:rgba(255,255,255,.62) !important; font-size: 0.78rem !important;
   border-top: none !important; padding-top: 0 !important;
 }
-.footer-bottom a { color: rgba(255,255,255,.4); text-decoration: none; }
+.footer-bottom a { color:rgba(255,255,255,.62); text-decoration: none; }
 .footer-bottom a:hover { color: rgba(255,255,255,.7); }
 
 /* ── Mobile bottom nav ───────────────────────────────────────── */
@@ -1821,7 +1821,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
 .umd-avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#1a3a6b,#1e5799); color:#fff; font-weight:700; font-size:.78rem; display:flex; align-items:center; justify-content:center; letter-spacing:.5px; flex-shrink:0; box-shadow:0 2px 8px rgba(12,30,58,.2); }
 .umd-identity { min-width:0; }
 .umd-name { font-weight:700; font-size:.88rem; color:#0c1e3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.umd-role { font-size:.72rem; color:#64748b; margin-top:1px; }
+.umd-role { font-size:.72rem; color:#556275; margin-top:1px; }
 .umd-section { padding:5px 6px; display:flex; flex-direction:column; }
 .umd-section-border { border-top:1px solid #f1f5f9; }
 .user-menu-dropdown .umd-item { display:flex; align-items:center; gap:9px; width:100%; padding:9px 10px; border-radius:8px; background:none; border:none; cursor:pointer; font-size:.875rem; font-weight:500; color:#1e293b !important; font-family:'DM Sans',sans-serif; text-decoration:none !important; transition:background .12s,color .12s; text-align:left; letter-spacing:0; }
@@ -2008,7 +2008,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
 .umd-dropdown.open { display:block; }
 .umd-user-row { padding:14px 16px 10px; border-bottom:1px solid #f1f5f9; }
 .umd-user-name  { font-size:.88rem; font-weight:700; color:#0c1e3a; }
-.umd-user-email { font-size:.75rem; color:#64748b; margin-top:2px; }
+.umd-user-email { font-size:.75rem; color:#556275; margin-top:2px; }
 .umd-section { display:flex; flex-direction:column; padding:6px; border-bottom:1px solid #f1f5f9; }
 .umd-section:last-child { border-bottom:none; }
 .umd-link {
@@ -2231,7 +2231,7 @@ body.rent-workspace > main.page { max-width:none !important; width:100% !importa
     <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
       <div>
         <div style="font-weight:900; color:#0f172a; font-size:1.05rem;">🏢 Set up your rental workspace</div>
-        <div style="margin-top:4px; color:#64748b; font-size:0.92rem; line-height:1.35;">
+        <div style="margin-top:4px; color:#556275; font-size:0.92rem; line-height:1.35;">
           You’re signed in, but you’re not linked to a workspace yet. Create one now so you can add properties and track rent.
         </div>
       </div>
@@ -2240,7 +2240,7 @@ body.rent-workspace > main.page { max-width:none !important; width:100% !importa
         <button class="secondary-btn" id="refreshWorkspaceBtn" type="button">🔄 Refresh</button>
       </div>
     </div>
-    <div style="margin-top:10px; font-size:0.85rem; color:#64748b;">
+    <div style="margin-top:10px; font-size:0.85rem; color:#556275;">
       If someone invited you, ask them to add your email to the company/workspace.
     </div>
   </div>
@@ -2364,7 +2364,7 @@ body.rent-workspace > main.page { max-width:none !important; width:100% !importa
     </div>
     <div class="card">
       <div id="leaseHistoryList">
-        <div style="color:#64748b;">Select a property to load lease history.</div>
+        <div style="color:#556275;">Select a property to load lease history.</div>
       </div>
     </div>
   </section>
@@ -3580,7 +3580,7 @@ async function updateLeasePanel() {
   if (!currentProperty) {
     if (empty) empty.style.display = "none";
     toggleLeaseBadge(false);
-    historyWrap.innerHTML = '<div style="color:#64748b;">Select a property to load lease history.</div>';
+    historyWrap.innerHTML = '<div style="color:#556275;">Select a property to load lease history.</div>';
     toggleLeaseBadge(false);
     elTenant.textContent = "—";
     elStart.textContent = "—";
@@ -3719,7 +3719,7 @@ async function updateLeasePanel() {
 
   const hist = await loadLeaseHistory();
   if (!hist.length) {
-    historyWrap.innerHTML = '<div style="color:#64748b;">No lease history found.</div>';
+    historyWrap.innerHTML = '<div style="color:#556275;">No lease history found.</div>';
   } else {
     const selectedKey = getLeaseIdentityKey(getLedgerLease());
     const currentKey = getLeaseIdentityKey(currentLease);
@@ -5205,7 +5205,7 @@ if (!window.__rgPayMenuBound) {
   </div>
 
   <div style="padding:14px 16px;">
-    <div style="font-size:0.9rem; color:#64748b; margin-bottom:10px;">
+    <div style="font-size:0.9rem; color:#556275; margin-bottom:10px;">
       Tenant: <b id="mpTenantLabel">—</b>
     </div>
 
@@ -5240,7 +5240,7 @@ if (!window.__rgPayMenuBound) {
         <label style="display:block; font-size:0.85rem; color:#475569; margin-bottom:6px; font-weight:700;">💵 Amount Paid</label>
         <input id="mpAmount" type="number" step="0.01" placeholder="Enter amount"
                style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:7px; box-sizing:border-box;">
-        <div style="margin-top:6px; font-size:0.82rem; color:#64748b;">
+        <div style="margin-top:6px; font-size:0.82rem; color:#556275;">
           Tip: For partial payments, enter the amount received today. Remaining balance will stay open.
         </div>
       </div>
@@ -5250,7 +5250,7 @@ if (!window.__rgPayMenuBound) {
     <label for="mpNote" style="display:block; font-size:0.85rem; color:#475569; margin-bottom:6px; font-weight:700;">📝 Note (optional)</label>
     <input id="mpNote" type="text" placeholder="Example: Confirmation #1234" style="width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:7px; box-sizing: border-box;appearance: none;">
 
-    <div style="margin-top:6px; font-size:0.78rem; color:#64748b; line-height:1.35;">
+    <div style="margin-top:6px; font-size:0.78rem; color:#556275; line-height:1.35;">
         Tip (property manager): write something like
         <b>“PMC collected. Owner deposit $1,800 (10% fee withheld)”</b>.
         Then add the <b>$200</b> as an expense in <b>Expense Tracking → Property Management Fee</b>.
@@ -5372,8 +5372,10 @@ function rgDismissOverlay() {
 // Wire header interactions
 rgWireHeader();
 // Footer year
-var fyEls = document.querySelectorAll('.footer-year');
-fyEls.forEach(function(el) { el.textContent = new Date().getFullYear(); });
+// The footer comes after this script, so fill its year once the page is parsed.
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.footer-year').forEach(function(el) { el.textContent = new Date().getFullYear(); });
+});
 var fyEl2 = document.getElementById('footerYear');
 if (fyEl2) fyEl2.textContent = new Date().getFullYear();
 </script>
@@ -5406,7 +5408,14 @@ if (fyEl2) fyEl2.textContent = new Date().getFullYear();
       <a href="contact-us.html">Contact Us</a>
       <a href="contact-us.html">Help Center</a>
       <a href="terms.html">Terms of Service</a>
-      <a href="pr
+      <a href="privacy.html">Privacy Policy</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <span>© <span class="footer-year"></span> Rental Genie. All rights reserved.</span>
+    <span><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a></span>
+  </div>
+</footer>
 
 <!-- Property-required toast -->
 <div id="rgToast"><span class="toast-icon">🏠</span><span id="rgToastMsg">Please select a property first.</span></div>

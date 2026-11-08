@@ -515,20 +515,61 @@ Changes made during integration:
 
 ### Status of the priorities in the Codex handoff
 
-1. **Push and deploy the redesign.** Pushed to `claude/blissful-lovelace-iaj1sb` with a pull request.
-   Not merged: merging deploys to rentalgenieai.com, and the regression review lists owner design
-   review as outstanding. After the owner merges, confirm the "Deploy to Bluehost" run (smoke tests
-   first, then upload) and that `rg-version.txt` serves the merge commit.
-2. **Real-device, accessibility, isolated-backend testing.** Not started. Real iPhone Safari and
-   Android Chrome checks need the owner's devices. Isolated-backend integration needs a Supabase
-   development branch (billed separately; requires the owner's approval before creating one).
-3. **Maintenance completion timestamp.** Confirmed still present: `saveEdit()` sets `completed_at`
-   only for `Completed`/`Closed`, but the status selector submits `Resolved`, so resolving from the
-   edit form leaves `completed_at` empty. Next change, as its own pull request with a rolled-back
-   database test.
+1. **Push and deploy the redesign.** Done. Merged as PR #39 (`60c84d3`); "Deploy to Bluehost" run 28
+   passed (smoke and workspace suites, then upload) at 05:28 UTC on 2026-11-08. Live check at 05:56:
+   `rg-version.txt` serves `60c84d3edc8b71ab91473e56d548bf15123e6762`, `shared/js/form-guide.js`
+   returns 200, and `dashboard.html` contains `workspace-design`.
+2. **Real-device, accessibility, isolated-backend testing.** Automated accessibility done (see
+   "Accessibility pass" below). Still open: real iPhone Safari and Android Chrome (owner's devices),
+   screen-reader and keyboard-only passes, and isolated-backend integration, which needs a Supabase
+   development branch (billed; owner's approval before creating one).
+3. **Maintenance completion timestamp.** Fixed in `maintenance-requests.html`: one rule,
+   `completionPatch()`, used by both the Complete button and the edit form. Moving to
+   Resolved/Completed/Closed stamps `completed_at` once (re-saving a finished repair keeps the
+   original time); reopening clears it. Tested in the browser (all four paths) and in a rolled-back
+   database transaction as the landlord role. Existing data: 2 of the 6 resolved repairs have no
+   `completed_at`; they were left empty rather than backfilled, because no reliable completion date
+   exists for them.
 4. **Reliable notifications** (workstream A). Needs a design pass with the owner before building:
    new outbox/delivery tables, unique event keys, retry worker, preferences and failure alerts.
 5. **Maintenance coordination, rent reconciliation, lease lifecycle** (workstreams B to D). Not
    started. Rent collection needs a payment-provider decision first.
 
 No production migrations, tenant communications, uploads or payments were made for this integration.
+
+### Account data export (workstream E)
+
+`account.html` "Download my data" now covers 23 tables (adds tenants, receipts, applications and
+application messages), counts each table first and pages through it 500 rows at a time in a stable
+order, so the API's per-request row cap can't silently truncate it. The file has a `summary` per
+table (rows, expected, complete, error) and a top-level `complete` flag, and the page names any table
+that failed or came back short instead of reporting success. Uploaded files (receipts, leases) are
+listed by path, not included. Tested with the smoke stub (now honours `order()`/`range()`, a row cap
+via `fixture.maxRows` and per-table failures via `fixture.errors`): 1,234 rows under a 100-row cap,
+one failing table, and a normal account.
+
+### Accessibility pass (2026-11-08)
+
+`tests/smoke/a11y.js` runs axe-core (WCAG 2.1 A/AA rules) on 20 landlord, tenant and public pages at
+390 and 1280px with the stubbed client, and now runs in CI after the workspace suite. First run: 54
+critical/serious violations (219 low-contrast elements, 16 unnamed selects, plus missing labels,
+a focusable hidden panel, broken table roles and a broken link). After the fixes: 0 at every impact
+level (`node a11y.js --all`). Changes:
+
+- Contrast, sitewide: muted grey `#64748b` → `#556275` (5.6:1 on the page background); footer text on
+  navy from 28–50% white to 62% (about 7:1). Per page: link blue `#1d6fd1` on login and listings,
+  green save button `#15803d` (add-expense), dashboard row action `#0369a1`, KPI captions on
+  Properties, red figures `#dc2626` (reports) and `#c53030` (home page), green `#047857`.
+- Names and labels: property selector and management toggle (property-overview), the six utility
+  selects (add-property), every filter and application field on listings (`label for`).
+- `lease-rent-center.html`: the footer was cut off mid-tag (`<a href="pr`) since the first commit;
+  restored the Privacy link, the closing tags and the copyright row, and the year now fills after the
+  footer is parsed.
+- expense-tracking: the closed side panel is `inert`, so keyboard focus can't land in hidden fields.
+- Home page: the "property statement" no longer claims table roles it doesn't have; listings footer
+  links are underlined.
+- The audit runs with reduced motion, because the home page's question demo animates continuously and
+  a scan mid-fade reports half-transparent text.
+
+Automated rules catch roughly a third of accessibility problems; this is not a substitute for a
+screen reader, keyboard-only use, 200% text zoom or a real phone.

@@ -2855,15 +2855,26 @@ if (hamburgerBtn && mobileDrawer) {
     /* ─────────────────────────────────────────────────────────────────── */
 
 
+    // One rule for completed_at, used by the Complete button and the edit form. Moving into a done
+    // status stamps it; re-saving a request that was already done keeps the original time (editing
+    // the notes later must not move the completion date); reopening clears it. The form submits
+    // "Resolved"; "Completed"/"Closed" are older values still treated as done.
+    const DONE_STATUSES = /^(resolved|completed|closed)$/i;
+    function completionPatch(newStatus, prev){
+      if (DONE_STATUSES.test(String(newStatus || "").trim())) {
+        const wasDone = prev && DONE_STATUSES.test(String(prev.status || "").trim()) && prev.completed_at;
+        return wasDone ? {} : { completed_at: new Date().toISOString() };
+      }
+      return { completed_at: null };
+    }
+
     async function setStatus(id, newStatus){
       try{
         const isCompleting = (newStatus === "Resolved");
         const req = (requestsCache || []).find(x => String(x.id) === String(id)) || null;
 
         const payload = { status: newStatus };
-        if (availableCols.has("completed_at") && isCompleting) {
-          payload.completed_at = new Date().toISOString();
-        }
+        if (availableCols.has("completed_at")) Object.assign(payload, completionPatch(newStatus, req));
 
         const { error } = await client
           .from("maintenance_requests")
@@ -2988,9 +2999,8 @@ if (hamburgerBtn && mobileDrawer) {
       if (availableCols.has("scheduled_at")) payload.scheduled_at = schedVal ? new Date(schedVal).toISOString() : null;
 
       if (availableCols.has("completed_at")) {
-        const st = payload.status;
-        if ((st === "Completed" || st === "Closed")) payload.completed_at = new Date().toISOString();
-        if (st === "Open" || st === "In Progress") payload.completed_at = null;
+        const prev = (requestsCache || []).find(x => String(x.id) === String(editingRequestId)) || null;
+        Object.assign(payload, completionPatch(payload.status, prev));
       }
 
       try{

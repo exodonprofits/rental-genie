@@ -24,16 +24,18 @@
 -- rg_dismiss_notification(); nothing else is writable from the client. Service role and the
 -- definer functions do the rest.
 
+-- Foreign keys use the default (no action): companies, properties, tenants and repairs are
+-- archived, never removed, so a log row can't be orphaned.
 -- ── Table ────────────────────────────────────────────────────────────────────────────────────
 create table if not exists public.notifications (
   id                     bigint generated always as identity primary key,
-  company_id             uuid not null references public.companies (id) on delete cascade,
+  company_id             uuid not null references public.companies (id),
   event_key              text not null,
   kind                   text not null check (kind in ('maintenance_ack')),
   channel                text not null check (channel in ('email', 'in_app')),
   maintenance_request_id integer,
-  property_id            uuid references public.properties (id) on delete set null,
-  tenant_id              uuid references public.tenants (id) on delete set null,
+  property_id            uuid references public.properties (id),
+  tenant_id              uuid references public.tenants (id),
   recipient              text,
   subject                text,
   body                   text,
@@ -52,7 +54,6 @@ create table if not exists public.notifications (
   constraint notifications_maintenance_request_fkey
     foreign key (maintenance_request_id, company_id)
     references public.maintenance_requests (id, company_id)
-    on delete set null (maintenance_request_id)
 );
 
 comment on table public.notifications is
@@ -69,7 +70,6 @@ alter table public.notifications enable row level security;
 revoke all on public.notifications from anon, authenticated;
 grant select on public.notifications to authenticated;
 
-drop policy if exists notifications_select on public.notifications;
 create policy notifications_select on public.notifications
   for select to authenticated
   using (public.rg_company_access(company_id));

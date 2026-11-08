@@ -129,6 +129,19 @@ match the page's `<option>` values.
 `rg_confirm_incoming_payment` writes them to `rent_log`, splitting across unpaid months oldest-first;
 `rg_dismiss_incoming_payment` handles "not rent". Version 1 never logs a payment automatically.
 
+**Notifications (rg_17):** `notifications` is the outbox and delivery log, one row per event and
+channel under a unique `event_key` (e.g. `maint_ack:<request id>`), so nothing is sent twice. For a
+filed repair, `trigger_maintenance_acknowledgment` calls `rg_maint_ack_prepare` inside the insert: it
+acknowledges only a tenant on a current lease for that company and property, takes the recipient from
+the `tenants`/`leases` records (never the request's `tenant_email`), writes the in-app message and
+queues the email; errors are caught so filing never fails. The `maintenance-acknowledgment` Edge
+Function only delivers queued emails (`rg_notification_begin` → Resend with the event key as
+`Idempotency-Key` → `rg_notification_finish`: sent / retry / failed). pg_cron job
+`rg-notification-sweep` (rg_18) re-sends queued, due-for-retry and stuck rows every 5 minutes; backoff
+2 min, 10 min, 1 h, 6 h, 5 attempts. Failures show on the dashboard until dismissed
+(`rg_dismiss_notification`). Landlords can only read their company's rows. New kinds of notification
+should go through the same table and key scheme, not a second sender.
+
 **Gotchas learned the hard way:**
 - `rent_log` has no `is_late_fee` column. Queries that ask for it fail silently and show empty data.
 - `maintenance_requests` uses `urgency_level`, not `priority`.

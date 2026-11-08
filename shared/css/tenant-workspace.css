@@ -77,3 +77,25 @@ body.tenant-workspace main {max-width:none !important;width:100%;box-sizing:bord
  body.has-tenant-tabbar {padding-bottom:calc(76px + env(safe-area-inset-bottom));}
  body.has-tenant-tabbar.tenant-workspace main {padding-bottom:24px;}
 }
+
+/* Phone layout tidy-ups across the tenant pages */
+@media(max-width:600px){
+ /* Portal quick actions: compact 3-up icon tiles (the bottom bar already covers most of them) */
+ .tenant-workspace .action-grid {grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+ .tenant-workspace .action-card {min-height:0;padding:12px 6px;gap:6px;}
+ .tenant-workspace .action-hint {display:none;}
+ .tenant-workspace .action-label {font-size:.78rem;text-align:center;}
+ /* Payments summary: two across, the odd one out spans the row */
+ .tenant-workspace .hero-stats:has(> #statRent) {display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+ .tenant-workspace .hero-stats:has(> #statRent) > :last-child:nth-child(odd) {grid-column:1 / -1;}
+ /* Messages info cards: email full width, the other two side by side */
+ .tenant-resources .contact-info-grid {grid-template-columns:1fr 1fr;gap:10px;}
+ .tenant-resources .contact-info-grid > :first-child {grid-column:1 / -1;}
+ /* Stacked tables: no frame around the cards, so lists and empty states aren't double-boxed */
+ .tenant-workspace .table-wrap,body .table-wrap:has(> table.rg-stack) {border:0;padding:0;background:transparent;box-shadow:none;}
+ /* Repairs: the reimbursement cell gets its own row so its label doesn't break mid-word */
+ .tenant-workspace #reqBody td:nth-child(6) {grid-column:1 / -1;}
+ .tenant-workspace .rg-stack td::before {overflow-wrap:normal;word-break:normal;}
+ /* Card labels use the text font even when the value is in the number font */
+ .rg-stack td::before {font-family:'DM Sans',system-ui,sans-serif;font-weight:600;letter-spacing:0;}
+}

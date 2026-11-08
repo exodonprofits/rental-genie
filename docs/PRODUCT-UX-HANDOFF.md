@@ -530,8 +530,20 @@ Changes made during integration:
    database transaction as the landlord role. Existing data: 2 of the 6 resolved repairs have no
    `completed_at`; they were left empty rather than backfilled, because no reliable completion date
    exists for them.
-4. **Reliable notifications** (workstream A). Needs a design pass with the owner before building:
-   new outbox/delivery tables, unique event keys, retry worker, preferences and failure alerts.
+4. **Reliable notifications** (workstream A). First slice live (2026-11-08): the maintenance
+   acknowledgment. `notifications` outbox with unique event keys (no duplicate sends); recipient
+   resolved from tenant and lease records; in-app message written in the filing transaction; email
+   delivery with Resend idempotency, retries (2 min, 10 min, 1 h, 6 h; 5 attempts, pg_cron sweep)
+   and an honest HTTP status; permanent failures shown on the dashboard until dismissed. Evidence:
+   rolled-back database test of 10 scenarios (spoofed request email ignored, duplicates, landlord-
+   logged, wrong property, unknown email, ended lease, retry timing and cap, permanent failure,
+   RLS for landlord/tenant/outsider/anon, a failing prepare never blocks filing); 13 function tests
+   against a stubbed Resend; dashboard card at 390 and 1280px; live probe of the deployed function
+   (secret accepted, wrong secret 401) without sending anything. Not yet verified: an actual delivery
+   — no tenant has filed a repair since the Oct 1 cutover, and whether `RESEND_API_KEY` and
+   `FROM_EMAIL` are set is unconfirmed (a missing one now shows as a failed card, not silence).
+   Still to do: notification preferences/opt-out, timezone handling for scheduled reminders, and the
+   n8n rent-reminder export, which points at a table that doesn't exist in this project.
 5. **Maintenance coordination, rent reconciliation, lease lifecycle** (workstreams B to D). Not
    started. Rent collection needs a payment-provider decision first.
 

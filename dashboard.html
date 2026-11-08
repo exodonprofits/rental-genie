@@ -3675,6 +3675,31 @@ function buildAssignmentsFromData(data){
     });
   }
 
+  // -- Tenant emails that couldn't be sent (notification log) --
+  const _failed = Array.isArray(data.failedNotifications) ? data.failedNotifications : [];
+  if(_failed.length){
+    window._rgFailedNotificationIds = _failed.map(function(n){ return n.id; });
+    const _why = function(err){
+      if(/isn't configured/i.test(err)) return "email sending isn't set up";
+      if(/Resend 4\d\d/.test(err)) return "the address was rejected";
+      return "the email service couldn't be reached";
+    };
+    const _facts = _failed.slice(0,5).map(function(n){
+      return (n.property_name ? n.property_name + " -- " : "") + (n.recipient || "tenant") + ": " + _why(n.last_error);
+    });
+    if(_failed.length > 5) _facts.push((_failed.length-5) + " more...");
+    items.unshift({
+      level: "top",
+      title: "✉️ " + _failed.length + " repair confirmation email" + (_failed.length===1?"":"s") + " didn't send",
+      desc: "The tenant still has the in-app message. If they don't use the app, contact them directly, then mark this handled.",
+      facts: _facts,
+      actions: [
+        { label: "🛠 Open repairs", href: "maintenance-requests.html" },
+        { label: "Mark handled", href: "#dismiss-email-failures", secondary: true }
+      ]
+    });
+  }
+
   const order = { top: 0, warn: 1, info: 2, ok: 3 };
   return items.sort((a,b) => (order[a.level]??9) - (order[b.level]??9)).slice(0, 8);
 }
@@ -3747,6 +3772,24 @@ function renderAssignments(items){
    Assistant UI wiring (Ask + Refresh)
 ------------------------------------------------------------- */
 function setupAssistantUI(){
+  // "Mark handled" on the failed-email card: dismiss those notification log rows
+  document.addEventListener("click", async function(e){
+    const link = e.target.closest ? e.target.closest('a[href="#dismiss-email-failures"]') : null;
+    if(!link) return;
+    e.preventDefault();
+    const ids = window._rgFailedNotificationIds || [];
+    link.textContent = "Saving...";
+    const results = await Promise.all(ids.map(function(id){ return sb.rpc("rg_dismiss_notification", { p_id: id }); }));
+    const failed = results.filter(function(r){ return r.error; });
+    if(failed.length){
+      console.warn("Could not dismiss notifications", failed[0].error);
+      link.textContent = "Couldn't save -- try again";
+      return;
+    }
+    window._rgFailedNotificationIds = [];
+    const card = link.closest(".assistant-card");
+    if(card) card.remove();
+  });
   document.querySelectorAll('a[href="#manualMode"]').forEach(function(link) {
     link.addEventListener("click", function() {
       document.getElementById("manualMode").open = true;
@@ -3885,6 +3928,14 @@ async function fetchDashboardData(user) {
   const _asOf = _todayLocal.getFullYear() + "-" +
     String(_todayLocal.getMonth() + 1).padStart(2, "0") + "-" +
     String(_todayLocal.getDate()).padStart(2, "0");
+  // Tenant emails that failed for good (notification log, rg_17). Not fatal if it can't load.
+  let failedNotifQuery = sb.from("notifications")
+    .select("id, property_id, recipient, last_error, created_at, maintenance_request_id")
+    .eq("channel", "email").eq("status", "failed").is("dismissed_at", null)
+    .order("created_at", { ascending: false }).limit(20);
+  if (activeCompanyId) failedNotifQuery = failedNotifQuery.eq("company_id", activeCompanyId);
+  const failedNotifPromise = failedNotifQuery;
+
   const rentStatusPromise = sb.rpc("rg_rent_status", {
     p_company_id: activeCompanyId || null,
     p_as_of: _asOf
@@ -3905,6 +3956,8 @@ async function fetchDashboardData(user) {
     rent30Query, maintExp30Query, leasesQuery, rentMonthQuery
   ]);
   const { data: rentStatusRows, error: rentStatusErr } = await rentStatusPromise;
+  const { data: failedNotifRows, error: failedNotifErr } = await failedNotifPromise;
+  if (failedNotifErr) console.warn("Notification log could not be loaded", failedNotifErr);
   if (rentStatusErr) console.warn("Rent status could not be loaded", rentStatusErr);
 
   if (propertiesError)    console.error("Error loading properties:", propertiesError);
@@ -4049,6 +4102,10 @@ async function fetchDashboardData(user) {
     expiringLeases,
     vacancies,
     vacantProperties,
+    failedNotifications: (failedNotifRows || []).map(function(n){
+      const prop = (propertiesData || []).find(function(p){ return p.id === n.property_id; });
+      return { id: n.id, property_name: prop ? prop.name : "", recipient: n.recipient || "", last_error: n.last_error || "" };
+    }),
     pendingMaintenance: openTotal,
     highPriorityMaintenance: openHigh,
 

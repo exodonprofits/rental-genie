@@ -169,7 +169,7 @@ $('signupForm').addEventListener('submit',function(e){
   if(pw.length<6){setStatus('error','Password must be at least 6 characters.');return}
   if(pw!==cpw){setStatus('error','Passwords do not match.');return}
   var btn=$('signupBtn');btn.disabled=true;btn.textContent='Creating account…';
-  db.auth.signUp({email:email,password:pw,options:{data:{full_name:name,name:name,role:role}}}).then(function(r){
+  db.auth.signUp({email:email,password:pw,options:{emailRedirectTo:location.origin+'/login.html',data:{full_name:name,name:name,role:role}}}).then(function(r){
     if(r.error){setStatus('error',r.error.message||'Unable to sign up.');btn.disabled=false;btn.textContent='✨ Create Account';return}
     setStatus('success','Account created! Check your email to confirm, then sign in.');
     setTimeout(function(){location.href='login.html'},1800);

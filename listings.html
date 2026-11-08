@@ -21,8 +21,8 @@
   --bg:          #f1f4f8;
   --card:        #ffffff;
   --text:        #0c1e3a;
-  --muted:       #64748b;
-  --success:     #10b981;
+  --muted:       #556275;
+  --success:     #047857;
   --success-bg:  #ecfdf5;
   --success-bdr: #a7f3d0;
   --danger:      #ef4444;
@@ -116,7 +116,7 @@ body{
   padding:18px 20px; display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end;
 }
 .filter-field{display:flex; flex-direction:column; gap:6px; flex:1; min-width:150px;}
-.filter-field label{font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:#64748b;}
+.filter-field label{font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:#556275;}
 .filter-field input, .filter-field select{
   padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1;
   font-family:'DM Sans',sans-serif; font-size:.9rem; color:var(--text); background:#fff;
@@ -156,7 +156,7 @@ body{
 .no-photo-icon{font-size:2.4rem; opacity:.55;}
 .no-photo-label{
   font-size:.66rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
-  color:#60a5fa; background:rgba(255,255,255,.85); padding:3px 9px; border-radius:999px;
+  color:#1d4ed8; background:rgba(255,255,255,.85); padding:3px 9px; border-radius:999px;
 }
 .listing-body{padding:16px 18px 18px; display:flex; flex-direction:column; gap:8px; flex:1;}
 .listing-rent{font-size:1.35rem; font-weight:800; color:var(--navy);}
@@ -227,7 +227,7 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
 }
 .form-field{display:flex; flex-direction:column; gap:5px;}
 .form-field.full{grid-column:1/-1;}
-.form-field label{font-size:.75rem; font-weight:700; text-transform:uppercase; color:#64748b;}
+.form-field label{font-size:.75rem; font-weight:700; text-transform:uppercase; color:#556275;}
 .form-field input, .form-field textarea, .form-field select{
   padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1; font-family:'DM Sans',sans-serif; font-size:.88rem;
 }
@@ -273,11 +273,11 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
 <main class="page">
   <div class="filter-card">
     <div class="filter-field" style="flex:2;">
-      <label>Search</label>
+      <label for="fSearch">Search</label>
       <input id="fSearch" type="text" placeholder="City, neighborhood, address…" />
     </div>
     <div class="filter-field">
-      <label>Min Bedrooms</label>
+      <label for="fBeds">Min Bedrooms</label>
       <select id="fBeds">
         <option value="">Any</option>
         <option value="1">1+</option>
@@ -287,7 +287,7 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
       </select>
     </div>
     <div class="filter-field">
-      <label>Max Rent</label>
+      <label for="fMaxRent">Max Rent</label>
       <input id="fMaxRent" type="number" placeholder="e.g. 2500" />
     </div>
     <button class="filter-reset" id="fReset" type="button">Reset</button>
@@ -309,8 +309,8 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
 
 <footer class="site-footer">
   © <span id="footerYear"></span> Rental Genie. All rights reserved. ·
-  <a href="terms.html" style="color:var(--sky); text-decoration:none;">Terms</a> ·
-  <a href="privacy.html" style="color:var(--sky); text-decoration:none;">Privacy</a>
+  <a href="terms.html" style="color:#1d6fd1; text-decoration:underline;">Terms</a> ·
+  <a href="privacy.html" style="color:#1d6fd1; text-decoration:underline;">Privacy</a>
 </footer>
 
 <!-- DETAIL / APPLY MODAL -->
@@ -333,22 +333,22 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
 
         <div class="apply-form" id="applyForm">
           <div class="form-row">
-            <div class="form-field"><label>Full Name</label><input id="apName" type="text" required /></div>
-            <div class="form-field"><label>Email</label><input id="apEmail" type="email" required /></div>
+            <div class="form-field"><label for="apName">Full Name</label><input id="apName" type="text" required /></div>
+            <div class="form-field"><label for="apEmail">Email</label><input id="apEmail" type="email" required /></div>
           </div>
           <div class="form-row">
-            <div class="form-field"><label>Phone</label><input id="apPhone" type="tel" /></div>
-            <div class="form-field"><label>Desired Move-in</label><input id="apMoveIn" type="date" /></div>
+            <div class="form-field"><label for="apPhone">Phone</label><input id="apPhone" type="tel" /></div>
+            <div class="form-field"><label for="apMoveIn">Desired Move-in</label><input id="apMoveIn" type="date" /></div>
           </div>
 
           <div class="form-field full" style="margin-bottom:12px;">
-            <label>Current Address</label>
+            <label for="apCurrentAddress">Current Address</label>
             <input id="apCurrentAddress" type="text" placeholder="Street, city, state" />
           </div>
 
           <div class="form-row">
             <div class="form-field">
-              <label>Employment Status</label>
+              <label for="apEmploymentStatus">Employment Status</label>
               <select id="apEmploymentStatus">
                 <option value="">Select…</option>
                 <option value="employed">Employed</option>
@@ -358,11 +358,11 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
                 <option value="retired">Retired</option>
               </select>
             </div>
-            <div class="form-field"><label>Employer Name</label><input id="apEmployer" type="text" /></div>
+            <div class="form-field"><label for="apEmployer">Employer Name</label><input id="apEmployer" type="text" /></div>
           </div>
           <div class="form-row">
-            <div class="form-field"><label>Monthly Income ($)</label><input id="apIncome" type="number" placeholder="e.g. 5000" /></div>
-            <div class="form-field"><label># of Occupants</label><input id="apOccupants" type="number" min="1" placeholder="e.g. 2" /></div>
+            <div class="form-field"><label for="apIncome">Monthly Income ($)</label><input id="apIncome" type="number" placeholder="e.g. 5000" /></div>
+            <div class="form-field"><label for="apOccupants"># of Occupants</label><input id="apOccupants" type="number" min="1" placeholder="e.g. 2" /></div>
           </div>
 
           <div class="form-field full" style="margin-bottom:12px;">
@@ -373,12 +373,12 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
           </div>
 
           <div class="form-row">
-            <div class="form-field"><label>Emergency Contact Name</label><input id="apEmergencyName" type="text" /></div>
-            <div class="form-field"><label>Emergency Contact Phone</label><input id="apEmergencyPhone" type="tel" /></div>
+            <div class="form-field"><label for="apEmergencyName">Emergency Contact Name</label><input id="apEmergencyName" type="text" /></div>
+            <div class="form-field"><label for="apEmergencyPhone">Emergency Contact Phone</label><input id="apEmergencyPhone" type="tel" /></div>
           </div>
 
           <div class="form-field full" style="margin-bottom:12px;">
-            <label>Message (optional)</label>
+            <label for="apMessage">Message (optional)</label>
             <textarea id="apMessage" placeholder="Tell the landlord a bit about yourself…"></textarea>
           </div>
 

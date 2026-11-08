@@ -561,7 +561,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .filter-field label{
   font-size:0.75rem;
   font-weight:700;
-  color:#64748b;
+  color:#556275;
   text-transform:uppercase;
   letter-spacing:0.5px;
 }
@@ -585,7 +585,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .filter-field select:disabled,
 .filter-field input:disabled{
   background:#f1f5f9;
-  color:#64748b;
+  color:#556275;
 }
 .filter-dates{
   display:grid;
@@ -602,7 +602,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .preset-label{
   font-size:0.75rem;
   font-weight:700;
-  color:#64748b;
+  color:#556275;
   text-transform:uppercase;
   letter-spacing:0.5px;
   white-space:nowrap;
@@ -622,7 +622,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .preset-select:focus{ border-color:#93c5fd; box-shadow:0 0 0 3px rgba(147,197,253,0.25); }
 .preset-hint{
   font-size:0.82rem;
-  color:#64748b;
+  color:#556275;
 }
 @media (max-width: 980px){
   .filter-grid{ grid-template-columns: 1fr 1fr; }
@@ -642,7 +642,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .inline-label{
   font-size:0.75rem;
   font-weight:700;
-  color:#64748b;
+  color:#556275;
   text-transform:uppercase;
   letter-spacing:0.5px;
   white-space:nowrap;
@@ -811,7 +811,7 @@ Used by:
   table.rg-stack tr { border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 6px 12px; margin: 0 0 10px; background: #fff; }
   table.rg-stack td { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 7px 0; border: none !important; text-align: right; white-space: normal !important; word-break: break-word; max-width: none !important; }
   table.rg-stack td + td { border-top: 1px dashed var(--border, #e2e8f0) !important; }
-  table.rg-stack td::before { content: attr(data-label); flex: 0 0 auto; max-width: 45%; text-align: left; font-weight: 600; font-size: .8rem; color: var(--muted, #64748b); }
+  table.rg-stack td::before { content: attr(data-label); flex: 0 0 auto; max-width: 45%; text-align: left; font-weight: 600; font-size: .8rem; color: var(--muted, #556275); }
   table.rg-stack td[data-label=""]::before, table.rg-stack td:not([data-label])::before { content: none; }
   table.rg-stack td[colspan] { display: block; text-align: center; }
   table.rg-stack td[colspan]::before { content: none; }
@@ -846,7 +846,7 @@ Used by:
   --rg-surface: #ffffff;
   --rg-border:  #e2e8f0;
   --rg-text:    #0c1e3a;
-  --rg-muted:   #64748b;
+  --rg-muted:   #556275;
   --rg-radius:  14px;
   --rg-radius-sm: 8px;
   --rg-shadow:  0 2px 12px rgba(12,30,58,0.07);
@@ -1134,9 +1134,9 @@ main.page h1 {
   border-top: none !important;
 }
 .footer-section h4 { color:rgba(255,255,255,0.75) !important; font-size:.75rem !important; text-transform:uppercase !important; letter-spacing:.8px !important; }
-.footer-section a, .footer-section p { color:rgba(255,255,255,0.4) !important; font-size:.82rem !important; }
+.footer-section a, .footer-section p { color:rgba(255,255,255,.62) !important; font-size:.82rem !important; }
 .footer-section a:hover { color:rgba(255,255,255,0.85) !important; }
-.footer-bottom { color:rgba(255,255,255,0.28) !important; border-top:1px solid rgba(255,255,255,0.08) !important; }
+.footer-bottom { color:rgba(255,255,255,.62) !important; border-top:1px solid rgba(255,255,255,0.08) !important; }
 
 /* ── Scrollbar ─────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width:5px; height:5px; }
@@ -1157,12 +1157,12 @@ main.page h1 {
   --sky:        #2d8cf0;
   --sky-light:  #e8f0fe;
   --slate:      #475569;
-  --slate-light:#64748b;
+  --slate-light:#556275;
   --border:     #e2e8f0;
   --bg:         #f1f4f8;
   --card-bg:    #ffffff;
   --text:       #0c1e3a;
-  --muted:      #64748b;
+  --muted:      #556275;
   --success:    #10b981;
   --warning:    #f59e0b;
   --danger:     #ef4444;
@@ -1480,7 +1480,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
 }
 .footer-brand .footer-name { font-size: 1.1rem; font-weight: 700; color: #fff; }
-.footer-brand p { font-size: 0.83rem; color: rgba(255,255,255,.45); line-height: 1.55; max-width: 220px; margin: 0; }
+.footer-brand p { font-size: 0.83rem; color:rgba(255,255,255,.62); line-height: 1.55; max-width: 220px; margin: 0; }
 
 .footer-section h4 {
   font-size: 0.72rem !important; font-weight: 700 !important;
@@ -1488,20 +1488,20 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   letter-spacing: 1px !important; margin: 0 0 14px !important;
 }
 .footer-section a {
-  display: block; color: rgba(255,255,255,.5) !important;
+  display: block; color:rgba(255,255,255,.62) !important;
   text-decoration: none; font-size: 0.85rem !important;
   margin-bottom: 9px !important; transition: color .15s !important;
 }
 .footer-section a:hover { color: rgba(255,255,255,.9) !important; }
-.footer-section p { color: rgba(255,255,255,.45) !important; font-size: 0.83rem !important; margin-bottom: 8px !important; }
+.footer-section p { color:rgba(255,255,255,.62) !important; font-size: 0.83rem !important; margin-bottom: 8px !important; }
 
 .footer-bottom {
   max-width: 1440px; margin: 20px auto 0;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-  color: rgba(255,255,255,.3) !important; font-size: 0.78rem !important;
+  color:rgba(255,255,255,.62) !important; font-size: 0.78rem !important;
   border-top: none !important; padding-top: 0 !important;
 }
-.footer-bottom a { color: rgba(255,255,255,.4); text-decoration: none; }
+.footer-bottom a { color:rgba(255,255,255,.62); text-decoration: none; }
 .footer-bottom a:hover { color: rgba(255,255,255,.7); }
 
 /* ── Mobile bottom nav ───────────────────────────────────────── */
@@ -1542,7 +1542,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
 .umd-avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#1a3a6b,#1e5799); color:#fff; font-weight:700; font-size:.78rem; display:flex; align-items:center; justify-content:center; letter-spacing:.5px; flex-shrink:0; box-shadow:0 2px 8px rgba(12,30,58,.2); }
 .umd-identity { min-width:0; }
 .umd-name { font-weight:700; font-size:.88rem; color:#0c1e3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.umd-role { font-size:.72rem; color:#64748b; margin-top:1px; }
+.umd-role { font-size:.72rem; color:#556275; margin-top:1px; }
 .umd-section { padding:5px 6px; display:flex; flex-direction:column; }
 .umd-section-border { border-top:1px solid #f1f5f9; }
 .user-menu-dropdown .umd-item { display:flex; align-items:center; gap:9px; width:100%; padding:9px 10px; border-radius:8px; background:none; border:none; cursor:pointer; font-size:.875rem; font-weight:500; color:#1e293b !important; font-family:'DM Sans',sans-serif; text-decoration:none !important; transition:background .12s,color .12s; text-align:left; letter-spacing:0; }
@@ -1588,7 +1588,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
 .umd-dropdown.open, .umd-dropdown.active { display:block; }
 .umd-user-row { padding:14px 16px 10px; border-bottom:1px solid #f1f5f9; }
 .umd-user-name  { font-size:.88rem; font-weight:700; color:#0c1e3a; }
-.umd-user-email { font-size:.75rem; color:#64748b; margin-top:2px; }
+.umd-user-email { font-size:.75rem; color:#556275; margin-top:2px; }
 .umd-section { display:flex; flex-direction:column; padding:6px; border-bottom:1px solid #f1f5f9; }
 .umd-section:last-child { border-bottom:none; }
 .umd-link {
@@ -1844,7 +1844,7 @@ window.rgFiles = (function () {
 
 <!-- Expense Drawer -->
 <div class="panel-overlay" id="expensePanelOverlay" aria-hidden="true"></div>
-<aside class="side-panel" id="expenseSidePanel" aria-hidden="true" aria-label="Expense Form Panel">
+<aside class="side-panel" id="expenseSidePanel" aria-hidden="true" inert aria-label="Expense Form Panel">
   <div class="side-panel-header">
     <div class="side-panel-title" id="expensePanelTitle" style="display: none;">💸 Add Expense</div>
     <div class="side-panel-actions">
@@ -1861,7 +1861,7 @@ window.rgFiles = (function () {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;">
         <div>
           <h1 style="margin:0 0 4px;">Expenses & receipts</h1>
-          <p style="margin:0;color:var(--rg-muted,#64748b);font-size:.88rem;">Review recorded costs, keep planned spending separate, and find the receipts behind your numbers.</p>
+          <p style="margin:0;color:var(--rg-muted,#556275);font-size:.88rem;">Review recorded costs, keep planned spending separate, and find the receipts behind your numbers.</p>
         </div>
         <button class="add-btn" id="addExpenseBtnTop" style="align-self:flex-start;white-space:nowrap;">+ Add expense</button>
       </div>
@@ -1877,7 +1877,7 @@ window.rgFiles = (function () {
                 <button class="add-btn" id="createWorkspaceBtn" type="button" style="background:#0ea5e9; box-shadow:0 4px 8px rgba(14,165,233,0.2);">✨ Create my workspace</button>
                 <button class="add-btn" id="refreshWorkspaceBtn" type="button" style="background:#e2e8f0; color:#0f172a; box-shadow:none;">🔄 Refresh</button>
               </div>
-              <div style="margin-top:10px; font-size:0.85rem; color:#64748b;">If someone invited you, ask them to add your email to the company.</div>
+              <div style="margin-top:10px; font-size:0.85rem; color:#556275;">If someone invited you, ask them to add your email to the company.</div>
             </div>
           </div>
         </div>
@@ -2684,6 +2684,7 @@ function openExpenseDrawer(url, title) {
   panel.classList.add("active");
   overlay.setAttribute("aria-hidden", "false");
   panel.setAttribute("aria-hidden", "false");
+  panel.inert = false;
 
   if (openBtn) {
     openBtn.onclick = () => window.open(lastExpenseDrawerUrl, "_self");
@@ -2712,6 +2713,7 @@ function closeExpenseDrawer() {
   panel.classList.remove("active");
   overlay.setAttribute("aria-hidden", "true");
   panel.setAttribute("aria-hidden", "true");
+  panel.inert = true;
 
   // Clear iframe AFTER transition completes (320ms > 250ms animation) — prevents blank flash
   setTimeout(() => { frame.src = "about:blank"; }, 320);

@@ -634,7 +634,7 @@ select {
 .filter-item label {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #64748b;
+  color: #556275;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -660,7 +660,7 @@ select {
   border-color: #93c5fd;
   box-shadow: 0 0 0 3px rgba(147,197,253,0.25);
 }
-.filters-grid select:disabled { background: #f1f5f9; color: #64748b; }
+.filters-grid select:disabled { background: #f1f5f9; color: #556275; }
 /* Search spans remaining columns */
 .filter-search { grid-column: span 2; }
 @media (max-width: 1100px) {
@@ -930,12 +930,12 @@ Used by:
   --sky:        #2d8cf0;
   --sky-light:  #e8f0fe;
   --slate:      #475569;
-  --slate-light:#64748b;
+  --slate-light:#556275;
   --border:     #e2e8f0;
   --bg:         #f1f4f8;
   --card-bg:    #ffffff;
   --text:       #0c1e3a;
-  --muted:      #64748b;
+  --muted:      #556275;
   --success:    #10b981;
   --warning:    #f59e0b;
   --danger:     #ef4444;
@@ -1253,7 +1253,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
 }
 .footer-brand .footer-name { font-size: 1.1rem; font-weight: 700; color: #fff; }
-.footer-brand p { font-size: 0.83rem; color: rgba(255,255,255,.45); line-height: 1.55; max-width: 220px; margin: 0; }
+.footer-brand p { font-size: 0.83rem; color:rgba(255,255,255,.62); line-height: 1.55; max-width: 220px; margin: 0; }
 
 .footer-section h4 {
   font-size: 0.72rem !important; font-weight: 700 !important;
@@ -1261,20 +1261,20 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
   letter-spacing: 1px !important; margin: 0 0 14px !important;
 }
 .footer-section a {
-  display: block; color: rgba(255,255,255,.5) !important;
+  display: block; color:rgba(255,255,255,.62) !important;
   text-decoration: none; font-size: 0.85rem !important;
   margin-bottom: 9px !important; transition: color .15s !important;
 }
 .footer-section a:hover { color: rgba(255,255,255,.9) !important; }
-.footer-section p { color: rgba(255,255,255,.45) !important; font-size: 0.83rem !important; margin-bottom: 8px !important; }
+.footer-section p { color:rgba(255,255,255,.62) !important; font-size: 0.83rem !important; margin-bottom: 8px !important; }
 
 .footer-bottom {
   max-width: 1440px; margin: 20px auto 0;
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-  color: rgba(255,255,255,.3) !important; font-size: 0.78rem !important;
+  color:rgba(255,255,255,.62) !important; font-size: 0.78rem !important;
   border-top: none !important; padding-top: 0 !important;
 }
-.footer-bottom a { color: rgba(255,255,255,.4); text-decoration: none; }
+.footer-bottom a { color:rgba(255,255,255,.62); text-decoration: none; }
 .footer-bottom a:hover { color: rgba(255,255,255,.7); }
 
 /* ── Mobile bottom nav ───────────────────────────────────────── */
@@ -1315,7 +1315,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
 .umd-avatar { width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#1a3a6b,#1e5799); color:#fff; font-weight:700; font-size:.78rem; display:flex; align-items:center; justify-content:center; letter-spacing:.5px; flex-shrink:0; box-shadow:0 2px 8px rgba(12,30,58,.2); }
 .umd-identity { min-width:0; }
 .umd-name { font-weight:700; font-size:.88rem; color:#0c1e3a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.umd-role { font-size:.72rem; color:#64748b; margin-top:1px; }
+.umd-role { font-size:.72rem; color:#556275; margin-top:1px; }
 .umd-section { padding:5px 6px; display:flex; flex-direction:column; }
 .umd-section-border { border-top:1px solid #f1f5f9; }
 .user-menu-dropdown .umd-item { display:flex; align-items:center; gap:9px; width:100%; padding:9px 10px; border-radius:8px; background:none; border:none; cursor:pointer; font-size:.875rem; font-weight:500; color:#1e293b !important; font-family:'DM Sans',sans-serif; text-decoration:none !important; transition:background .12s,color .12s; text-align:left; letter-spacing:0; }
@@ -1353,7 +1353,7 @@ body.auth-guest #mobileLogoutContainer { display: none !important; }
 .umd-dropdown.open { display:block; }
 .umd-user-row { padding:14px 16px 10px; border-bottom:1px solid #f1f5f9; }
 .umd-user-name  { font-size:.88rem; font-weight:700; color:#0c1e3a; }
-.umd-user-email { font-size:.75rem; color:#64748b; margin-top:2px; }
+.umd-user-email { font-size:.75rem; color:#556275; margin-top:2px; }
 .umd-section { display:flex; flex-direction:column; padding:6px; border-bottom:1px solid #f1f5f9; }
 .umd-section:last-child { border-bottom:none; }
 .umd-link {
@@ -1669,7 +1669,7 @@ window.rgFiles = (function () {
                 <button class="add-btn" id="createWorkspaceBtn" type="button" style="background:#0ea5e9; box-shadow:0 4px 8px rgba(14,165,233,0.2);">✨ Create my workspace</button>
                 <button class="add-btn" id="refreshWorkspaceBtn" type="button" style="background:#e2e8f0; color:#0f172a; box-shadow:none;">🔄 Refresh</button>
               </div>
-              <div style="margin-top:10px; font-size:0.85rem; color:#64748b;">If someone invited you, ask them to add your email to the company.</div>
+              <div style="margin-top:10px; font-size:0.85rem; color:#556275;">If someone invited you, ask them to add your email to the company.</div>
             </div>
           </div>
         </div>
@@ -1863,7 +1863,7 @@ window.rgFiles = (function () {
             <input id="edit_completed_at" type="text" disabled />
           </div>
         </div>
-        <p style="margin:10px 0 0; color:#64748b; font-size:0.9rem;">
+        <p style="margin:10px 0 0; color:#556275; font-size:0.9rem;">
           Tip: Use <b>Start</b> / <b>Complete</b> in the ledger for 1-click status updates.
         </p>
       </div>
@@ -2309,7 +2309,7 @@ if (hamburgerBtn && mobileDrawer) {
       const status = normalizeStatus(r.status);
       const id = r.id;
       if (r.archived_at) {
-        return `<div class="actions"><span class="pill" style="font-size:.75rem;color:#64748b;">Archived</span>
+        return `<div class="actions"><span class="pill" style="font-size:.75rem;color:#556275;">Archived</span>
           <button class="btn-mini" onclick="restoreRequest(${Number(id)})">↩️ Restore</button></div>`;
       }
       const menuId = `menu_${id}`;
@@ -2855,15 +2855,26 @@ if (hamburgerBtn && mobileDrawer) {
     /* ─────────────────────────────────────────────────────────────────── */
 
 
+    // One rule for completed_at, used by the Complete button and the edit form. Moving into a done
+    // status stamps it; re-saving a request that was already done keeps the original time (editing
+    // the notes later must not move the completion date); reopening clears it. The form submits
+    // "Resolved"; "Completed"/"Closed" are older values still treated as done.
+    const DONE_STATUSES = /^(resolved|completed|closed)$/i;
+    function completionPatch(newStatus, prev){
+      if (DONE_STATUSES.test(String(newStatus || "").trim())) {
+        const wasDone = prev && DONE_STATUSES.test(String(prev.status || "").trim()) && prev.completed_at;
+        return wasDone ? {} : { completed_at: new Date().toISOString() };
+      }
+      return { completed_at: null };
+    }
+
     async function setStatus(id, newStatus){
       try{
         const isCompleting = (newStatus === "Resolved");
         const req = (requestsCache || []).find(x => String(x.id) === String(id)) || null;
 
         const payload = { status: newStatus };
-        if (availableCols.has("completed_at") && isCompleting) {
-          payload.completed_at = new Date().toISOString();
-        }
+        if (availableCols.has("completed_at")) Object.assign(payload, completionPatch(newStatus, req));
 
         const { error } = await client
           .from("maintenance_requests")
@@ -2988,9 +2999,8 @@ if (hamburgerBtn && mobileDrawer) {
       if (availableCols.has("scheduled_at")) payload.scheduled_at = schedVal ? new Date(schedVal).toISOString() : null;
 
       if (availableCols.has("completed_at")) {
-        const st = payload.status;
-        if ((st === "Completed" || st === "Closed")) payload.completed_at = new Date().toISOString();
-        if (st === "Open" || st === "In Progress") payload.completed_at = null;
+        const prev = (requestsCache || []).find(x => String(x.id) === String(editingRequestId)) || null;
+        Object.assign(payload, completionPatch(payload.status, prev));
       }
 
       try{
@@ -3077,7 +3087,7 @@ if (hamburgerBtn && mobileDrawer) {
 
     function renderReimbActions(r){
       if (r.status && r.status !== "Pending") {
-        return r.landlord_note ? `<span style="font-size:.78rem;color:#64748b;">${escapeHtml(r.landlord_note)}</span>` : "—";
+        return r.landlord_note ? `<span style="font-size:.78rem;color:#556275;">${escapeHtml(r.landlord_note)}</span>` : "—";
       }
       return `
         <div class="actions">

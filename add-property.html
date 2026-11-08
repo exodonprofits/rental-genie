@@ -22,7 +22,7 @@
   --bg:          #f1f4f8;
   --card:        #ffffff;
   --text:        #0c1e3a;
-  --muted:       #64748b;
+  --muted:       #556275;
   --success:     #10b981;
   --success-bg:  #ecfdf5;
   --success-bdr: #a7f3d0;
@@ -427,9 +427,9 @@ textarea { resize: vertical; min-height: 80px; }
   gap: 28px; padding-bottom: 18px;
 }
 .footer-section h4 { font-size: .75rem; font-weight: 700; color: rgba(255,255,255,.75); text-transform: uppercase; letter-spacing: .8px; margin: 0 0 12px; }
-.footer-section a  { display: block; color: rgba(255,255,255,.4); text-decoration: none; margin-bottom: 8px; font-size: .82rem; }
+.footer-section a  { display: block; color:rgba(255,255,255,.62); text-decoration: none; margin-bottom: 8px; font-size: .82rem; }
 .footer-section a:hover { color: rgba(255,255,255,.85); }
-.footer-bottom { text-align: center; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.28); font-size: .82rem; }
+.footer-bottom { text-align: center; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.62); font-size: .82rem; }
 @media(max-width:600px) { .site-footer { display: none; } }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -926,27 +926,27 @@ body { overflow-x: hidden; }
         <div class="util-grid">
           <div class="util-card">
             <div class="util-label">💧 Water</div>
-            <select id="utilWater"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
+            <select id="utilWater" aria-label="Water paid by"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
           </div>
           <div class="util-card">
             <div class="util-label">🔥 Gas</div>
-            <select id="utilGas"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
+            <select id="utilGas" aria-label="Gas paid by"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
           </div>
           <div class="util-card">
             <div class="util-label">⚡ Electric</div>
-            <select id="utilElectric"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
+            <select id="utilElectric" aria-label="Electric paid by"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
           </div>
           <div class="util-card">
             <div class="util-label">🗑️ Trash</div>
-            <select id="utilTrash"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
+            <select id="utilTrash" aria-label="Trash paid by"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
           </div>
           <div class="util-card">
             <div class="util-label">🌿 Lawn / Snow</div>
-            <select id="utilLawn"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
+            <select id="utilLawn" aria-label="Lawn / Snow paid by"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
           </div>
           <div class="util-card">
             <div class="util-label">🌐 Internet</div>
-            <select id="utilInternet"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
+            <select id="utilInternet" aria-label="Internet paid by"><option value="tenant">Tenant</option><option value="landlord">Landlord</option></select>
           </div>
         </div>
       </div>

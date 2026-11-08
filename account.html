@@ -26,7 +26,7 @@
     --bg:         #f1f4f8;
     --card:       #ffffff;
     --text:       #0c1e3a;
-    --muted:      #64748b;
+    --muted:      #556275;
     --success:    #10b981;
     --danger:     #ef4444;
     --radius-sm:  8px;
@@ -345,16 +345,16 @@
   .footer-brand .footer-logo-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .footer-brand .footer-logo { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2); }
   .footer-brand .footer-name { font-size: 1.1rem; font-weight: 700; color: #fff; }
-  .footer-brand p { font-size: .83rem; color: rgba(255,255,255,.45); line-height: 1.55; max-width: 220px; margin: 0; }
+  .footer-brand p { font-size: .83rem; color:rgba(255,255,255,.62); line-height: 1.55; max-width: 220px; margin: 0; }
   .footer-section h4 { font-size: .72rem; font-weight: 700; color: rgba(255,255,255,.55); text-transform: uppercase; letter-spacing: 1px; margin: 0 0 14px; }
-  .footer-section a { display: block; color: rgba(255,255,255,.5); text-decoration: none; font-size: .85rem; margin-bottom: 9px; transition: color .15s; }
+  .footer-section a { display: block; color:rgba(255,255,255,.62); text-decoration: none; font-size: .85rem; margin-bottom: 9px; transition: color .15s; }
   .footer-section a:hover { color: rgba(255,255,255,.9); }
   .footer-bottom {
     max-width: 1440px; margin: 20px auto 0;
     display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-    color: rgba(255,255,255,.3); font-size: .78rem;
+    color:rgba(255,255,255,.62); font-size: .78rem;
   }
-  .footer-bottom a { color: rgba(255,255,255,.4); text-decoration: none; }
+  .footer-bottom a { color:rgba(255,255,255,.62); text-decoration: none; }
   .footer-bottom a:hover { color: rgba(255,255,255,.7); }
 
   /* ── Auth overlay ───────────────────────────────────────────── */
@@ -397,7 +397,7 @@
   @keyframes umdFadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
   .umd-user-row { padding: 10px 12px 8px; border-bottom: 1px solid #e2e8f0; margin-bottom: 4px; }
   .umd-user-name { font-weight: 700; font-size: .9rem; color: #0c1e3a; }
-  .umd-user-email { font-size: .78rem; color: #64748b; margin-top: 2px; }
+  .umd-user-email { font-size: .78rem; color: #556275; margin-top: 2px; }
   .umd-section { padding: 4px 0; border-bottom: 1px solid #f1f4f8; margin-bottom: 2px; }
   .umd-section:last-child { border-bottom: none; margin-bottom: 0; }
   .umd-link {
@@ -1119,27 +1119,57 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
 
   /* ── Export data ── */
   // Everything this account can read; row-level security limits each table to the user's workspaces.
-  var EXPORT_TABLES=['companies','company_members','properties','leases','rent_log','expenses','maintenance_requests',
-    'tenant_messages','tenant_documents','reimbursement_requests','incoming_rent_payments','tenant_payer_aliases',
-    'payment_settings','property_tax_history','property_insurance_history','property_finance_history',
+  // The API caps rows per request (1,000 by default), so each table is read in pages in primary-key
+  // order until the exact row count is reached, and the file records whether every table is complete.
+  var EXPORT_TABLES=['companies','company_members','properties','leases','tenants','rent_log','expenses',
+    'receipts','maintenance_requests','reimbursement_requests','tenant_messages','tenant_documents',
+    'applications','application_messages','incoming_rent_payments','tenant_payer_aliases','payment_settings',
+    'property_tax_history','property_insurance_history','property_finance_history',
     'property_mortgage_activity','property_hoa','hoa_history'];
+  var EXPORT_ORDER={company_members:['company_id','user_id']};   // every other table's primary key is id
+  var EXPORT_PAGE=500;
+  async function exportTable(t){
+    var order=EXPORT_ORDER[t]||['id'];
+    var head=await client.from(t).select('*',{count:'exact',head:true});
+    if(head.error) return {table:t,rows:[],expected:null,complete:false,error:head.error.message};
+    var expected=head.count||0, rows=[];
+    while(rows.length<expected){
+      var q=client.from(t).select('*');
+      order.forEach(function(c){ q=q.order(c,{ascending:true}); });
+      var r=await q.range(rows.length,rows.length+EXPORT_PAGE-1);
+      if(r.error) return {table:t,rows:rows,expected:expected,complete:false,error:r.error.message};
+      if(!r.data||!r.data.length) break;   // rows removed while exporting
+      rows=rows.concat(r.data);
+    }
+    return {table:t,rows:rows,expected:expected,complete:rows.length===expected,error:null};
+  }
   document.getElementById('dangerExport').addEventListener('click',async function(){
     var btn=this; btn.disabled=true; btn.textContent='Preparing…';
     try{
-      var results=await Promise.all(EXPORT_TABLES.map(function(t){
-        return client.from(t).select('*').then(function(r){ return {table:t,rows:r.data||[],error:r.error?r.error.message:null}; });
-      }));
-      var out={exported_at:new Date().toISOString(),account:{id:user.id,email:user.email},tables:{}};
-      var failed=[];
-      results.forEach(function(r){ out.tables[r.table]=r.rows; if(r.error) failed.push(r.table); });
+      var results=[];
+      for(var i=0;i<EXPORT_TABLES.length;i++){
+        btn.textContent='Preparing… ('+(i+1)+'/'+EXPORT_TABLES.length+')';
+        results.push(await exportTable(EXPORT_TABLES[i]));
+      }
+      var out={exported_at:new Date().toISOString(),account:{id:user.id,email:user.email},
+        files:'Not included. Document, receipt and photo files stay in private storage; rows list their storage paths.',
+        summary:{},tables:{}};
+      var problems=[];
+      results.forEach(function(r){
+        out.tables[r.table]=r.rows;
+        out.summary[r.table]={rows:r.rows.length,expected:r.expected,complete:r.complete,error:r.error};
+        if(!r.complete) problems.push(r.table+(r.error?' (could not be read)':' ('+r.rows.length+' of '+r.expected+' rows)'));
+      });
+      out.complete=!problems.length;
       var blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
       var url=URL.createObjectURL(blob);
       var a=document.createElement('a');
       a.href=url; a.download='rental-genie-export-'+new Date().toISOString().slice(0,10)+'.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function(){ URL.revokeObjectURL(url); },2000);
-      if(failed.length) showAlert('error','Downloaded, but these could not be read: '+failed.join(', ')+'.');
-      else showAlert('success','Your data was downloaded.');
+      var total=results.reduce(function(n,r){ return n+r.rows.length; },0);
+      if(problems.length) showAlert('error','Downloaded, but incomplete: '+problems.join(', ')+'. The file\'s summary lists every table.');
+      else showAlert('success','Your data was downloaded: '+total+' rows from '+results.length+' tables, all complete.');
     }catch(e){
       showAlert('error','Export failed: '+((e&&e.message)||'please try again.'));
     }

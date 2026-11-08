@@ -24,14 +24,14 @@
   --bg:          #f1f4f8;
   --card:        #ffffff;
   --text:        #0c1e3a;
-  --muted:       #64748b;
+  --muted:       #556275;
   --success:     #10b981;
   --success-bg:  #ecfdf5;
   --success-bdr: #a7f3d0;
   --warn-bg:     #fffbeb;
   --warn-bdr:    #fde68a;
   --warn-text:   #92400e;
-  --danger:      #ef4444;
+  --danger:      #dc2626;
   --danger-bg:   #fef2f2;
   --danger-bdr:  #fecaca;
   --danger-text: #7f1d1d;
@@ -393,11 +393,11 @@ main {
 .footer-brand-row { display:flex; align-items:center; gap:9px; margin-bottom:4px; }
 .footer-brand-logo { width:30px; height:30px; border-radius:7px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); object-fit:cover; }
 .footer-brand-name { font-size:1rem; font-weight:700; color:#fff; }
-.footer-brand p { font-size:.82rem; color:rgba(255,255,255,.45); line-height:1.55; max-width:220px; margin:0; }
+.footer-brand p { font-size:.82rem; color:rgba(255,255,255,.62); line-height:1.55; max-width:220px; margin:0; }
 .footer-section h4 { font-size:.72rem; font-weight:700; color:rgba(255,255,255,.55); text-transform:uppercase; letter-spacing:.8px; margin:0 0 12px; }
-.footer-section a  { display:block; color:rgba(255,255,255,.4); text-decoration:none; margin-bottom:8px; font-size:.82rem; transition:color .15s; }
+.footer-section a  { display:block; color:rgba(255,255,255,.62); text-decoration:none; margin-bottom:8px; font-size:.82rem; transition:color .15s; }
 .footer-section a:hover { color:rgba(255,255,255,.85); }
-.footer-bottom { text-align:center; padding-top:14px; border-top:1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.28); font-size:.82rem; }
+.footer-bottom { text-align:center; padding-top:14px; border-top:1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.62); font-size:.82rem; }
 @media(max-width:600px){ .site-footer{display:none;} }
 
 ::-webkit-scrollbar { width:5px; height:5px; }
@@ -647,7 +647,7 @@ main {
   table.rg-stack tr { border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 6px 12px; margin: 0 0 10px; background: #fff; }
   table.rg-stack td { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 7px 0; border: none !important; text-align: right; white-space: normal !important; word-break: break-word; max-width: none !important; }
   table.rg-stack td + td { border-top: 1px dashed var(--border, #e2e8f0) !important; }
-  table.rg-stack td::before { content: attr(data-label); flex: 0 0 auto; max-width: 45%; text-align: left; font-weight: 600; font-size: .8rem; color: var(--muted, #64748b); }
+  table.rg-stack td::before { content: attr(data-label); flex: 0 0 auto; max-width: 45%; text-align: left; font-weight: 600; font-size: .8rem; color: var(--muted, #556275); }
   table.rg-stack td[data-label=""]::before, table.rg-stack td:not([data-label])::before { content: none; }
   table.rg-stack td[colspan] { display: block; text-align: center; }
   table.rg-stack td[colspan]::before { content: none; }
@@ -1908,7 +1908,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 /* ============================================================
    REPORT SECTION HELPERS
 ============================================================ */
-var EXP_COLORS = ['#2d8cf0','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#64748b','#ec4899','#84cc16'];
+var EXP_COLORS = ['#2d8cf0','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#f97316','#556275','#ec4899','#84cc16'];
 var expCatChart = null;
 
 /* Active period (months) per section */

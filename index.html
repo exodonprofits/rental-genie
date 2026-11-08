@@ -36,8 +36,8 @@ html{scroll-behavior:smooth;}
   --line:#dfe5ee;
   --ink:#0c1e3a;
   --muted:#5b6b82;
-  --pos:#0f9d6e;
-  --neg:#d64545;
+  --pos:#047857;
+  --neg:#c53030;
   --sans:'DM Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   --mono:'DM Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
 }
@@ -219,7 +219,7 @@ footer{background:#081630;color:rgba(255,255,255,.6);padding:56px 0 30px;}
 .footer-col a{display:block;text-decoration:none;font-size:.9rem;margin-bottom:8px;color:rgba(255,255,255,.6);}
 .footer-col a:hover{color:#fff;}
 .footer-bottom{padding-top:24px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;font-size:.82rem;}
-.footer-bottom a{color:rgba(255,255,255,.5);text-decoration:none;margin-left:16px;}
+.footer-bottom a{color:rgba(255,255,255,.62);text-decoration:none;margin-left:16px;}
 
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important;scroll-behavior:auto!important;}
@@ -278,26 +278,26 @@ footer{background:#081630;color:rgba(255,255,255,.6);padding:56px 0 30px;}
       <p class="sec-sub">Everything rolls up into a portfolio view, with CSV exports for your accountant at tax time.</p>
     </div>
 
-    <div class="statement" role="table" aria-label="What Rental Genie tracks for each property">
+    <div class="statement" role="region" aria-label="What Rental Genie tracks for each property">
       <div class="statement-head">
         <strong>Property statement</strong>
         <span>What's recorded for each rental</span>
       </div>
       <div class="st-group">
         <h3>Income</h3>
-        <div class="st-line" role="row"><b role="cell">Rent ledger</b><span role="cell">Full, partial, and late payments, with the remaining balance and grace period.</span></div>
-        <div class="st-line" role="row"><b role="cell">Leases</b><span role="cell">Terms, rent amount, dates, and documents for each tenant.</span></div>
+        <div class="st-line"><b>Rent ledger</b><span>Full, partial, and late payments, with the remaining balance and grace period.</span></div>
+        <div class="st-line"><b>Leases</b><span>Terms, rent amount, dates, and documents for each tenant.</span></div>
       </div>
       <div class="st-group">
         <h3>Financing</h3>
-        <div class="st-line" role="row"><b role="cell">Mortgage activity</b><span role="cell">Each payment and its escrow portion, plus your loan terms.</span></div>
+        <div class="st-line"><b>Mortgage activity</b><span>Each payment and its escrow portion, plus your loan terms.</span></div>
       </div>
       <div class="st-group">
         <h3>Carrying costs</h3>
-        <div class="st-line" role="row"><b role="cell">Property tax</b><span role="cell">Bills and payment history per property.</span></div>
-        <div class="st-line" role="row"><b role="cell">Insurance</b><span role="cell">Policies, premiums, and renewal dates.</span></div>
-        <div class="st-line" role="row"><b role="cell">HOA</b><span role="cell">Dues and association contact details.</span></div>
-        <div class="st-line" role="row"><b role="cell">Repairs and expenses</b><span role="cell">Categorized costs, including what each maintenance request cost you.</span></div>
+        <div class="st-line"><b>Property tax</b><span>Bills and payment history per property.</span></div>
+        <div class="st-line"><b>Insurance</b><span>Policies, premiums, and renewal dates.</span></div>
+        <div class="st-line"><b>HOA</b><span>Dues and association contact details.</span></div>
+        <div class="st-line"><b>Repairs and expenses</b><span>Categorized costs, including what each maintenance request cost you.</span></div>
       </div>
       <div class="st-result">
         <span>Calculated for you: <b>net operating income</b></span>

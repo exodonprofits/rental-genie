@@ -155,12 +155,13 @@ match the page's `<option>` values.
 - **Syntax-check inline scripts** (`node --check`) after editing a page. These files are large and a
   stray bracket is easy to miss.
 - **Check both widths.** Desktop and a ~390px phone, with no sideways scrolling.
-- **Run the smoke tests:** `cd tests/smoke && npm ci && node check-scripts.js && node run.js` (set
+- **Run the smoke tests:** `cd tests/smoke && npm ci && node check-scripts.js && node run.js && node workspaces.js && node a11y.js` (set
   `CHROMIUM_PATH` to use an installed Chromium; `node run.js dashboard` checks one page). They load
   every page at 390px and 1280px with a stubbed client and fail on uncaught errors or sideways
   scrolling. CI runs them on every pull request, and the deploy runs only if they pass. A new page is
   picked up automatically; if it needs data the stub doesn't have, add it to `tests/smoke/fixtures.js`
-  (invented data only).
+  (invented data only). `a11y.js` is the axe-core accessibility check (WCAG 2.1 A/AA, fails on critical or serious;
+  `--colors` prints contrast pairs); new colours must keep body text at 4.5:1.
 
 ---
 

@@ -2,7 +2,8 @@
    CDN script). It never talks to a network: auth returns the fixture user, queries read
    window.__RG_FIXTURE, writes are recorded in window.__rgWrites and succeed, rpc() returns
    fixture.rpc[name], functions.invoke() returns fixture.functions[name] and records the call in
-   window.__rgInvokes. Filters are applied loosely (eq / neq / in / is / ilike / gte / lte); anything
+   window.__rgInvokes. order() and range() are honoured; fixture.maxRows imitates the API row cap
+   and fixture.errors[table] makes a table fail. Filters are applied loosely (eq / neq / in / is / ilike / gte / lte); anything
    else is accepted and ignored, because the goal is "the page renders without errors", not
    query correctness. */
 (function () {
@@ -18,7 +19,7 @@
   }
 
   function query(table) {
-    var st = { op: 'select', filters: [], one: false, head: false, count: null, limit: null, payload: null };
+    var st = { op: 'select', filters: [], one: false, head: false, count: null, limit: null, range: null, orders: [], payload: null };
     var b = {};
     function chain(name, fn) { b[name] = function () { if (fn) fn.apply(null, arguments); return b; }; }
     chain('select', function (_cols, opts) { if (opts && opts.head) st.head = true; if (opts && opts.count) st.count = opts.count; });
@@ -31,7 +32,9 @@
     chain('gte', function (k, v) { st.filters.push(function (r) { return !(k in r) || r[k] == null || r[k] >= v; }); });
     chain('lte', function (k, v) { st.filters.push(function (r) { return !(k in r) || r[k] == null || r[k] <= v; }); });
     ['gt', 'lt', 'not', 'or', 'match', 'filter', 'contains', 'containedBy', 'overlaps', 'textSearch',
-     'order', 'range', 'abortSignal', 'returns', 'csv', 'throwOnError'].forEach(function (n) { chain(n); });
+     'abortSignal', 'returns', 'csv', 'throwOnError'].forEach(function (n) { chain(n); });
+    chain('order', function (k, o) { st.orders.push([k, !(o && o.ascending === false)]); });
+    chain('range', function (from, to) { st.range = [from, to]; });
     chain('limit', function (n) { st.limit = n; });
     chain('single', function () { st.one = true; });
     chain('maybeSingle', function () { st.one = true; });
@@ -46,9 +49,22 @@
         rows = rows.map(function (r, i) { return Object.assign({ id: 'stub-' + table + '-' + i }, r); });
         out = { data: st.one ? rows[0] : rows, error: null, count: rows.length, status: 201 };
       } else {
+        if ((F.errors || {})[table]) { out = { data: null, error: { message: F.errors[table] }, count: null, status: 400 }; return Promise.resolve(out).then(resolve, reject); }
         var data = clone(F[table] || []).filter(function (r) { return st.filters.every(function (f) { return f(r); }); });
+        var total = data.length;
+        if (st.orders.length) data.sort(function (a, b) {
+          for (var i = 0; i < st.orders.length; i++) {
+            var k = st.orders[i][0], asc = st.orders[i][1];
+            if (a[k] < b[k]) return asc ? -1 : 1;
+            if (a[k] > b[k]) return asc ? 1 : -1;
+          }
+          return 0;
+        });
+        if (st.range) data = data.slice(st.range[0], st.range[1] + 1);
         if (st.limit != null) data = data.slice(0, st.limit);
-        out = { data: st.head ? null : (st.one ? (data[0] || null) : data), error: null, count: data.length, status: 200 };
+        // fixture.maxRows imitates the API's per-request row cap
+        if (F.maxRows && !st.head) data = data.slice(0, F.maxRows);
+        out = { data: st.head ? null : (st.one ? (data[0] || null) : data), error: null, count: total, status: 200 };
       }
       return Promise.resolve(out).then(resolve, reject);
     };

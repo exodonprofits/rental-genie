@@ -234,6 +234,10 @@
     padding: 14px 0; border-bottom: 1px solid #f1f5f9;
   }
   .toggle-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .toggle-row.soon .toggle-label, .toggle-row.soon .toggle-desc { color: #556275; }
+  .toggle-row.soon .toggle-switch { opacity: .55; }
+  .soon-tag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: #e8edf4; color: #3b4a5e; font-size: .7rem; font-weight: 700; vertical-align: middle; }
+  .notif-note { font-size: .82rem; color: var(--muted, #556275); margin: 0 0 6px; line-height: 1.5; }
   .toggle-info { flex: 1; }
   .toggle-label { font-weight: 600; font-size: .9rem; color: var(--text); }
   .toggle-desc { font-size: .8rem; color: var(--muted); margin-top: 2px; }
@@ -679,53 +683,64 @@
           Email Notifications
         </div>
       </div>
+      <p class="notif-note">Emails go to your sign-in address. Failed emails show on your dashboard.</p>
       <div class="toggle-row">
         <div class="toggle-info">
-          <div class="toggle-label">Rent due reminders</div>
-          <div class="toggle-desc">Get notified 3 days before rent is due for each property.</div>
+          <div class="toggle-label">New repair requests</div>
+          <div class="toggle-desc">Email me when a tenant files a repair request, marked urgent when they choose High or Emergency.</div>
         </div>
         <label class="toggle-switch">
-          <input type="checkbox" id="notifRentDue" checked>
+          <input type="checkbox" id="notifMaintenance" checked aria-label="New repair requests">
           <span class="toggle-track"></span>
         </label>
       </div>
       <div class="toggle-row">
         <div class="toggle-info">
-          <div class="toggle-label">Overdue rent alerts</div>
-          <div class="toggle-desc">Immediate alert when a tenant payment becomes overdue.</div>
+          <div class="toggle-label">Tenant messages</div>
+          <div class="toggle-desc">Email me when a tenant sends a message from their portal.</div>
         </div>
         <label class="toggle-switch">
-          <input type="checkbox" id="notifOverdue" checked>
+          <input type="checkbox" id="notifMessages" checked aria-label="Tenant messages">
           <span class="toggle-track"></span>
         </label>
       </div>
-      <div class="toggle-row">
+      <div class="toggle-row soon">
         <div class="toggle-info">
-          <div class="toggle-label">Maintenance request updates</div>
-          <div class="toggle-desc">Email when a new maintenance request is submitted or updated.</div>
+          <div class="toggle-label">Rent due reminders <span class="soon-tag">Coming soon</span></div>
+          <div class="toggle-desc">Notice 3 days before rent is due for each property.</div>
         </div>
         <label class="toggle-switch">
-          <input type="checkbox" id="notifMaintenance" checked>
+          <input type="checkbox" id="notifRentDue" disabled aria-label="Rent due reminders">
           <span class="toggle-track"></span>
         </label>
       </div>
-      <div class="toggle-row">
+      <div class="toggle-row soon">
         <div class="toggle-info">
-          <div class="toggle-label">Lease expiry warnings</div>
+          <div class="toggle-label">Overdue rent alerts <span class="soon-tag">Coming soon</span></div>
+          <div class="toggle-desc">Alert when a tenant payment becomes overdue.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notifOverdue" disabled aria-label="Overdue rent alerts">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+      <div class="toggle-row soon">
+        <div class="toggle-info">
+          <div class="toggle-label">Lease expiry warnings <span class="soon-tag">Coming soon</span></div>
           <div class="toggle-desc">30-day warning before any lease is due to expire.</div>
         </div>
         <label class="toggle-switch">
-          <input type="checkbox" id="notifLease" checked>
+          <input type="checkbox" id="notifLease" disabled aria-label="Lease expiry warnings">
           <span class="toggle-track"></span>
         </label>
       </div>
-      <div class="toggle-row">
+      <div class="toggle-row soon">
         <div class="toggle-info">
-          <div class="toggle-label">Monthly summary report</div>
+          <div class="toggle-label">Monthly summary report <span class="soon-tag">Coming soon</span></div>
           <div class="toggle-desc">A portfolio summary email at the end of each month.</div>
         </div>
         <label class="toggle-switch">
-          <input type="checkbox" id="notifMonthly">
+          <input type="checkbox" id="notifMonthly" disabled aria-label="Monthly summary report">
           <span class="toggle-track"></span>
         </label>
       </div>
@@ -988,6 +1003,9 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
   document.getElementById('notifMaintenance').checked = notifPrefs.maintenance !== undefined ? !!notifPrefs.maintenance : true;
   document.getElementById('notifLease').checked       = notifPrefs.lease       !== undefined ? !!notifPrefs.lease       : true;
   document.getElementById('notifMonthly').checked     = notifPrefs.monthly    !== undefined ? !!notifPrefs.monthly    : false;
+  document.getElementById('notifMessages').checked    = notifPrefs.messages   !== undefined ? !!notifPrefs.messages   : true;
+  // Not built yet: shown off and disabled until they exist
+  ['notifRentDue','notifOverdue','notifLease','notifMonthly'].forEach(function(id){ document.getElementById(id).checked = false; });
 
   // Account details
   setText('infoUserId',user.id?user.id.slice(0,8)+'…':'—');
@@ -1100,7 +1118,8 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
       overdue:     document.getElementById('notifOverdue').checked,
       maintenance: document.getElementById('notifMaintenance').checked,
       lease:       document.getElementById('notifLease').checked,
-      monthly:     document.getElementById('notifMonthly').checked
+      monthly:     document.getElementById('notifMonthly').checked,
+      messages:    document.getElementById('notifMessages').checked
     };
     var res=await client.auth.updateUser({data:{notifications:notifications}});
     if(res.error){

@@ -9,6 +9,8 @@
 #   3. Workspace interactions (workspaces.js): search, filters, dialogs and keyboard paths on the
 #      redesigned landlord and tenant workspaces at 320 to 2560px, plus simulated service failures
 #      that must show "unavailable" rather than zero.
+#   4. Accessibility (a11y.js): axe-core WCAG 2.1 A/AA rules on 20 landlord, tenant and public pages at
+#      390px and 1280px; fails on any critical or serious violation (contrast, missing labels, ...).
 #
 # Screenshots of failing pages are uploaded as the "smoke-screenshots" artifact.
 
@@ -52,6 +54,9 @@ jobs:
 
       - name: Workspace interactions and unavailable-data handling (320 to 2560px)
         run: node workspaces.js
+
+      - name: Accessibility (axe-core, WCAG 2.1 A/AA)
+        run: node a11y.js
 
       - name: Upload screenshots of failing pages
         if: failure()

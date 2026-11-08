@@ -93,6 +93,10 @@ the row-level security policies. Tenant-side inserts into `maintenance_requests`
 `tenant_messages` go through `rg_tenant_can_file(company_id, property_id, tenant_id)`, which requires
 a non-archived lease with that company (and property) — pages must send the lease's `company_id`.
 Tenants may only change `phone` on their own `tenants` row (`trg_tenants_limit_self_update`).
+A tenant's email changes only through `rg_update_tenant_email(lease_id, email)` (rg_19, landlord with
+access to the lease's company; `lease-form.html` calls it when the email is edited): it updates the
+lease(s) and `tenants.email` together and unlinks the old login so the new address re-claims the row.
+Direct updates of `tenants.email` are blocked by `trg_block_tenant_email_change`.
 A tenant's login is linked to their `tenants` row by `rg_claim_tenant_row()` (confirmed email, exactly
 one unlinked match), which the tenant pages call when no row has their `auth_user_id`; pages never write
 `auth_user_id` or `email` themselves. Storage buckets are private; pages open files through signed links

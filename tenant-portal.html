@@ -953,7 +953,7 @@ body { overflow-x: hidden; }
 
     // Payment query
     var payQ = sb.from('rent_log')
-      .select('id, property_name, date_paid, inserted_at, amount, method, note, applied_to_due_date')
+      .select('id, property_name, date_paid, inserted_at, amount, method, note, applied_to_due_date, tenant_id, tenant_email, lease_id')
       .order('date_paid', { ascending: false });
     if (propertyFromUrl) payQ = payQ.eq('property_name', propertyFromUrl);
 
@@ -971,7 +971,14 @@ body { overflow-x: hidden; }
       }
 
       var lease = (leaseRes.data && leaseRes.data.length) ? leaseRes.data[0] : null;
-      var rows  = payRes.data || [];
+      // Only this tenant's own payments. RLS already limits a tenant to their rows, but a signed-in
+      // landlord who is also on a lease can read every payment in their company.
+      var myEmail = String(user.email || '').toLowerCase();
+      var rows  = (payRes.data || []).filter(function (r) {
+        return (tenant && r.tenant_id === tenant.id)
+          || (lease && r.lease_id === lease.id)
+          || (myEmail && String(r.tenant_email || '').toLowerCase() === myEmail);
+      });
       var now   = new Date();
 
       var propertyLabel = lease ? lease.property_name : propertyFromUrl;

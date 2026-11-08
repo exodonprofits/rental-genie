@@ -59,3 +59,21 @@ body.tenant-workspace main {max-width:none !important;width:100%;box-sizing:bord
 }
 .tenant-resources .search-row {display:block;}
 .tenant-resources .search-row input,.tenant-resources #messageSearch {width:100%;box-sizing:border-box;}
+
+/* Phone navigation (tenant-resources.js): fixed bottom tab bar like the landlord dashboard, and a
+   two-column hamburger drawer. Shown where the header switches to the hamburger (<= 880px). */
+.tenant-tabbar {display:none;}
+.drawer-grid {display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.drawer-grid a {min-height:44px;box-sizing:border-box;}
+@media(max-width:880px){
+ .tenant-resource-nav {display:none !important;}
+ .tenant-tabbar {display:block;position:fixed;left:0;right:0;bottom:0;z-index:1200;padding:8px 6px calc(8px + env(safe-area-inset-bottom));background:linear-gradient(135deg,#0c1e3a,#1a3a6b,#1e5799);box-shadow:0 -10px 24px rgba(0,0,0,.18);}
+ .tenant-tabbar-inner {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;}
+ .tenant-tab {display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;padding:6px 2px;border-radius:10px;border:1px solid transparent;color:rgba(255,255,255,.82);text-decoration:none;font-size:11px;font-weight:700;text-align:center;}
+ .tenant-tab-ico {font-size:21px;line-height:1;}
+ .tenant-tab-label {display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.1;}
+ .tenant-tab[aria-current] {background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.28);color:#fff;}
+ .tenant-tab:focus-visible {outline:3px solid #f5b544;outline-offset:2px;}
+ body.has-tenant-tabbar {padding-bottom:calc(76px + env(safe-area-inset-bottom));}
+ body.has-tenant-tabbar.tenant-workspace main {padding-bottom:24px;}
+}

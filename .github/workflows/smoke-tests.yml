@@ -6,6 +6,9 @@
 #      database) and fail on an uncaught JavaScript error, a page that doesn't finish loading, or
 #      sideways scrolling. Console errors, same-origin 404s and alert() dialogs are listed as
 #      warnings in the run summary without failing it.
+#   3. Workspace interactions (workspaces.js): search, filters, dialogs and keyboard paths on the
+#      redesigned landlord and tenant workspaces at 320 to 2560px, plus simulated service failures
+#      that must show "unavailable" rather than zero.
 #
 # Screenshots of failing pages are uploaded as the "smoke-screenshots" artifact.
 
@@ -46,6 +49,9 @@ jobs:
 
       - name: Load every page (phone and desktop)
         run: node run.js
+
+      - name: Workspace interactions and unavailable-data handling (320 to 2560px)
+        run: node workspaces.js
 
       - name: Upload screenshots of failing pages
         if: failure()

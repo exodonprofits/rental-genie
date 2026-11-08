@@ -60,6 +60,9 @@ function base() {
     applications: [],
     application_messages: [],
     incoming_rent_payments: [],
+    notifications: [{ id: 1, company_id: C, event_key: 'maint_ack:1', kind: 'maintenance_ack', channel: 'email', maintenance_request_id: 1,
+      property_id: P1, tenant_id: T1, recipient: 'tenant@example.com', status: 'failed', attempts: 1, dismissed_at: null,
+      last_error: 'Resend 422: invalid to', created_at: today + 'T09:00:05Z' }],
     payment_settings: [{ company_id: C, zelle_handle: 'landlord@example.com' }],
     public_listings: [{ id: P2, name: 'Elm Avenue', address: '2 Elm Avenue, Springfield', listing_application_mode: 'rental_genie' }],
     rpc: {
@@ -67,7 +70,8 @@ function base() {
       rg_my_rent_schedule: sched,
       rg_rent_status: [{ property_id: P1, property_name: 'Oak Street', company_id: C, tenant_name: 'Test Tenant', lease_state: 'active',
         rent_amount: 1500, total_due: 4500, total_paid: 3500, balance: 1000, past_due: 1000, months_unpaid: 1, last_paid_date: sched[2].due_date }],
-      rg_claim_tenant_row: T1
+      rg_claim_tenant_row: T1,
+      rg_dismiss_notification: true
     }
   };
 }

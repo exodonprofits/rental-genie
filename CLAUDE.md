@@ -150,6 +150,13 @@ High/Emergency) and a tenant message (`landlord_message:<id>`, sender = 'tenant'
 owner's sign-in address. The owner's Account > Notifications switches (`user_metadata.notifications.
 maintenance` / `.messages`, missing = on) decide; a switched-off alert is logged as `skipped`. The other
 switches on that tab are labelled "Coming soon" and disabled; don't re-enable one until it's built.
+Daily reminders (rg_22/rg_23): pg_cron job `rg-daily-reminders` (14:05 UTC) runs `rg_daily_reminders()`
+with today in America/Chicago, built on `rg_rent_schedule`: one email per company per kind —
+`rent_due:<company>:<due date>` (unpaid rent due in 3 days, switch `rentDue`), `rent_overdue:<company>:<day>`
+(rent whose grace period ended yesterday, still unpaid; once per due date, switch `overdue`),
+`lease_expiry:<company>:<day>` (fixed-term leases ending in 30 days, switch `lease`). Holdover leases keep
+charging, so they keep producing reminders until the lease is ended. Only the monthly summary is still
+"Coming soon".
 
 **Gotchas learned the hard way:**
 - `rent_log` has no `is_late_fee` column. Queries that ask for it fail silently and show empty data.

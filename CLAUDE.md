@@ -157,6 +157,16 @@ with today in America/Chicago, built on `rg_rent_schedule`: one email per compan
 `lease_expiry:<company>:<day>` (fixed-term leases ending in 30 days, switch `lease`). Holdover leases keep
 charging, so they keep producing reminders until the lease is ended. Only the monthly summary is still
 "Coming soon".
+Notification kinds live in the `notification_kinds` table (rg_24; `notifications.kind` is a foreign key):
+add a row for a new kind, don't recreate a check constraint.
+Tenant repair updates (rg_25): `trg_repair_update` (after update of status, scheduled_at, assigned_vendor)
+sends the tenant one email plus in-app message per save when a tenant-filed repair is scheduled or
+rescheduled, assigned a vendor, moved to In Progress or Resolved (`repair_update:<id>:<md5 of state>`,
+same recipient rules as the acknowledgment; owner switch `tenantRepairUpdates`, missing = on).
+**Vendors (rg_24):** `vendors` (company_id, name unique per company, trade, phone, email, archived_at;
+no deletes) backs the vendor suggestions and the Vendors window on `maintenance-requests.html`; a new
+name typed on a repair is saved automatically. `maintenance_requests.assigned_vendor` stays a text copy
+of the name, which is what tenants see.
 
 **Gotchas learned the hard way:**
 - `rent_log` has no `is_late_fee` column. Queries that ask for it fail silently and show empty data.

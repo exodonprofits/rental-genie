@@ -29,7 +29,7 @@ function base() {
   const today = iso(new Date());
   const sched = schedule();
   return {
-    companies: [{ id: C, name: 'Smoke Test Rentals', owner_user_id: LANDLORD }],
+    companies: [{ id: C, name: 'Smoke Test Rentals', owner_user_id: LANDLORD, payment_inbox_token: 'a1b2c3d4e5', payment_inbox_verify_url: null }],
     company_members: [{ company_id: C, user_id: LANDLORD, role: 'owner', companies: { id: C, name: 'Smoke Test Rentals' } }],
     properties: [
       { id: P1, name: 'Oak Street', address: '1 Oak Street, Springfield', company_id: C, owner_id: LANDLORD, status: 'occupied', occupancy_status: 'tenant_occupied',

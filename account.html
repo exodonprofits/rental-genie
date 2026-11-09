@@ -683,7 +683,7 @@
           Email Notifications
         </div>
       </div>
-      <p class="notif-note">Emails go to your sign-in address. Reminders are checked every morning (Central time). Failed emails show on your dashboard.</p>
+      <p class="notif-note">Your alerts go to your sign-in address. Reminders are checked every morning (Central time). Failed emails show on your dashboard.</p>
       <div class="toggle-row">
         <div class="toggle-info">
           <div class="toggle-label">New repair requests</div>
@@ -701,6 +701,16 @@
         </div>
         <label class="toggle-switch">
           <input type="checkbox" id="notifMessages" checked aria-label="Tenant messages">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-label">Repair updates to tenants</div>
+          <div class="toggle-desc">Email the tenant (and post in their portal) when you schedule, assign, start or complete a repair they filed.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notifTenantRepair" checked aria-label="Repair updates to tenants">
           <span class="toggle-track"></span>
         </label>
       </div>
@@ -1004,6 +1014,7 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
   document.getElementById('notifLease').checked       = notifPrefs.lease       !== undefined ? !!notifPrefs.lease       : true;
   document.getElementById('notifMonthly').checked     = notifPrefs.monthly    !== undefined ? !!notifPrefs.monthly    : false;
   document.getElementById('notifMessages').checked    = notifPrefs.messages   !== undefined ? !!notifPrefs.messages   : true;
+  document.getElementById('notifTenantRepair').checked = notifPrefs.tenantRepairUpdates !== undefined ? !!notifPrefs.tenantRepairUpdates : true;
   // Not built yet: shown off and disabled until it exists
   document.getElementById('notifMonthly').checked = false;
 
@@ -1119,7 +1130,8 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
       maintenance: document.getElementById('notifMaintenance').checked,
       lease:       document.getElementById('notifLease').checked,
       monthly:     document.getElementById('notifMonthly').checked,
-      messages:    document.getElementById('notifMessages').checked
+      messages:    document.getElementById('notifMessages').checked,
+      tenantRepairUpdates: document.getElementById('notifTenantRepair').checked
     };
     var res=await client.auth.updateUser({data:{notifications:notifications}});
     if(res.error){

@@ -33,9 +33,10 @@ of that workflow's "Parse alert" node.
 Edge Functions → Secrets:
 
 - `RESEND_INBOUND_WEBHOOK_SECRET` — the `whsec_…` signing secret from step 1.3.
-- `RESEND_API_KEY` — already set for outgoing email. It must be a **Full access** key: the function
-  fetches each received email's body through the API, which a "Sending access" key can't do (the
-  function logs a 401/403 from Resend if so).
+- `RESEND_RECEIVING_API_KEY` — a separate Resend key with **Full access** (Resend → API keys → Create,
+  name it e.g. `rental-genie-inbox`). The function fetches each received email's body through the API,
+  which a "Sending access" key can't do. Keep `RESEND_API_KEY` (the notification sender) on its
+  Sending-access key; don't widen it.
 - `ANTHROPIC_API_KEY` — already set (shared with rg-snap); used only for alerts from banks the rules
   don't know.
 
@@ -114,7 +115,7 @@ due dates.
 |---|---|
 | Nothing arrives | Resend **Emails → Receiving**: did the email arrive? Then **Webhooks**: delivery status and response. |
 | Webhook returns 401 | `RESEND_INBOUND_WEBHOOK_SECRET` doesn't match the webhook's signing secret. |
-| Webhook returns 500, logs "Fetching received email failed 401/403" | `RESEND_API_KEY` is a sending-only key; replace it with a Full access key. |
+| Webhook returns 500, logs "Fetching received email failed 401/403" | `RESEND_RECEIVING_API_KEY` is missing Full access, or wrong. |
 | 200 with `skipped` | The reason says why: no inbox token, unknown inbox, no amount, not an incoming payment. |
 | 200 with `result.status = ignored` | The payment didn't look like rent (no name link, amount fits no lease). |
 | Payment lands on the wrong property | Change the property in the confirm card. The corrected payer alias is remembered. |

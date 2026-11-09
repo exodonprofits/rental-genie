@@ -10,8 +10,9 @@
 // Each call:
 //   1. verifies the webhook signature (Svix headers, RESEND_INBOUND_WEBHOOK_SECRET); anything else
 //      gets 401;
-//   2. fetches the email (Resend's webhook carries only metadata) with RESEND_API_KEY, which must be
-//      allowed to read received emails (a "Sending access" key is refused);
+//   2. fetches the email (Resend's webhook carries only metadata) with RESEND_RECEIVING_API_KEY, a
+//      Full access key kept separate from RESEND_API_KEY (the Sending-access key the notification
+//      sender uses), since a Sending-access key can't read received emails;
 //   3. parses it (parse.ts): Chase Zelle and Venmo by rule; Gmail's forwarding confirmation link is
 //      stored for the dashboard's "Confirm Gmail forwarding" button; other emails that mention a
 //      dollar amount, for a real inbox, go to Claude for extraction (labelled unverified);
@@ -19,7 +20,7 @@
 //      lease and de-duplicates on the email's Message-ID.
 // Status: 200 handled or skipped; 401 bad signature; 500 on a transient failure so Resend retries.
 //
-// Secrets: RESEND_INBOUND_WEBHOOK_SECRET (whsec_…, from the Resend webhook), RESEND_API_KEY,
+// Secrets: RESEND_INBOUND_WEBHOOK_SECRET (whsec_…, from the Resend webhook), RESEND_RECEIVING_API_KEY,
 // ANTHROPIC_API_KEY (shared with rg-snap). SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are injected.
 // Deployed with verify_jwt = false (Resend has no Supabase JWT; the signature is the auth).
 
@@ -139,9 +140,9 @@ Deno.serve(async (req: Request) => {
   if (!/^[0-9a-f-]{36}$/i.test(emailId)) return json(400, { error: "Missing email_id" });
 
   // The webhook carries metadata only; fetch the body, headers and authentication results.
-  const resendKey = Deno.env.get("RESEND_API_KEY");
+  const resendKey = Deno.env.get("RESEND_RECEIVING_API_KEY");
   if (!resendKey) {
-    console.error("RESEND_API_KEY is not set");
+    console.error("RESEND_RECEIVING_API_KEY is not set");
     return json(500, { error: "Not configured" });
   }
   let email: ReceivedEmail;
@@ -152,7 +153,7 @@ Deno.serve(async (req: Request) => {
     });
     if (!res.ok) {
       const detail = (await res.text()).slice(0, 300);
-      // 401/403: the key may only have "Sending access"; it needs to read received emails.
+      // 401/403: the key has only "Sending access"; it needs Full access to read received emails.
       console.error("Fetching received email failed", res.status, detail);
       return json(res.status === 404 ? 200 : 500, { error: "Could not fetch email", status: res.status });
     }

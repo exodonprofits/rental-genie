@@ -60,6 +60,7 @@ function base() {
     applications: [],
     application_messages: [],
     incoming_rent_payments: [],
+    vendors: [{ id: '77777777-7777-4777-8777-777777777771', company_id: C, name: 'Ace Plumbing', trade: 'Plumbing', phone: '555-0142', email: 'office@ace.example.com', archived_at: null }],
     notifications: [{ id: 1, company_id: C, event_key: 'maint_ack:1', kind: 'maintenance_ack', channel: 'email', maintenance_request_id: 1,
       property_id: P1, tenant_id: T1, recipient: 'tenant@example.com', status: 'failed', attempts: 1, dismissed_at: null,
       last_error: 'Resend 422: invalid to', created_at: today + 'T09:00:05Z' }],

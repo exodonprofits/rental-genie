@@ -3684,15 +3684,15 @@ function buildAssignmentsFromData(data){
       if(/Resend 4\d\d/.test(err)) return "the address was rejected";
       return "the email service couldn't be reached";
     };
-    const _what = { maintenance_ack: "repair confirmation to", landlord_repair: "your repair alert to", landlord_message: "your message alert to", rent_due: "your rent-due reminder to", rent_overdue: "your overdue alert to", lease_expiry: "your lease-expiry warning to" };
+    const _what = { maintenance_ack: "repair confirmation to", landlord_repair: "your repair alert to", landlord_message: "your message alert to", rent_due: "your rent-due reminder to", rent_overdue: "your overdue alert to", lease_expiry: "your lease-expiry warning to", repair_update: "repair update to" };
     const _facts = _failed.slice(0,5).map(function(n){
       return (n.property_name ? n.property_name + " -- " : "") + (_what[n.kind] || "email to") + " " + (n.recipient || "tenant") + ": " + _why(n.last_error);
     });
-    const _toTenants = _failed.every(function(n){ return n.kind === "maintenance_ack"; });
+    const _toTenants = _failed.every(function(n){ return n.kind === "maintenance_ack" || n.kind === "repair_update"; });
     if(_failed.length > 5) _facts.push((_failed.length-5) + " more...");
     items.unshift({
       level: "top",
-      title: "✉️ " + _failed.length + (_toTenants ? " repair confirmation email" : " email") + (_failed.length===1?"":"s") + " didn't send",
+      title: "✉️ " + _failed.length + (_toTenants ? " tenant repair email" : " email") + (_failed.length===1?"":"s") + " didn't send",
       desc: _toTenants
         ? "The tenant still has the in-app message. If they don't use the app, contact them directly, then mark this handled."
         : "Some emails, including alerts to you, couldn't be delivered. Check the details, fix the address if needed, then mark this handled.",

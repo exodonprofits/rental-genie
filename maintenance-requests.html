@@ -2924,6 +2924,8 @@ if (hamburgerBtn && mobileDrawer) {
       return { completed_at: null };
     }
 
+    const NOT_SAVED_MSG = "Not saved: you don't have access to this repair. Check that you're signed in to the landlord account that owns it, then try again.";
+
     async function setStatus(id, newStatus){
       try{
         const isCompleting = (newStatus === "Resolved");
@@ -2932,13 +2934,20 @@ if (hamburgerBtn && mobileDrawer) {
         const payload = { status: newStatus };
         if (availableCols.has("completed_at")) Object.assign(payload, completionPatch(newStatus, req));
 
-        const { error } = await client
+        const { data: saved, error } = await client
           .from("maintenance_requests")
           .update(payload)
-          .eq("id", id);
+          .eq("id", id)
+          .select("id");
 
         if (error) {
           alert("Failed to update status: " + error.message);
+          return;
+        }
+        // RLS turns a refused update into "0 rows changed" with no error
+        if (!saved || !saved.length) {
+          alert(NOT_SAVED_MSG);
+          await loadRequests();
           return;
         }
 
@@ -3060,13 +3069,19 @@ if (hamburgerBtn && mobileDrawer) {
       }
 
       try{
-        const { error } = await client
+        const { data: saved, error } = await client
           .from("maintenance_requests")
           .update(payload)
-          .eq("id", editingRequestId);
+          .eq("id", editingRequestId)
+          .select("id");
 
         if (error) {
           alert("Failed to save: " + error.message);
+          return;
+        }
+        // RLS turns a refused update into "0 rows changed" with no error; keep the form open
+        if (!saved || !saved.length) {
+          alert(NOT_SAVED_MSG);
           return;
         }
         document.getElementById("editModal").classList.remove("active");
@@ -3673,8 +3688,9 @@ if (fyEl2) fyEl2.textContent = new Date().getFullYear();
       var ar = document.createElement("button"); ar.type = "button"; ar.className = "btn-mini"; ar.textContent = "Archive"; ar.setAttribute("aria-label", "Archive " + v.name);
       ar.addEventListener("click", async function () {
         if (!confirm("Archive " + v.name + "? It stops being suggested; repairs already assigned keep the name.")) return;
-        var res = await db().from("vendors").update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", v.id);
+        var res = await db().from("vendors").update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", v.id).select("id");
         if (res.error) { setStatus("Couldn't archive: " + res.error.message, true); return; }
+        if (!res.data || !res.data.length) { setStatus("Not archived: you don't have access to this vendor.", true); return; }
         setStatus(v.name + " archived."); await window.rgLoadVendors();
       });
       acts.append(ed, ar); main.append(nm, meta); li.append(main, acts); ul.appendChild(li);
@@ -3687,9 +3703,10 @@ if (fyEl2) fyEl2.textContent = new Date().getFullYear();
                 phone: document.getElementById("vendorPhone").value.trim() || null, email: document.getElementById("vendorEmail").value.trim() || null };
     if (!row.name) { setStatus("Enter the vendor's name.", true); document.getElementById("vendorName").focus(); return; }
     if (!c) { setStatus("No company selected.", true); return; }
-    var res = id ? await db().from("vendors").update(Object.assign(row, { updated_at: new Date().toISOString() })).eq("id", id)
+    var res = id ? await db().from("vendors").update(Object.assign(row, { updated_at: new Date().toISOString() })).eq("id", id).select("id")
                  : await db().from("vendors").insert(Object.assign(row, { company_id: c }));
     if (res.error) { setStatus(res.error.code === "23505" ? "You already have a vendor with that name." : "Couldn't save: " + res.error.message, true); return; }
+    if (id && (!res.data || !res.data.length)) { setStatus("Not saved: you don't have access to this vendor.", true); return; }
     setStatus(id ? "Saved." : row.name + " added."); resetForm(); await window.rgLoadVendors();
   });
   document.getElementById("vendorCancelEditBtn").addEventListener("click", function () { resetForm(); setStatus(""); });

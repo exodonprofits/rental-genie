@@ -412,6 +412,22 @@ select {
       padding:18px;
     }
     .modal-overlay.active{ display:flex; }
+    .vendor-intro{ margin:0 0 14px; color:#556275; font-size:.88rem; line-height:1.5; }
+    .vendor-form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .vendor-form-grid input{ width:100%; box-sizing:border-box; min-height:44px; }
+    .vendor-form-actions{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin:12px 0 16px; }
+    .vendor-status{ font-size:.85rem; color:#556275; }
+    .vendor-status.err{ color:#b91c1c; }
+    .vendor-list{ list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+    .vendor-list li{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:12px; border:1px solid #e2e8f0; border-radius:12px; }
+    .vendor-main{ min-width:0; }
+    .vendor-name{ font-weight:700; color:#0f172a; overflow-wrap:anywhere; }
+    .vendor-meta{ font-size:.82rem; color:#556275; overflow-wrap:anywhere; }
+    .vendor-meta a{ color:#1d6fd1; }
+    .vendor-actions{ display:flex; gap:6px; flex-shrink:0; }
+    .vendor-empty{ color:#556275; font-size:.9rem; padding:8px 0; }
+    .maintenance-vendor-phone{ color:#1d6fd1; font-weight:600; white-space:nowrap; }
+    @media (max-width:600px){ .vendor-form-grid{ grid-template-columns:1fr; } .vendor-list li{ flex-direction:column; align-items:flex-start; } }
     .modal{
       width:min(720px, 100%);
       background:#fff;
@@ -462,8 +478,8 @@ select {
       cursor:pointer;
     }
     .btn-pill.primary{
-      background:#10b981;
-      border-color:#10b981;
+      background:#047857;
+      border-color:#047857;
       color:#fff;
     }
 
@@ -1737,6 +1753,7 @@ window.rgFiles = (function () {
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="add-btn maintenance-secondary" id="resetMaintenanceFilters" type="button">Reset filters</button>
           <button class="add-btn maintenance-secondary" id="refreshMaintenance" type="button">Refresh</button>
+          <button class="add-btn maintenance-secondary" id="vendorsBtn" type="button">👷 Vendors</button>
           <button class="add-btn" id="exportCsvBtn" type="button" style="background:#fff;color:#0c1e3a;border:1px solid #cbd5e1;">⬇️ Export CSV</button>
           <button class="add-btn" id="addRequestBtn">+ Log repair</button>
         </div>
@@ -1847,7 +1864,8 @@ window.rgFiles = (function () {
 
           <div class="field">
             <label for="edit_assigned_vendor">👷 Assigned Vendor (optional)</label>
-            <input id="edit_assigned_vendor" type="text" placeholder="ABC Plumbing" />
+            <input id="edit_assigned_vendor" type="text" placeholder="ABC Plumbing" list="vendorOptions" autocomplete="off" />
+            <datalist id="vendorOptions"></datalist>
           </div>
           <div class="field">
             <label for="edit_estimated_cost">💵 Estimated Cost (optional)</label>
@@ -1865,6 +1883,7 @@ window.rgFiles = (function () {
         </div>
         <p style="margin:10px 0 0; color:#556275; font-size:0.9rem;">
           Tip: Use <b>Start</b> / <b>Complete</b> in the ledger for 1-click status updates.
+          When a tenant filed this repair, scheduling it, assigning a vendor, starting or completing it sends them an update (Account &gt; Notifications to turn off).
         </p>
       </div>
       <div class="modal-footer">
@@ -1873,6 +1892,34 @@ window.rgFiles = (function () {
       </div>
     </div>
   </div>
+
+<!-- ══ Vendors Modal (rg_24 vendor directory) ═════════════════════════════ -->
+<div class="modal-overlay" id="vendorsModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="vendorsModalTitle" style="width:min(640px,100%);">
+    <div class="modal-header">
+      <h3 id="vendorsModalTitle">👷 Vendors</h3>
+      <button class="btn-mini" id="closeVendorsBtn" type="button" aria-label="Close vendors">✖</button>
+    </div>
+    <div class="modal-body">
+      <p class="vendor-intro">Vendors you've used. They're suggested when you assign a repair, and their phone shows on the worklist. Tenants see only the vendor's name.</p>
+      <form id="vendorForm" class="vendor-form" novalidate>
+        <input type="hidden" id="vendorEditId" />
+        <div class="vendor-form-grid">
+          <div class="field"><label for="vendorName">Name *</label><input id="vendorName" type="text" maxlength="120" required placeholder="Ace Plumbing" /></div>
+          <div class="field"><label for="vendorTrade">Trade</label><input id="vendorTrade" type="text" maxlength="60" placeholder="Plumbing" /></div>
+          <div class="field"><label for="vendorPhone">Phone</label><input id="vendorPhone" type="tel" maxlength="40" placeholder="(555) 555-0100" /></div>
+          <div class="field"><label for="vendorEmail">Email</label><input id="vendorEmail" type="email" maxlength="120" placeholder="office@aceplumbing.com" /></div>
+        </div>
+        <div class="vendor-form-actions">
+          <button class="btn-pill primary" id="vendorSaveBtn" type="submit">Add vendor</button>
+          <button class="btn-pill" id="vendorCancelEditBtn" type="button" hidden>Cancel edit</button>
+          <span id="vendorStatus" class="vendor-status" role="status"></span>
+        </div>
+      </form>
+      <ul id="vendorList" class="vendor-list" aria-label="Saved vendors"></ul>
+    </div>
+  </div>
+</div>
 
 <!-- ══ Complete + Log Cost Modal ══════════════════════════════════════════ -->
 <div class="modal-overlay" id="costModal" role="dialog" aria-modal="true" aria-labelledby="costModalTitle">
@@ -2499,6 +2546,7 @@ if (hamburgerBtn && mobileDrawer) {
     let maintenanceLoadVersion = 0;
     async function loadRequests() {
       const version = ++maintenanceLoadVersion;
+      if (window.rgLoadVendors) { try { await window.rgLoadVendors(); } catch (e) {} }
       document.getElementById("maintenanceResults").textContent = "Loading repair requests…";
       const body = document.getElementById("requestsTableBody");
       const openEl = document.getElementById("openCount");
@@ -2689,6 +2737,14 @@ if (hamburgerBtn && mobileDrawer) {
           ["Estimate", request.estimated_cost == null ? "Not recorded" : money(request.estimated_cost)]
         ];
         fields.forEach(function(pair) { const group=document.createElement("div"), label=document.createElement("dt"), value=document.createElement("dd"); label.textContent=pair[0]; value.textContent=pair[1]; group.append(label,value); list.appendChild(group); });
+        // Saved vendor's phone as a tap-to-call link (vendor directory, rg_24)
+        const vInfo = window.rgVendorFor ? window.rgVendorFor(request.assigned_vendor) : null;
+        if (vInfo && vInfo.phone) {
+          const dd = list.querySelector("dd");
+          const tel = document.createElement("a"); tel.className = "maintenance-vendor-phone";
+          tel.href = "tel:" + String(vInfo.phone).replace(/[^0-9+]/g, ""); tel.textContent = vInfo.phone;
+          dd.append(" · ", tel);
+        }
         const next = document.createElement("p"); next.className="maintenance-next-step"; next.textContent="Next: " + maintenanceNextStep(request);
         plan.append(list,next);
         if(!request.archived_at) {
@@ -3553,5 +3609,97 @@ if (fyEl2) fyEl2.textContent = new Date().getFullYear();
     <span><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a></span>
   </div>
 </footer>
+<script>
+/* Vendor directory (rg_24): suggestions in the vendor box, new names saved on use, phone on the
+   worklist, and a Vendors window to add, edit or archive. Uses the page's Supabase client and the
+   active company; does nothing if the vendors table isn't available. */
+(function () {
+  var cache = [];
+  function db() { return window.sb || window._rgClient; }
+  function companyId() { try { return (typeof activeCompanyId !== "undefined" && activeCompanyId) || localStorage.getItem("rg_active_company_id"); } catch (e) { return null; } }
+  function key(name) { return String(name || "").trim().toLowerCase(); }
+  window.rgVendorFor = function (name) { var k = key(name); if (!k) return null; return cache.find(function (v) { return key(v.name) === k; }) || null; };
+
+  function fillDatalist() {
+    var dl = document.getElementById("vendorOptions"); if (!dl) return;
+    dl.replaceChildren();
+    cache.forEach(function (v) { var o = document.createElement("option"); o.value = v.name; if (v.trade) o.label = v.trade; dl.appendChild(o); });
+  }
+
+  window.rgLoadVendors = async function () {
+    var c = companyId(), client = db(); if (!c || !client) return;
+    var res = await client.from("vendors").select("id, name, trade, phone, email").eq("company_id", c).is("archived_at", null).order("name");
+    if (res.error) { cache = []; return; }
+    cache = res.data || []; fillDatalist(); renderList();
+  };
+
+  async function saveNewVendorName(name) {
+    var c = companyId(), client = db(), n = String(name || "").trim();
+    if (!c || !client || !n || window.rgVendorFor(n)) return;
+    var res = await client.from("vendors").insert({ company_id: c, name: n });
+    if (!res.error) await window.rgLoadVendors();
+  }
+  var saveBtn = document.getElementById("saveEditBtn");
+  if (saveBtn) saveBtn.addEventListener("click", function () {
+    var v = document.getElementById("edit_assigned_vendor"); if (v && v.value.trim()) saveNewVendorName(v.value);
+  });
+
+  // ── Vendors window ──
+  var modal = document.getElementById("vendorsModal");
+  function setStatus(msg, err) { var el = document.getElementById("vendorStatus"); el.textContent = msg || ""; el.className = "vendor-status" + (err ? " err" : ""); }
+  function resetForm() {
+    ["vendorEditId", "vendorName", "vendorTrade", "vendorPhone", "vendorEmail"].forEach(function (id) { document.getElementById(id).value = ""; });
+    document.getElementById("vendorSaveBtn").textContent = "Add vendor";
+    document.getElementById("vendorCancelEditBtn").hidden = true;
+  }
+  function renderList() {
+    var ul = document.getElementById("vendorList"); if (!ul) return;
+    ul.replaceChildren();
+    if (!cache.length) { var e = document.createElement("li"); e.className = "vendor-empty"; e.style.border = "0"; e.textContent = "No vendors yet. Add one above, or just type a new name when you assign a repair."; ul.appendChild(e); return; }
+    cache.forEach(function (v) {
+      var li = document.createElement("li"), main = document.createElement("div"), nm = document.createElement("div"), meta = document.createElement("div"), acts = document.createElement("div");
+      main.className = "vendor-main"; nm.className = "vendor-name"; meta.className = "vendor-meta"; acts.className = "vendor-actions";
+      nm.textContent = v.name + (v.trade ? " · " + v.trade : "");
+      if (v.phone) { var a = document.createElement("a"); a.href = "tel:" + String(v.phone).replace(/[^0-9+]/g, ""); a.textContent = v.phone; meta.appendChild(a); }
+      if (v.email) { if (meta.childNodes.length) meta.append(" · "); var m = document.createElement("a"); m.href = "mailto:" + v.email; m.textContent = v.email; meta.appendChild(m); }
+      if (!meta.childNodes.length) meta.textContent = "No phone or email yet";
+      var ed = document.createElement("button"); ed.type = "button"; ed.className = "btn-mini"; ed.textContent = "Edit"; ed.setAttribute("aria-label", "Edit " + v.name);
+      ed.addEventListener("click", function () {
+        document.getElementById("vendorEditId").value = v.id; document.getElementById("vendorName").value = v.name || "";
+        document.getElementById("vendorTrade").value = v.trade || ""; document.getElementById("vendorPhone").value = v.phone || "";
+        document.getElementById("vendorEmail").value = v.email || ""; document.getElementById("vendorSaveBtn").textContent = "Save changes";
+        document.getElementById("vendorCancelEditBtn").hidden = false; document.getElementById("vendorName").focus();
+      });
+      var ar = document.createElement("button"); ar.type = "button"; ar.className = "btn-mini"; ar.textContent = "Archive"; ar.setAttribute("aria-label", "Archive " + v.name);
+      ar.addEventListener("click", async function () {
+        if (!confirm("Archive " + v.name + "? It stops being suggested; repairs already assigned keep the name.")) return;
+        var res = await db().from("vendors").update({ archived_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", v.id);
+        if (res.error) { setStatus("Couldn't archive: " + res.error.message, true); return; }
+        setStatus(v.name + " archived."); await window.rgLoadVendors();
+      });
+      acts.append(ed, ar); main.append(nm, meta); li.append(main, acts); ul.appendChild(li);
+    });
+  }
+  document.getElementById("vendorForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var c = companyId(), id = document.getElementById("vendorEditId").value;
+    var row = { name: document.getElementById("vendorName").value.trim(), trade: document.getElementById("vendorTrade").value.trim() || null,
+                phone: document.getElementById("vendorPhone").value.trim() || null, email: document.getElementById("vendorEmail").value.trim() || null };
+    if (!row.name) { setStatus("Enter the vendor's name.", true); document.getElementById("vendorName").focus(); return; }
+    if (!c) { setStatus("No company selected.", true); return; }
+    var res = id ? await db().from("vendors").update(Object.assign(row, { updated_at: new Date().toISOString() })).eq("id", id)
+                 : await db().from("vendors").insert(Object.assign(row, { company_id: c }));
+    if (res.error) { setStatus(res.error.code === "23505" ? "You already have a vendor with that name." : "Couldn't save: " + res.error.message, true); return; }
+    setStatus(id ? "Saved." : row.name + " added."); resetForm(); await window.rgLoadVendors();
+  });
+  document.getElementById("vendorCancelEditBtn").addEventListener("click", function () { resetForm(); setStatus(""); });
+  document.getElementById("vendorsBtn").addEventListener("click", async function () {
+    resetForm(); setStatus(""); modal.classList.add("active"); await window.rgLoadVendors(); renderList(); document.getElementById("vendorName").focus();
+  });
+  document.getElementById("closeVendorsBtn").addEventListener("click", function () { modal.classList.remove("active"); });
+  modal.addEventListener("click", function (e) { if (e.target === modal) modal.classList.remove("active"); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && modal.classList.contains("active")) modal.classList.remove("active"); });
+}());
+</script>
 </body>
 </html>

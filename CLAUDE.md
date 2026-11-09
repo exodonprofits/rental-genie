@@ -129,7 +129,9 @@ must be a key created inside a Claude Console workspace: an organization-level k
 for `anthropic-workspace-id`, which the functions surface as a 502. Expense categories in the function must
 match the page's `<option>` values.
 
-**Payment inbox:** `rg_ingest_payment_email` (service role only) queues forwarded payment alerts;
+**Payment inbox:** forwarded alerts arrive at `rent-<companies.payment_inbox_token>@inbox.rentalgenieai.com`
+(Resend receiving → webhook → `rg-payment-inbox` Edge Function, verify_jwt false, Svix signature checked;
+setup in `payment-inbox.md`; the old Postmark/n8n workflow JSON was never connected). `rg_ingest_payment_email` (service role only) queues forwarded payment alerts;
 `rg_confirm_incoming_payment` writes them to `rent_log`, splitting across unpaid months oldest-first;
 `rg_dismiss_incoming_payment` handles "not rent". Version 1 never logs a payment automatically.
 

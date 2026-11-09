@@ -4232,10 +4232,10 @@ function buildDashboardInsights(data){
    rg_confirm_incoming_payment, dismissed via rg_dismiss_incoming_payment.
 ------------------------------------------------------------- */
 
-// Your inbound email address from Postmark (Servers → Inbound). The company's
-// forwarding address is this address with +<token> added before the @.
-// Leave empty until the inbound service is connected.
-var RG_PAYMENT_INBOX_BASE = "";
+// Receiving domain for forwarded payment alerts (Resend receiving → rg-payment-inbox Edge Function).
+// A company's forwarding address is rent-<companies.payment_inbox_token>@<this domain>.
+// Leave empty to hide the inbox until receiving is connected.
+var RG_PAYMENT_INBOX_DOMAIN = "inbox.rentalgenieai.com";
 
 var _payInbox = { user: null, companyId: null, token: null, verifyUrl: null, properties: [] };
 
@@ -4258,10 +4258,8 @@ function _shortDate(iso) {
 }
 
 function _forwardingAddress() {
-  if (!RG_PAYMENT_INBOX_BASE || !_payInbox.token) return "";
-  var parts = RG_PAYMENT_INBOX_BASE.split("@");
-  if (parts.length !== 2) return "";
-  return parts[0].split("+")[0] + "+" + _payInbox.token + "@" + parts[1];
+  if (!RG_PAYMENT_INBOX_DOMAIN || !_payInbox.token) return "";
+  return "rent-" + String(_payInbox.token).toLowerCase() + "@" + RG_PAYMENT_INBOX_DOMAIN;
 }
 
 function _copyButton(value) {
@@ -4322,9 +4320,9 @@ function renderPayInbox(pending, everReceived) {
   var list = document.getElementById("payInboxList");
   var title = document.getElementById("payInboxTitle");
   if (!card || !list) return;
-  // Until the inbox address is configured (RG_PAYMENT_INBOX_BASE), the setup steps have no address
-  // to forward to, so the card stays hidden unless forwarded payments are already waiting.
-  if (!RG_PAYMENT_INBOX_BASE && !pending.length) { card.classList.remove("show"); return; }
+  // Until the receiving domain is configured (RG_PAYMENT_INBOX_DOMAIN), the setup steps have no
+  // address to forward to, so the card stays hidden unless forwarded payments are already waiting.
+  if (!RG_PAYMENT_INBOX_DOMAIN && !pending.length) { card.classList.remove("show"); return; }
 
   while (list.firstChild) list.removeChild(list.firstChild);
   renderPayInboxSetup(everReceived);

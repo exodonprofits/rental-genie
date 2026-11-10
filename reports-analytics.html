@@ -533,6 +533,13 @@ main {
 .pay-checks-sub { font-size: .8rem; color: var(--text, #1e293b); margin: 4px 0 8px; }
 .pay-checks ul { margin: 0; padding-left: 18px; font-size: .84rem; line-height: 1.7; color: var(--text, #1e293b); }
 .pay-checks a { color: #1d4ed8; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.pay-checks > ul > li { margin-bottom: 10px; }
+.pay-check-rows { list-style: none; padding-left: 0 !important; margin: 4px 0 0 !important; }
+.pay-check-rows li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px; margin-top: 4px; background: #fff; border: 1px solid #fde68a; border-radius: 8px; font-size: .8rem; flex-wrap: wrap; }
+.pay-check-rows li.archived span { text-decoration: line-through; color: #556275; }
+.pay-check-btn { border: 1px solid #b45309; background: #fff; color: #92400e; border-radius: 999px; padding: 4px 12px; font-size: .76rem; font-weight: 700; cursor: pointer; font-family: inherit; }
+.pay-check-btn:hover { background: #fffbeb; }
+.pay-check-btn:disabled { opacity: .55; cursor: default; }
 .report-section-title {
   font-size: .95rem; font-weight: 700; color: var(--navy);
   display: flex; align-items: center; gap: 8px;
@@ -903,7 +910,7 @@ main {
     <p class="rpt-footnote">Fixed costs are the mortgage payment (escrow included), plus HOA, from each property's profile; a month where one was logged as an expense isn't counted twice.</p>
     <div class="pay-checks" id="paymentChecks" hidden>
       <div class="pay-checks-head">⚠️ Payments to check <span id="paymentChecksMeta"></span></div>
-      <p class="pay-checks-sub">These look like the same rent entered more than once. They count as income in every report until archived in the ledger.</p>
+      <p class="pay-checks-sub">These look like the same rent entered more than once and count as income in every report. Archive the extra copy (you can undo it).</p>
       <ul id="paymentChecksList"></ul>
     </div>
   </div>
@@ -1813,38 +1820,45 @@ async function loadPortfolioYtd() {
     console.error('Portfolio YTD error:', e);
     if (meta) meta.textContent = 'Could not load';
   }
-  loadPaymentChecks().catch(function (e) { console.error('Payment check error:', e); });
+  if (!loadPortfolioYtd._noChecks) loadPaymentChecks().catch(function (e) { console.error('Payment check error:', e); });
 }
+function loadPortfolioYtdOnly() { loadPortfolioYtd._noChecks = true; return loadPortfolioYtd().finally(function () { loadPortfolioYtd._noChecks = false; }); }
 
 // Payments that look entered twice: several payments applied to one due date adding up to at least
 // two of the largest payment, or the same amount on the same day for the same property. They inflate
-// "rent received" everywhere, so they're listed for the landlord to review (nothing is changed here).
+// "rent received" everywhere, so they're listed with each payment and an Archive button
+// (archive_rent_log, reversible with Undo). The landlord picks which copy is the extra; nothing is
+// archived automatically.
 async function loadPaymentChecks() {
   var box = $('paymentChecks'), list = $('paymentChecksList');
   if (!box || !list) return;
   var since = new Date(); since.setMonth(since.getMonth() - 18);
-  var q = sb.from('rent_log').select('id, property_name, date_paid, amount, applied_to_due_date, method')
+  var q = sb.from('rent_log').select('id, property_name, date_paid, amount, applied_to_due_date, method, note, inserted_at')
     .is('archived_at', null).gte('date_paid', ymdLocal(since)).order('date_paid');
   if (activeCompanyId) q = q.eq('company_id', activeCompanyId);
   var res = await q;
   if (res.error) throw res.error;
   var rows = res.data || [], groups = {}, seen = {}, flags = [];
   rows.forEach(function (r) {
-    if (r.applied_to_due_date) (groups[r.property_name + '|' + r.applied_to_due_date] = groups[r.property_name + '|' + r.applied_to_due_date] || []).push(r);
+    if (r.applied_to_due_date) { var k = r.property_name + '|' + r.applied_to_due_date; (groups[k] = groups[k] || []).push(r); }
   });
   Object.keys(groups).forEach(function (k) {
     var g = groups[k], sum = 0, max = 0;
     g.forEach(function (r) { var a = Number(r.amount || 0); sum += a; if (a > max) max = a; });
     if (g.length >= 2 && max > 0 && sum >= 2 * max - 0.005) {
       g.forEach(function (r) { seen[r.id] = true; });
-      flags.push({ property: g[0].property_name, text: g.length + ' payments (' + money(sum) + ') applied to rent due ' + fmtDate(g[0].applied_to_due_date), extra: sum - max, date: g[0].applied_to_due_date });
+      flags.push({ property: g[0].property_name, text: g.length + ' payments (' + money(sum) + ') applied to rent due ' + fmtDate(g[0].applied_to_due_date), extra: sum - max, date: g[0].applied_to_due_date, rows: g });
     }
   });
   var sameDay = {};
-  rows.forEach(function (r) { if (!seen[r.id]) (sameDay[r.property_name + '|' + r.date_paid + '|' + Number(r.amount)] = sameDay[r.property_name + '|' + r.date_paid + '|' + Number(r.amount)] || []).push(r); });
+  rows.forEach(function (r) {
+    if (seen[r.id]) return;
+    var k = r.property_name + '|' + r.date_paid + '|' + Number(r.amount);
+    (sameDay[k] = sameDay[k] || []).push(r);
+  });
   Object.keys(sameDay).forEach(function (k) {
     var g = sameDay[k];
-    if (g.length >= 2) flags.push({ property: g[0].property_name, text: g.length + ' payments of ' + money(g[0].amount) + ' on ' + fmtDate(g[0].date_paid), extra: Number(g[0].amount) * (g.length - 1), date: g[0].date_paid });
+    if (g.length >= 2) flags.push({ property: g[0].property_name, text: g.length + ' payments of ' + money(g[0].amount) + ' on ' + fmtDate(g[0].date_paid), extra: Number(g[0].amount) * (g.length - 1), date: g[0].date_paid, rows: g });
   });
   list.textContent = '';
   if (!flags.length) { box.hidden = true; return; }
@@ -1853,17 +1867,72 @@ async function loadPaymentChecks() {
   setText('paymentChecksMeta', flags.length + ' to review · up to ' + money(extra) + ' may be counted twice');
   flags.forEach(function (f) {
     var li = document.createElement('li');
+    var head = document.createElement('div');
     var b = document.createElement('strong'); b.textContent = f.property + ': ';
-    li.appendChild(b);
-    li.appendChild(document.createTextNode(f.text + ' '));
+    head.appendChild(b);
+    head.appendChild(document.createTextNode(f.text + ' '));
     var a = document.createElement('a');
     a.href = 'lease-rent-center.html?property=' + encodeURIComponent(f.property) + '&view=ledger';
-    a.textContent = 'Review in ledger →';
-    li.appendChild(a);
+    a.textContent = 'Open ledger →';
+    head.appendChild(a);
+    li.appendChild(head);
+    var ul = document.createElement('ul');
+    ul.className = 'pay-check-rows';
+    f.rows.slice().sort(function (x, y) { return String(x.inserted_at || '') < String(y.inserted_at || '') ? -1 : 1; }).forEach(function (r) {
+      var row = document.createElement('li');
+      var info = document.createElement('span');
+      info.textContent = fmtDate(r.date_paid) + ' · ' + money(r.amount) + (r.method ? ' · ' + r.method : '')
+        + (r.applied_to_due_date ? ' · for ' + fmtDate(r.applied_to_due_date) : '')
+        + ' · entered ' + fmtDate(localDay(r.inserted_at)) + (r.note ? ' · ' + r.note : '');
+      row.appendChild(info);
+      var btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'pay-check-btn'; btn.textContent = 'Archive';
+      btn.setAttribute('aria-label', 'Archive the ' + money(r.amount) + ' payment of ' + fmtDate(r.date_paid) + ' for ' + f.property);
+      btn.addEventListener('click', function () { archivePayment(r, f.property, row, btn, info); });
+      row.appendChild(btn);
+      ul.appendChild(row);
+    });
+    li.appendChild(ul);
     list.appendChild(li);
   });
   box.hidden = false;
 }
+
+// Archive one payment (archive_rent_log), with Undo (unarchive_rent_log). Figures refresh after either.
+async function archivePayment(r, property, row, btn, info) {
+  if (!confirm('Archive the ' + money(r.amount) + ' payment of ' + fmtDate(r.date_paid) + ' for ' + property + '?\n\nIt stops counting as rent. You can undo this here or restore it from the ledger.')) return;
+  btn.disabled = true;
+  var res = await sb.rpc('archive_rent_log', { p_rent_log_id: r.id });
+  if (res.error) { btn.disabled = false; alert('Could not archive: ' + res.error.message); return; }
+  row.classList.add('archived');
+  info.textContent = 'Archived: ' + info.textContent;
+  btn.textContent = 'Undo';
+  btn.disabled = false;
+  btn.onclick = null;
+  var fresh = btn.cloneNode(true);
+  btn.parentNode.replaceChild(fresh, btn);
+  fresh.setAttribute('aria-label', 'Undo archiving this payment');
+  fresh.addEventListener('click', async function () {
+    fresh.disabled = true;
+    var u = await sb.rpc('unarchive_rent_log', { p_rent_log_id: r.id });
+    if (u.error) { fresh.disabled = false; alert('Could not undo: ' + u.error.message); return; }
+    refreshAfterPaymentChange();
+  });
+  refreshAfterPaymentChange(true);
+}
+
+var _payCheckTimer = null;
+function refreshAfterPaymentChange(keepList) {
+  clearTimeout(_payCheckTimer);
+  _payCheckTimer = setTimeout(function () {
+    // Re-total the YTD table and the selected property; the check list keeps its Undo buttons until reload
+    var keep = keepList ? null : loadPaymentChecks;
+    loadPortfolioYtdOnly().catch(function (e) { console.error(e); });
+    if (window.__rg_currentProperty) loadReportsQuickPeek().catch(function (e) { console.error(e); });
+    if (keep) keep().catch(function (e) { console.error(e); });
+  }, 300);
+}
+
 function signedFmt(v) { return (v < 0 ? '-' : '+') + fmt(Math.abs(v)); }
 function portfolioRow(cells, net) {
   var tr = document.createElement('tr');

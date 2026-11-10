@@ -65,7 +65,14 @@ body.auth-guest #mobileLogin{display:block!important;}body.auth-guest #mobileAcc
 .drawer-login{display:flex;align-items:center;gap:8px;padding:11px 12px;font-weight:600;color:#0c1e3a;font-size:0.9rem;border-top:1px solid #f1f5f9;text-decoration:none;margin-top:4px;}
 #mobileLogoutContainer{border-top:1px solid #f1f5f9;margin-top:4px;padding-top:4px;}#mobileLogoutContainer button{width:100%;padding:11px 12px;background:none;border:none;text-align:left;font-weight:700;color:#dc2626;cursor:pointer;font-family:"DM Sans",sans-serif;font-size:0.9rem;border-radius:8px;}#mobileLogoutContainer button:hover{background:#fef2f2;}
 
-main{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:28px 22px 48px;}
+main{flex:1;max-width:100%;width:100%;margin:0 auto;padding:28px 28px 48px;}
+.nav-right-group{display:flex;align-items:center;gap:8px;}
+.nav-bell{position:relative;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:999px;flex-shrink:0;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);color:#fff;font-size:1rem;text-decoration:none;transition:background .18s;}
+.nav-bell:hover{background:rgba(255,255,255,.18);}
+.nav-bell.active{background:rgba(255,255,255,.24);border-color:rgba(255,255,255,.55);}
+.nav-bell-dot{position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#ef4444;color:#fff;font-size:.62rem;font-weight:700;line-height:16px;text-align:center;border:2px solid #1a3a6b;}
+body.auth-guest .nav-bell{display:none!important;}
+@media(max-width:860px){.nav-bell{display:none!important;}}
 .page-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px;animation:fadeUp .4s ease both;}
 .page-title{font-size:1.55rem;font-weight:700;color:var(--navy);letter-spacing:-.4px;}
 .page-sub{font-size:.88rem;color:var(--muted);margin-top:4px;font-weight:500;}
@@ -75,11 +82,13 @@ main{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:28px 22px 48px;}
 .btn.primary:hover{filter:brightness(1.1);}
 .btn:disabled{opacity:.55;cursor:not-allowed;}
 
-.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
-@media(max-width:640px){.stats-row{grid-template-columns:1fr;}}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+@media(max-width:900px){.stats-row{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px){.stats-row{gap:10px;}.stat-card{padding:12px 14px;}.stat-value{font-size:1.4rem;}}
 .stat-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;border-top:3px solid var(--sky);animation:fadeUp .4s ease both;}
 .stat-card.warn{border-top-color:#f59e0b;}
 .stat-card.ok{border-top-color:var(--success);}
+.stat-card.unread{border-top-color:#1e5799;}
 .stat-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);display:flex;align-items:center;gap:6px;}
 .stat-value{font-size:1.7rem;font-weight:700;color:var(--navy);margin-top:4px;}
 
@@ -98,6 +107,8 @@ main{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:28px 22px 48px;}
 
 .convo-row{display:flex;align-items:flex-start;gap:14px;padding:14px 4px;border-bottom:1px solid #f1f5f9;cursor:pointer;transition:background .12s;border-radius:var(--radius-md);}
 .convo-row:hover{background:#f8fafc;}
+.convo-row:focus-visible{outline:2px solid var(--sky);outline-offset:-2px;}
+.convo-row.selected{background:#eff4ff;box-shadow:inset 3px 0 0 #1e5799;}
 .convo-row:last-child{border-bottom:none;}
 .convo-row.unread .convo-name,.convo-row.unread .convo-subject{font-weight:800;color:#0c1e3a;}
 .unread-badge{display:inline-block;margin:4px 0;padding:2px 8px;border-radius:999px;background:#1e5799;color:#fff;font-size:.7rem;font-weight:700;}
@@ -136,6 +147,19 @@ main{flex:1;max-width:1100px;width:100%;margin:0 auto;padding:28px 22px 48px;}
 .reply-input:focus{border-color:var(--sky);}
 .modal-actions{display:flex;justify-content:space-between;align-items:center;margin-top:10px;}
 .hidden{display:none!important;}
+.msg-subject{font-weight:700;margin-bottom:3px;}
+.thread-empty{display:none;}
+.convo-email{font-size:.72rem;color:var(--muted);font-weight:500;}
+/* Desktop: inbox list and the open conversation side by side; phones keep the pop-up */
+@media(min-width:1024px){
+  .inbox-layout{display:grid;grid-template-columns:minmax(340px,420px) minmax(0,1fr);gap:18px;align-items:start;}
+  .inbox-layout .modal-overlay{display:block;position:sticky;top:84px;inset:auto;background:none;padding:0;z-index:auto;}
+  .inbox-layout .modal-box{max-width:none;height:calc(100vh - 120px);min-height:460px;max-height:none;border:1px solid var(--border);box-shadow:var(--shadow-sm);}
+  .inbox-layout .modal-close{display:none;}
+  .inbox-layout .convo-snippet{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .modal-box.no-convo .modal-header,.modal-box.no-convo .modal-body,.modal-box.no-convo .modal-footer{display:none;}
+  .modal-box.no-convo .thread-empty{display:flex;flex:1;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--muted);padding:40px;}
+}
 @media(max-width:600px){main{padding:20px 14px 40px;}.page-title{font-size:1.3rem;}.msg-bubble{max-width:90%;}}
 
 /* CLAUDE.md: no sideways scroll on phones */
@@ -173,9 +197,10 @@ body { overflow-x: hidden; }
       <a href="lease-rent-center.html">💰 Lease &amp; Rent</a>
       <a href="expense-tracking.html">💸 Expenses</a>
       <a href="maintenance-requests.html">🛠 Maintenance</a>
-      <a href="tenant-messages.html" class="nav-active">💬 Messages</a>
       <a href="reports-analytics.html">📈 Reports</a>
     </nav>
+    <div class="nav-right-group">
+    <a class="nav-bell active" id="navBell" href="tenant-messages.html" title="Messages" aria-label="Messages" aria-current="page">🔔<span class="nav-bell-dot" id="navBellDot" hidden></span></a>
     <div class="umd-wrap" id="userMenu" style="display:none">
       <button class="umd-toggle" id="umdToggle" aria-haspopup="true" aria-expanded="false">
         <div class="umd-avatar" id="umdAvatar">?</div>
@@ -195,6 +220,7 @@ body { overflow-x: hidden; }
           <button class="umd-link danger" id="logoutBtn">🚪 Sign Out</button>
         </div>
       </div>
+    </div>
     </div>
     <a id="nav-login" href="login.html" style="display:none">Log in</a>
     <button class="hamburger" id="hamburgerBtn" aria-label="Open menu">☰</button>
@@ -243,12 +269,18 @@ body { overflow-x: hidden; }
       <div class="stat-label">✅ Closed</div>
       <div class="stat-value" id="statClosed">0</div>
     </div>
+    <div class="stat-card unread">
+      <div class="stat-label">📨 Unread</div>
+      <div class="stat-value" id="statUnread">0</div>
+    </div>
   </div>
+
+  <div class="inbox-layout">
 
   <div class="section-card">
     <div class="card-head">
       <div class="card-title">📥 Inbox</div>
-      <div class="card-sub">Grouped by tenant and property. Click a conversation to view and reply.</div>
+      <div class="card-sub">Grouped by tenant and property. Pick a conversation to read and reply.</div>
     </div>
     <div class="card-body">
       <div class="filter-bar">
@@ -262,11 +294,11 @@ body { overflow-x: hidden; }
       <div id="convoList"></div>
     </div>
   </div>
-</main>
 
-<!-- Thread modal -->
+<!-- Conversation: a pane beside the list on desktop, a pop-up on phones -->
 <div class="modal-overlay" id="modalOverlay">
-  <div class="modal-box">
+  <div class="modal-box no-convo" id="threadBox" role="region" aria-label="Conversation">
+    <div class="thread-empty"><div class="empty-icon">💬</div><p>Select a conversation to read and reply.</p></div>
     <div class="modal-header">
       <div>
         <div class="modal-title" id="modalTitle">—</div>
@@ -287,9 +319,11 @@ body { overflow-x: hidden; }
     </div>
   </div>
 </div>
+  </div>
+</main>
 
 <footer style="background:var(--navy);padding:20px 24px;border-top:1px solid rgba(255,255,255,.06);">
-  <div style="max-width:1100px;margin:0 auto;text-align:center;color:rgba(255,255,255,.3);font-size:.8rem;">
+  <div style="margin:0 auto;text-align:center;color:rgba(255,255,255,.55);font-size:.8rem;">
     © <span id="footerYear"></span> Rental Genie.
   </div>
 </footer>
@@ -419,6 +453,10 @@ body { overflow-x: hidden; }
   var conversations = []; // grouped
   var statusFilter = 'all';
   var activeConvo = null;
+  var tenantNames = {};   // lower(email) -> tenant name, from the company's leases
+  function isWide() { return window.matchMedia('(min-width: 1024px)').matches; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function nameFor(c) { return tenantNames[String(c.tenant_email || '').toLowerCase()] || c.tenant_email || 'Tenant'; }
 
   function groupIntoConversations(rows) {
     var map = {};
@@ -455,33 +493,45 @@ body { overflow-x: hidden; }
     if (statusFilter !== 'all') list = list.filter(function (c) { return c.status === statusFilter; });
     if (q) {
       list = list.filter(function (c) {
-        return (c.tenant_email + ' ' + c.property_name + ' ' + c.subject + ' ' + c.snippet).toLowerCase().indexOf(q) !== -1;
+        return (nameFor(c) + ' ' + c.tenant_email + ' ' + c.property_name + ' ' + c.subject + ' ' + c.snippet).toLowerCase().indexOf(q) !== -1;
       });
     }
     renderConvoList(list);
   }
 
   function renderConvoList(list) {
-    var el = $('convoList');
+    var box = $('convoList');
+    box.textContent = '';
     if (!list.length) {
-      el.innerHTML = '<div class="empty-state"><div class="empty-icon">📭</div><p>No messages' + (statusFilter !== 'all' ? ' with this status' : '') + '.</p></div>';
+      var empty = el('div', 'empty-state');
+      empty.appendChild(el('div', 'empty-icon', '📭'));
+      empty.appendChild(el('p', null, 'No messages' + (statusFilter !== 'all' ? ' with this status' : '') + '.'));
+      box.appendChild(empty);
       return;
     }
-    el.innerHTML = list.map(function (c) {
-      return '<div class="convo-row' + (c.unread ? ' unread' : '') + '" data-key="' + escapeHtml(c.key) + '">'
-        + '<div class="convo-avatar">' + escapeHtml(initials(c.tenant_email)) + '</div>'
-        + '<div class="convo-main">'
-        + '<div class="convo-top"><span class="convo-name">' + escapeHtml(c.tenant_email) + '</span><span class="convo-property">· ' + escapeHtml(c.property_name || '') + '</span></div>'
-        + '<div class="convo-subject">' + escapeHtml(c.subject || 'No subject') + '</div>'
-        + '<div class="convo-snippet">' + escapeHtml(c.snippet || '') + '</div>'
-        + '</div>'
-        + '<div class="convo-right"><div class="convo-time">' + timeAgo(c.last_at) + '</div>'
-        + (c.unread ? '<span class="unread-badge" title="Unread">' + c.unread + ' new</span>' : '')
-        + '<span class="chip ' + (c.status === 'closed' ? 'closed' : 'open') + '">' + (c.status === 'closed' ? '✅ Closed' : '🕐 Open') + '</span></div>'
-        + '</div>';
-    }).join('');
-    el.querySelectorAll('.convo-row').forEach(function (row) {
-      row.addEventListener('click', function () { openConvo(row.dataset.key); });
+    list.forEach(function (c) {
+      var row = el('div', 'convo-row' + (c.unread ? ' unread' : '') + (activeConvo && activeConvo.key === c.key ? ' selected' : ''));
+      row.tabIndex = 0;
+      row.setAttribute('role', 'button');
+      row.setAttribute('aria-label', 'Conversation with ' + nameFor(c) + (c.unread ? ', ' + c.unread + ' unread' : ''));
+      row.appendChild(el('div', 'convo-avatar', initials(nameFor(c))));
+      var main = el('div', 'convo-main');
+      var top = el('div', 'convo-top');
+      top.appendChild(el('span', 'convo-name', nameFor(c)));
+      if (c.property_name) top.appendChild(el('span', 'convo-property', '· ' + c.property_name));
+      main.appendChild(top);
+      if (tenantNames[String(c.tenant_email || '').toLowerCase()]) main.appendChild(el('div', 'convo-email', c.tenant_email));
+      main.appendChild(el('div', 'convo-subject', c.subject || 'No subject'));
+      main.appendChild(el('div', 'convo-snippet', c.snippet || ''));
+      row.appendChild(main);
+      var right = el('div', 'convo-right');
+      right.appendChild(el('div', 'convo-time', timeAgo(c.last_at)));
+      if (c.unread) { var b = el('span', 'unread-badge', c.unread + ' new'); b.title = 'Unread'; right.appendChild(b); }
+      right.appendChild(el('span', 'chip ' + (c.status === 'closed' ? 'closed' : 'open'), c.status === 'closed' ? '✅ Closed' : '🕐 Open'));
+      row.appendChild(right);
+      row.addEventListener('click', function () { openConvo(c.key); });
+      row.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openConvo(c.key); } });
+      box.appendChild(row);
     });
   }
 
@@ -489,20 +539,27 @@ body { overflow-x: hidden; }
     $('statTotal').textContent = conversations.length;
     $('statOpen').textContent = conversations.filter(function (c) { return c.status !== 'closed'; }).length;
     $('statClosed').textContent = conversations.filter(function (c) { return c.status === 'closed'; }).length;
+    var unread = conversations.reduce(function (t, c) { return t + (c.unread || 0); }, 0);
+    $('statUnread').textContent = unread;
+    var dot = $('navBellDot');
+    if (dot) { dot.hidden = !unread; dot.textContent = unread > 9 ? '9+' : String(unread); }
   }
 
-  /* ── Thread modal ────────────────────────────────────────── */
+  /* ── Conversation pane (pop-up on phones) ────────────────── */
   function openConvo(key) {
     var c = conversations.filter(function (x) { return x.key === key; })[0];
     if (!c) return;
     activeConvo = c;
-    $('modalTitle').textContent = c.tenant_email;
-    $('modalSub').textContent = (c.property_name || '') + ' · ' + c.messages.length + ' message' + (c.messages.length === 1 ? '' : 's');
+    $('threadBox').classList.remove('no-convo');
+    $('modalTitle').textContent = nameFor(c);
+    $('modalSub').textContent = [c.property_name, nameFor(c) !== c.tenant_email ? c.tenant_email : '', c.messages.length + ' message' + (c.messages.length === 1 ? '' : 's')].filter(Boolean).join(' · ');
     renderThread(c);
     $('resolveToggleBtn').textContent = c.status === 'closed' ? '↩️ Reopen' : '✅ Mark Resolved';
     $('replyStatus').textContent = '';
     $('replyInput').value = '';
     $('modalOverlay').classList.add('active');
+    applyFilters();
+    if (!isWide()) $('replyInput').blur();
     markRead(c);
   }
 
@@ -515,23 +572,30 @@ body { overflow-x: hidden; }
     if (res.error) { console.warn('Could not mark messages read:', res.error); return; }
     c.messages.forEach(function (m) { if (ids.indexOf(m.id) !== -1) m.read_at = now; });
     c.unread = 0;
+    renderStats();
     applyFilters();
   }
 
   function renderThread(c) {
     var body = $('modalBody');
-    body.innerHTML = c.messages.map(function (m) {
+    body.textContent = '';
+    c.messages.forEach(function (m) {
       var isLandlord = m.sender === 'landlord';
-      return '<div class="msg-bubble ' + (isLandlord ? 'landlord' : 'tenant') + '">'
-        + (m.subject ? '<div style="font-weight:700;margin-bottom:3px;">' + escapeHtml(m.subject) + '</div>' : '')
-        + escapeHtml(m.message)
-        + '<div class="msg-meta">' + (isLandlord ? 'You' : 'Tenant') + ' · ' + timeAgo(m.created_at) + '</div>'
-        + '</div>';
-    }).join('');
+      var b = el('div', 'msg-bubble ' + (isLandlord ? 'landlord' : 'tenant'));
+      if (m.subject) b.appendChild(el('div', 'msg-subject', m.subject));
+      b.appendChild(document.createTextNode(m.message || ''));
+      b.appendChild(el('div', 'msg-meta', (isLandlord ? 'You' : nameFor(c)) + ' · ' + timeAgo(m.created_at)));
+      body.appendChild(b);
+    });
     body.scrollTop = body.scrollHeight;
   }
 
-  function closeModal() { $('modalOverlay').classList.remove('active'); activeConvo = null; }
+  function closeModal() {
+    $('modalOverlay').classList.remove('active');
+    activeConvo = null;
+    $('threadBox').classList.add('no-convo');
+    applyFilters();
+  }
 
   async function sendReply() {
     if (!activeConvo) return;
@@ -590,8 +654,17 @@ body { overflow-x: hidden; }
     if (error) { console.error(error); $('convoList').innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Could not load messages.</p></div>'; return; }
     allMessages = data || [];
     conversations = groupIntoConversations(allMessages);
+    // Show tenants by name: the company's leases carry tenant_email -> tenant_name
+    var lq = db.from('leases').select('tenant_email, tenant_name, lease_start').is('archived_at', null).order('lease_start', { ascending: true });
+    if (activeCompanyId) lq = lq.eq('company_id', activeCompanyId);
+    var lres = await lq;
+    tenantNames = {};
+    (lres.data || []).forEach(function (l) { if (l.tenant_email && l.tenant_name) tenantNames[String(l.tenant_email).toLowerCase()] = l.tenant_name; });
+    if (activeConvo) activeConvo = conversations.filter(function (c) { return c.key === activeConvo.key; })[0] || null;
     renderStats();
     applyFilters();
+    if (activeConvo) openConvo(activeConvo.key);
+    else if (isWide() && conversations.length) openConvo(conversations[0].key);
   }
 
   /* ── Init ────────────────────────────────────────────────── */

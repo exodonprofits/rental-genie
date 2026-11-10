@@ -526,6 +526,13 @@ main {
   padding: 14px 20px; border-bottom: 1px solid var(--border);
   background: #f8fafc; gap: 12px; flex-wrap: wrap;
 }
+.rpt-footnote { font-size: .78rem; color: var(--muted); margin: 10px 4px 0; line-height: 1.5; }
+.pay-checks { margin-top: 14px; border: 1px solid var(--warn-bdr, #fcd34d); background: var(--warn-bg, #fffbeb); border-radius: 12px; padding: 14px 16px; }
+.pay-checks-head { font-weight: 700; color: var(--warn-text, #92400e); font-size: .92rem; }
+.pay-checks-head span { font-weight: 500; font-size: .8rem; margin-left: 6px; }
+.pay-checks-sub { font-size: .8rem; color: var(--text, #1e293b); margin: 4px 0 8px; }
+.pay-checks ul { margin: 0; padding-left: 18px; font-size: .84rem; line-height: 1.7; color: var(--text, #1e293b); }
+.pay-checks a { color: #1d4ed8; font-weight: 600; text-decoration: none; white-space: nowrap; }
 .report-section-title {
   font-size: .95rem; font-weight: 700; color: var(--navy);
   display: flex; align-items: center; gap: 8px;
@@ -887,11 +894,17 @@ main {
     <div style="overflow-x:auto;">
       <table class="rg-stack rpt-table">
         <thead>
-          <tr><th>Property</th><th class="text-right">Rent YTD</th><th class="text-right">Expenses YTD</th><th class="text-right">Mortgage / mo</th><th class="text-right">Net YTD</th></tr>
+          <tr><th>Property</th><th class="text-right">Rent YTD</th><th class="text-right">Expenses YTD</th><th class="text-right">Fixed costs / mo</th><th class="text-right">Net YTD</th></tr>
         </thead>
         <tbody id="portfolioYtdBody"></tbody>
         <tfoot id="portfolioYtdFoot"></tfoot>
       </table>
+    </div>
+    <p class="rpt-footnote">Fixed costs are the mortgage payment (escrow included), plus HOA, from each property's profile; a month where one was logged as an expense isn't counted twice.</p>
+    <div class="pay-checks" id="paymentChecks" hidden>
+      <div class="pay-checks-head">⚠️ Payments to check <span id="paymentChecksMeta"></span></div>
+      <p class="pay-checks-sub">These look like the same rent entered more than once. They count as income in every report until archived in the ledger.</p>
+      <ul id="paymentChecksList"></ul>
     </div>
   </div>
 
@@ -1455,40 +1468,41 @@ async function loadReportsQuickPeek() {
     var propRow = (propRes.data || []).find(function (p) { return p.name === currentProperty; });
     if (propRow) {
       setText('qp-property-address', propRow.address || '—');
-      var mortgagePI  = Number(propRow.mortgage_pi || 0);
-      var taxMonthly  = Number(propRow.tax_monthly || 0);
-      var insMonthly  = Number(propRow.insurance_monthly || 0);
-      var hoaMonthly  = Number(propRow.hoa_monthly || 0);
-      var pmiMonthly  = Number(propRow.pmi_monthly || 0);
-      var fixedMonthly = mortgagePI + taxMonthly + insMonthly + hoaMonthly + pmiMonthly;  // full profile amount, for the breakdown line
+      var parts = fixedParts(propRow);
+      var fixedMonthly = fixedTotal(propRow, false);
       var cashInvested = Number(propRow.down_payment || 0) + Number(propRow.closing_costs || 0) + Number(propRow.rehab_cost || 0);
       var purchasePrice = Number(propRow.purchase_price || 0);
 
       setText('snap-fixed', money(fixedMonthly));
-      setText('snap-fixed-breakdown', 'PI ' + money(mortgagePI) + ' · Tax ' + money(taxMonthly) + ' · Ins ' + money(insMonthly) + ' · HOA ' + money(hoaMonthly) + ' · PMI ' + money(pmiMonthly));
-      setText('snap-invested', cashInvested > 0 ? money(cashInvested) : '$0');
+      setText('snap-fixed-breakdown', parts.length
+        ? parts.map(function (f) { return f.label + ' ' + money(f.amount); }).join(' · ')
+        : 'No mortgage, tax, insurance or HOA on the property profile');
+      setText('snap-invested', cashInvested > 0 ? money(cashInvested) : '—');
+      setText('snap-invested-meta', cashInvested > 0 ? 'Down + Closing + Rehab' : 'Add down payment, closing and rehab costs on the property');
       window.__rg_propSnapshot = { fixedMonthly: fixedMonthly, cashInvested: cashInvested, purchasePrice: purchasePrice, prop: propRow };
     } else {
       window.__rg_propSnapshot = { fixedMonthly: 0, cashInvested: 0, purchasePrice: 0, prop: null };
     }
 
     /* ── Lease ── */
-    var lease = (leaseRes.data || []).filter(function (l) { return l.property_name === currentProperty; })[0] || null;
+    // The lease in effect is the one the rent schedule uses; otherwise the newest non-draft lease.
+    var propSched = (schedRes && !schedRes.error ? schedRes.data || [] : []).filter(function (r) { return r.property_name === currentProperty; });
+    var inEffectId = propSched.length ? propSched[propSched.length - 1].lease_id : null;
+    var propLeases = (leaseRes.data || []).filter(function (l) { return l.property_name === currentProperty; });
+    var lease = propLeases.filter(function (l) { return l.id === inEffectId; })[0]
+      || propLeases.filter(function (l) { return String(l.status || '').toLowerCase() !== 'draft'; })[0] || null;
     var monthlyRent = null;
+    var lsEl = $('qp-lease-status');
+    if (lsEl) { lsEl.style.display = 'none'; lsEl.textContent = ''; }
     if (lease) {
       setText('qp-tenant', lease.tenant_name || 'No tenant');
-      var s = lease.lease_start || lease.start_date, e2 = lease.lease_end || lease.end_date;
-      setText('qp-lease-dates', (s || e2) ? (s || '?') + ' → ' + (e2 || '?') : '—');
+      var s = lease.lease_start, e2 = lease.lease_end;
+      setText('qp-lease-dates', (s || e2) ? fmtDate(s) + ' → ' + (e2 ? fmtDate(e2) : 'month-to-month') : '—');
       monthlyRent = Number(lease.rent_amount || 0) || null;
-      var lsEl = $('qp-lease-status');
-      if (lsEl) {
-        var st = lease.status || '';
-        if (!st && (s || e2)) {
-          var todayStr = ymdLocal(new Date());
-          st = e2 && e2 < todayStr ? 'Expired' : (s && s > todayStr ? 'Upcoming' : 'Active');
-        }
-        if (st) { lsEl.textContent = st; lsEl.style.display = 'inline-flex'; }
-      }
+      var STATE_LABELS = { active: 'Active', holdover: 'Holdover · still charging', month_to_month: 'Month-to-month', ended: 'Ended' };
+      var state = propSched.length ? STATE_LABELS[propSched[propSched.length - 1].lease_state] : null;
+      if (!state) state = String(lease.status || '').toLowerCase().indexOf('term') >= 0 ? 'Ended' : 'Not charging rent';
+      if (lsEl) { lsEl.textContent = state + (monthlyRent ? ' · ' + money(monthlyRent) + '/mo' : ''); lsEl.style.display = 'inline-flex'; }
     } else {
       setText('qp-tenant', 'No active lease');
       setText('qp-lease-dates', '—');
@@ -1527,15 +1541,27 @@ async function loadReportsQuickPeek() {
 
     setText('snap-expenses', money(expTotal));
     setText('snap-expenses-meta', expRows.length ? (expRows.length + ' expense item(s) this month') : 'No expenses logged this month');
-    setText('snap-net', (netThisMonth >= 0 ? '+' : '') + money(netThisMonth));
+    setText('snap-net', (netThisMonth < 0 ? '-' : '+') + money(Math.abs(netThisMonth)));
     setText('snap-net-meta', 'Rent ' + money(totalThisMonth) + ' − Exp ' + money(expTotal) + ' − Fixed not logged ' + money(fixedUnlogged));
 
-    var annualNet = netThisMonth * 12;
-    if (snap.cashInvested > 0) { setText('snap-coc', (annualNet / snap.cashInvested * 100).toFixed(1) + '%'); } else { setText('snap-coc', '—%'); }
-    // Cap rate uses NOI: before debt service (mortgage P&I, PMI), whether logged or from the profile
-    var opExp = expRows.reduce(function (s, r) { return DEBT_CATS.indexOf(r.category) === -1 ? s + Number(r.amount || 0) : s; }, 0);
-    var annualNoi = (totalThisMonth - opExp - fixedNotLogged(snap.prop, loggedCats, true)) * 12;
-    if (snap.purchasePrice > 0) { setText('snap-caprate', (annualNoi / snap.purchasePrice * 100).toFixed(1) + '%'); } else { setText('snap-caprate', '—%'); }
+    // Returns use the lease rent and the profile's fixed costs (a steady month), not this month's
+    // collections: one catch-up month or a late payment would otherwise swing them wildly.
+    // Variable expenses (repairs etc.) aren't in these estimates.
+    if (monthlyRent) {
+      var annualCash = (monthlyRent - fixedTotal(snap.prop, false)) * 12;
+      var annualNoi  = (monthlyRent - fixedTotal(snap.prop, true)) * 12;
+      setText('snap-coc', snap.cashInvested > 0 ? (annualCash / snap.cashInvested * 100).toFixed(1) + '%' : '—');
+      setText('snap-coc-meta', snap.cashInvested > 0
+        ? money(annualCash) + '/yr after fixed costs ÷ cash invested'
+        : 'Needs cash invested on the property profile');
+      setText('snap-caprate', snap.purchasePrice > 0 ? (annualNoi / snap.purchasePrice * 100).toFixed(1) + '%' : '—');
+      setText('snap-caprate-meta', snap.purchasePrice > 0
+        ? 'NOI ' + money(annualNoi) + '/yr (rent − tax, insurance, HOA) ÷ price'
+        : 'Needs the purchase price on the property profile');
+    } else {
+      setText('snap-coc', '—'); setText('snap-coc-meta', 'No lease rent to estimate from');
+      setText('snap-caprate', '—'); setText('snap-caprate-meta', 'No lease rent to estimate from');
+    }
 
     /* Update net card colour */
     var netEl = $('snap-net');
@@ -1590,24 +1616,53 @@ function ymdLocal(d) {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
-// Fixed monthly costs on the property profile, and the expense categories that log the same cost
-// (add-expense's mortgage split logs Principal / Interest / Tax / Insurance / PMI lines).
-var FIXED_PARTS = [
-  { col: 'mortgage_pi',       cats: ['Mortgage Payment', 'Mortgage Principal', 'Mortgage Interest'], debt: true },
-  { col: 'pmi_monthly',       cats: ['PMI'], debt: true },
-  { col: 'tax_monthly',       cats: ['Property Tax'] },
-  { col: 'insurance_monthly', cats: ['Insurance'] },
-  { col: 'hoa_monthly',       cats: ['HOA'] }
-];
-var DEBT_CATS = ['Mortgage Payment', 'Mortgage Principal', 'Mortgage Interest', 'PMI'];
+// Fixed monthly costs from the property profile, as one model used by every section.
+// Two ways a property records its mortgage:
+//   - itemized (mortgage_pi set): P&I + PMI + tax + insurance + HOA;
+//   - one "Monthly payment" (what every property uses today): the full payment, escrow included,
+//     the way property-mortgage-activity reads it. Known tax/insurance amounts are treated as the
+//     escrow inside it (split out so NOI can leave out only the debt part); HOA is added on top.
+// Each part names the expense categories that log the same cost, so a month where it was logged as
+// an expense doesn't count it twice. debt = left out of NOI (cap rate).
+var PROP_FIXED_COLS = 'name, monthly_payment, mortgage_pi, pmi_monthly, tax_monthly, tax_monthly_current, insurance_monthly, insurance_monthly_current, hoa_monthly';
+var MORTGAGE_CATS = ['Mortgage Payment', 'Mortgage Principal', 'Mortgage Interest'];
+var DEBT_CATS = MORTGAGE_CATS.concat(['PMI']);
+function fixedParts(prop) {
+  if (!prop) return [];
+  var n = function (v) { var x = Number(v); return isFinite(x) && x > 0 ? x : 0; };
+  var tax = n(prop.tax_monthly) || n(prop.tax_monthly_current);
+  var ins = n(prop.insurance_monthly) || n(prop.insurance_monthly_current);
+  var hoa = n(prop.hoa_monthly);
+  var parts = [];
+  if (n(prop.mortgage_pi)) {
+    parts.push({ label: 'P&I', amount: n(prop.mortgage_pi), cats: MORTGAGE_CATS, debt: true });
+    if (n(prop.pmi_monthly)) parts.push({ label: 'PMI', amount: n(prop.pmi_monthly), cats: ['PMI'], debt: true });
+    if (tax) parts.push({ label: 'Tax', amount: tax, cats: ['Property Tax'] });
+    if (ins) parts.push({ label: 'Insurance', amount: ins, cats: ['Insurance'] });
+  } else if (n(prop.monthly_payment)) {
+    var pay = n(prop.monthly_payment);
+    var escTax = Math.min(tax, pay), escIns = Math.min(ins, pay - escTax);
+    // The whole payment is one bill: logging it as Mortgage Payment covers the escrow part too.
+    parts.push({ label: 'Mortgage', amount: pay - escTax - escIns, cats: MORTGAGE_CATS.concat(['PMI']), debt: true });
+    if (escTax) parts.push({ label: 'Tax (escrow)', amount: escTax, cats: MORTGAGE_CATS.concat(['Property Tax']) });
+    if (escIns) parts.push({ label: 'Insurance (escrow)', amount: escIns, cats: MORTGAGE_CATS.concat(['Insurance']) });
+  } else {
+    if (tax) parts.push({ label: 'Tax', amount: tax, cats: ['Property Tax'] });
+    if (ins) parts.push({ label: 'Insurance', amount: ins, cats: ['Insurance'] });
+  }
+  if (hoa) parts.push({ label: 'HOA', amount: hoa, cats: ['HOA'] });
+  return parts;
+}
+function fixedTotal(prop, operatingOnly) {
+  return fixedParts(prop).reduce(function (t, f) { return operatingOnly && f.debt ? t : t + f.amount; }, 0);
+}
 // Profile fixed costs that weren't logged as an expense in the period, so nothing is counted twice.
 // operatingOnly leaves out debt service (for NOI / cap rate).
 function fixedNotLogged(prop, loggedCats, operatingOnly) {
-  if (!prop) return 0;
-  return FIXED_PARTS.reduce(function (t, f) {
+  return fixedParts(prop).reduce(function (t, f) {
     if (operatingOnly && f.debt) return t;
     var logged = f.cats.some(function (c) { return loggedCats.has(c); });
-    return logged ? t : t + Number(prop[f.col] || 0);
+    return logged ? t : t + f.amount;
   }, 0);
 }
 
@@ -1633,7 +1688,7 @@ async function loadTrend12Months(propertyName) {
   if (!isPortfolio && propertyName) expQ = expQ.eq('property_name', propertyName);
 
   var fixedQ = isPortfolio
-    ? safeSelect('properties', 'name, mortgage_pi, tax_monthly, insurance_monthly, hoa_monthly, pmi_monthly', function (q) {
+    ? safeSelect('properties', PROP_FIXED_COLS, function (q) {
         if (activeCompanyId) q = q.eq('company_id', activeCompanyId);
         return q.is('archived_at', null);
       })
@@ -1715,50 +1770,99 @@ function renderTrendChart(labels, rent, expenses, fixed, net) {
    Net = rent − expenses − mortgage for the months elapsed this year, skipping months the mortgage
    was already logged as an expense (add-expense's mortgage split), so nothing counts twice.
 ============================================================ */
-var PORTFOLIO_MORTGAGE_CATS = ['Mortgage Payment', 'Mortgage Principal', 'Mortgage Interest'];
 async function loadPortfolioYtd() {
   var body = $('portfolioYtdBody'), foot = $('portfolioYtdFoot'), meta = $('portfolioYtdMeta');
   if (!body) return;
   var now = new Date(), yearStart = now.getFullYear() + '-01-01', monthsElapsed = now.getMonth() + 1;
-  var pq = sb.from('properties').select('id, name, monthly_payment, mortgage_pi').is('archived_at', null).order('name');
+  var pq = sb.from('properties').select('id, ' + PROP_FIXED_COLS).is('archived_at', null).order('name');
   var rq = sb.from('rent_log').select('property_name, amount').is('archived_at', null).gte('date_paid', yearStart);
   var eq = sb.from('expenses').select('property_name, amount, category, date_paid').is('archived_at', null).gte('date_paid', yearStart);
   if (activeCompanyId) { pq = pq.eq('company_id', activeCompanyId); rq = rq.eq('company_id', activeCompanyId); eq = eq.eq('company_id', activeCompanyId); }
   try {
     var res = await Promise.all([pq, rq, eq]);
     if (res[0].error) throw res[0].error;
-    var rent = {}, exp = {}, mortLogged = {};
+    var rent = {}, exp = {}, cats = {};  // cats: 'property|YYYY-MM' -> Set of logged categories
     (res[1].data || []).forEach(function (r) { rent[r.property_name] = (rent[r.property_name] || 0) + Number(r.amount || 0); });
     (res[2].data || []).forEach(function (e) {
       exp[e.property_name] = (exp[e.property_name] || 0) + Number(e.amount || 0);
       var k = monthKey(e.date_paid);
-      if (k && PORTFOLIO_MORTGAGE_CATS.indexOf(e.category) !== -1) (mortLogged[e.property_name] = mortLogged[e.property_name] || {})[k] = true;
+      if (k) { var ck = e.property_name + '|' + k; (cats[ck] = cats[ck] || new Set()).add(e.category); }
     });
-    var tot = { rent: 0, exp: 0, mort: 0, net: 0 };
+    var tot = { rent: 0, exp: 0, fixed: 0, net: 0 };
     body.textContent = ''; foot.textContent = '';
-    var props = res[0].data || [];
+    var props = res[0].data || [], none = new Set();
     props.forEach(function (p) {
-      var mort = Number(p.monthly_payment || p.mortgage_pi || 0), mortYtd = 0;
+      var fixedMo = fixedTotal(p, false), fixedYtd = 0;
       for (var m = 1; m <= monthsElapsed; m++) {
         var key = now.getFullYear() + '-' + String(m).padStart(2, '0');
-        if (!(mortLogged[p.name] || {})[key]) mortYtd += mort;
+        fixedYtd += fixedNotLogged(p, cats[p.name + '|' + key] || none, false);
       }
-      var r = rent[p.name] || 0, e = exp[p.name] || 0, net = r - e - mortYtd;
-      tot.rent += r; tot.exp += e; tot.mort += mort; tot.net += net;
-      body.appendChild(portfolioRow([p.name || '—', fmt(r), fmt(e), fmt(mort), signedFmt(net)], net));
+      var r = rent[p.name] || 0, e = exp[p.name] || 0, net = r - e - fixedYtd;
+      tot.rent += r; tot.exp += e; tot.fixed += fixedMo; tot.net += net;
+      body.appendChild(portfolioRow([p.name || '—', fmt(r), fmt(e), fmt(fixedMo), signedFmt(net)], net));
     });
     if (!props.length) {
       var tr = document.createElement('tr'), td = document.createElement('td');
       td.colSpan = 5; td.className = 'rpt-empty'; td.textContent = 'No properties yet.'; tr.appendChild(td); body.appendChild(tr);
     } else {
-      var t = portfolioRow(['Total', fmt(tot.rent), fmt(tot.exp), fmt(tot.mort), signedFmt(tot.net)], tot.net);
+      var t = portfolioRow(['Total', fmt(tot.rent), fmt(tot.exp), fmt(tot.fixed), signedFmt(tot.net)], tot.net);
       t.className = 'rpt-totals'; foot.appendChild(t);
     }
-    if (meta) meta.textContent = props.length + ' propert' + (props.length === 1 ? 'y' : 'ies') + ' · Jan 1 to today';
+    if (meta) meta.textContent = props.length + ' propert' + (props.length === 1 ? 'y' : 'ies') + ' · Jan 1 to today · rent by date received';
   } catch (e) {
     console.error('Portfolio YTD error:', e);
     if (meta) meta.textContent = 'Could not load';
   }
+  loadPaymentChecks().catch(function (e) { console.error('Payment check error:', e); });
+}
+
+// Payments that look entered twice: several payments applied to one due date adding up to at least
+// two of the largest payment, or the same amount on the same day for the same property. They inflate
+// "rent received" everywhere, so they're listed for the landlord to review (nothing is changed here).
+async function loadPaymentChecks() {
+  var box = $('paymentChecks'), list = $('paymentChecksList');
+  if (!box || !list) return;
+  var since = new Date(); since.setMonth(since.getMonth() - 18);
+  var q = sb.from('rent_log').select('id, property_name, date_paid, amount, applied_to_due_date, method')
+    .is('archived_at', null).gte('date_paid', ymdLocal(since)).order('date_paid');
+  if (activeCompanyId) q = q.eq('company_id', activeCompanyId);
+  var res = await q;
+  if (res.error) throw res.error;
+  var rows = res.data || [], groups = {}, seen = {}, flags = [];
+  rows.forEach(function (r) {
+    if (r.applied_to_due_date) (groups[r.property_name + '|' + r.applied_to_due_date] = groups[r.property_name + '|' + r.applied_to_due_date] || []).push(r);
+  });
+  Object.keys(groups).forEach(function (k) {
+    var g = groups[k], sum = 0, max = 0;
+    g.forEach(function (r) { var a = Number(r.amount || 0); sum += a; if (a > max) max = a; });
+    if (g.length >= 2 && max > 0 && sum >= 2 * max - 0.005) {
+      g.forEach(function (r) { seen[r.id] = true; });
+      flags.push({ property: g[0].property_name, text: g.length + ' payments (' + money(sum) + ') applied to rent due ' + fmtDate(g[0].applied_to_due_date), extra: sum - max, date: g[0].applied_to_due_date });
+    }
+  });
+  var sameDay = {};
+  rows.forEach(function (r) { if (!seen[r.id]) (sameDay[r.property_name + '|' + r.date_paid + '|' + Number(r.amount)] = sameDay[r.property_name + '|' + r.date_paid + '|' + Number(r.amount)] || []).push(r); });
+  Object.keys(sameDay).forEach(function (k) {
+    var g = sameDay[k];
+    if (g.length >= 2) flags.push({ property: g[0].property_name, text: g.length + ' payments of ' + money(g[0].amount) + ' on ' + fmtDate(g[0].date_paid), extra: Number(g[0].amount) * (g.length - 1), date: g[0].date_paid });
+  });
+  list.textContent = '';
+  if (!flags.length) { box.hidden = true; return; }
+  flags.sort(function (a, b) { return a.property < b.property ? -1 : a.property > b.property ? 1 : (a.date < b.date ? -1 : 1); });
+  var extra = flags.reduce(function (t, f) { return t + f.extra; }, 0);
+  setText('paymentChecksMeta', flags.length + ' to review · up to ' + money(extra) + ' may be counted twice');
+  flags.forEach(function (f) {
+    var li = document.createElement('li');
+    var b = document.createElement('strong'); b.textContent = f.property + ': ';
+    li.appendChild(b);
+    li.appendChild(document.createTextNode(f.text + ' '));
+    var a = document.createElement('a');
+    a.href = 'lease-rent-center.html?property=' + encodeURIComponent(f.property) + '&view=ledger';
+    a.textContent = 'Review in ledger →';
+    li.appendChild(a);
+    list.appendChild(li);
+  });
+  box.hidden = false;
 }
 function signedFmt(v) { return (v < 0 ? '-' : '+') + fmt(Math.abs(v)); }
 function portfolioRow(cells, net) {

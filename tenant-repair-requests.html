@@ -522,6 +522,7 @@
   }
   .photo-thumb.uploading .up-status { display: flex; }
   .photo-thumb.upload-failed { border-color: var(--danger); }
+  .repair-plan { margin-top: 4px; font-size: .78rem; font-weight: 600; color: #1e3a5f; }
   .photo-count-badge {
     display: inline-flex; align-items: center; gap: 4px; font-size: .72rem; font-weight: 700;
     color: var(--muted); background: #f1f5f9; border-radius: 999px; padding: 2px 9px; margin-left: 6px;
@@ -577,6 +578,7 @@ body { overflow-x: hidden; }
 <body class="tenant-workspace">
 
 <!-- ═══ SUPABASE (body-first) ═══ -->
+<script src="shared/js/tenant-data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ── rgFiles ────────────────────────────────────────────────────────────────
@@ -621,7 +623,8 @@ window.rgFiles = (function () {
       el.removeAttribute('data-rg-file');
       resolve(client, raw.slice(0, i), decodeURIComponent(raw.slice(i + 1))).then(function (url) {
         if (!url) { el.removeAttribute('href'); el.title = 'File unavailable'; return; }
-        if (el.tagName === 'IMG') el.src = url; else el.href = url;
+        // Open in a new tab only once the signed link exists (href="#" in a new sheet is the page itself)
+        if (el.tagName === 'IMG') el.src = url; else { el.href = url; el.target = '_blank'; el.rel = 'noopener noreferrer'; }
       });
     });
   }
@@ -894,6 +897,7 @@ window.rgFiles = (function () {
   const sb = window._rgClient;
   const params = new URLSearchParams(location.search);
   const propertyFromUrl = (params.get('property') || '').trim();
+  const propertyIdFromUrl = (params.get('property_id') || '').trim();
   let selectedUrgency = 'Normal';
   let user = null;
   let requests = [];
@@ -1098,6 +1102,13 @@ window.rgFiles = (function () {
     return reimbursements.find(r=>r.maintenance_request_id===requestId) || null;
   }
 
+  // The plan your landlord set (the same appointment and vendor the update emails mention)
+  function planLine(r){
+    const bits=[];
+    if(r.scheduled_at){ const d=new Date(r.scheduled_at); if(!isNaN(d)) bits.push('📅 '+safe(d.toLocaleString(undefined,{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}))); }
+    if(r.assigned_vendor) bits.push('👷 '+safe(r.assigned_vendor));
+    return bits.length ? '<div class="repair-plan">'+bits.join(' · ')+'</div>' : '';
+  }
   function render(){
     const q = ($('search').value||'').trim().toLowerCase();
     let filtered = q ? requests.filter(r=>(safe(r.issue_description)+safe(r.issue_summary)+safe(r.issue)+safe(r.status)+safe(r.property_name)).toLowerCase().includes(q)) : requests;
@@ -1119,7 +1130,7 @@ window.rgFiles = (function () {
       <tr>
         <td style="white-space:nowrap">${fmtDate(r.created_at||r.inserted_at||r.date_submitted)}</td>
         <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safe(r.property_name)||'—'}</td>
-        <td style="max-width:220px">${safe(r.issue_description||r.issue_summary||r.issue||r.description)||'—'}${pc?`<span class="photo-count-badge">📷 ${pc}</span>`:''}</td>
+        <td style="max-width:220px">${safe(r.issue_description||r.issue_summary||r.issue||r.description)||'—'}${pc?`<span class="photo-count-badge">📷 ${pc}</span>`:''}${planLine(r)}</td>
         <td>${urgencyChip(r.urgency_level||r.urgency||r.priority)}</td>
         <td>${statusChip(r.status)}</td>
         <td>${reimbCell}</td>
@@ -1145,7 +1156,7 @@ window.rgFiles = (function () {
         <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${relatedLabel}</td>
         <td>${money(r.amount)}</td>
         <td>${reimbChip(r.status)}</td>
-        <td>${(r.receipt_path || r.receipt_url) ? `<a class="btn sm" href="#"${rgFiles.attr('receipts', r.receipt_path || r.receipt_url)} target="_blank" rel="noopener noreferrer">🧾 View</a>` : '—'}</td>
+        <td>${(r.receipt_path || r.receipt_url) ? `<a class="btn sm" href="#"${rgFiles.attr('receipts', r.receipt_path || r.receipt_url)}>🧾 View</a>` : '—'}</td>
       </tr>`;
     }).join('');
     const labels = ['Date','Related repair','Amount','Status','Receipt'];
@@ -1155,27 +1166,40 @@ window.rgFiles = (function () {
 
   async function loadData(){
     $('reqBody').innerHTML='<tr><td colspan="6"><span class="skel" style="width:60%;height:16px;"></span></td></tr>';
-    const {data,error} = tenant
-      ? await sb.from('maintenance_requests').select('*').eq('tenant_id',tenant.id).order('created_at',{ascending:false})
-      : await sb.from('maintenance_requests').select('*').eq('tenant_email',user.email).order('created_at',{ascending:false});
+    // Tenant id or email (like RLS); archived requests were removed by the landlord
+    const {data,error} = await rgTenant.mine(sb.from('maintenance_requests').select('*').is('archived_at',null), tenant, user.email)
+      .order('created_at',{ascending:false});
     if(error){ $('tenantRepairResults').textContent='Requests unavailable. Try Refresh.'; ['kpiTotal','kpiOpen','kpiDone'].forEach(id=>$(id).textContent='—'); $('reqBody').innerHTML=`<tr><td colspan="6" style="color:var(--danger)">${safe(error.message)}</td></tr>`; return; }
     requests = data||[];
     updateKpis();
 
     // Reimbursement requests (tenant-scoped)
-    const rr = tenant
-      ? await sb.from('reimbursement_requests').select('*').eq('tenant_id',tenant.id).order('requested_at',{ascending:false})
-      : await sb.from('reimbursement_requests').select('*').eq('tenant_email',user.email).order('requested_at',{ascending:false});
+    const rr = await rgTenant.mine(sb.from('reimbursement_requests').select('*'), tenant, user.email)
+      .order('requested_at',{ascending:false});
     reimbursements = (!rr.error && rr.data) ? rr.data : [];
 
     render();
     renderReimbursements();
-    // Auto-fill property
-    if(!$('property').value){
-      const {data:ld} = tenant
-        ? await sb.from('leases').select('property_name').eq('tenant_id',tenant.id).order('lease_start',{ascending:false}).limit(1)
-        : await sb.from('leases').select('property_name').eq('tenant_email',user.email).order('lease_start',{ascending:false}).limit(1);
-      if(ld?.[0]?.property_name) $('property').value = ld[0].property_name;
+    await fillProperty();
+  }
+
+  // The property field: the rental(s) the tenant can file for (non-archived, non-draft leases).
+  // One rental: filled in (read-only). Several: a picker, starting on the one from the link.
+  async function fillProperty(){
+    const {data:ls} = await rgTenant.mine(sb.from('leases').select('id,property_id,property_name,status,lease_start,archived_at').is('archived_at',null), tenant, user.email)
+      .order('lease_start',{ascending:false});
+    const usable = (ls||[]).filter(l => l.property_name && String(l.status||'').toLowerCase() !== 'draft');
+    const names = Array.from(new Set(usable.map(l => l.property_name)));
+    const field = $('property');
+    const wanted = (rgTenant.forUrl(usable, propertyFromUrl, propertyIdFromUrl)[0] || usable[0] || {}).property_name || '';
+    if(names.length > 1 && field.tagName !== 'SELECT'){
+      const sel = document.createElement('select');
+      sel.id = 'property'; sel.className = field.className;
+      names.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = n; sel.appendChild(o); });
+      field.replaceWith(sel);
+      sel.value = wanted || names[0];
+    } else if(field.tagName !== 'SELECT'){
+      field.value = names[0] || field.value || '';
     }
   }
 
@@ -1187,9 +1211,8 @@ window.rgFiles = (function () {
     const btn=$('btnSubmit'); btn.disabled=true; btn.textContent='Submitting…';
 
     // Resolve company_id and property_id from the tenant's lease
-    const {data:leaseData,error:leaseErr} = tenant
-      ? await sb.from('leases').select('company_id,property_id').eq('tenant_id',tenant.id).eq('property_name',property_name).is('archived_at',null).order('lease_start',{ascending:false}).limit(1)
-      : await sb.from('leases').select('company_id,property_id').eq('tenant_email',user.email).eq('property_name',property_name).is('archived_at',null).order('lease_start',{ascending:false}).limit(1);
+    const {data:leaseData,error:leaseErr} = await rgTenant.mine(sb.from('leases').select('company_id,property_id').eq('property_name',property_name).is('archived_at',null), tenant, user.email)
+      .order('lease_start',{ascending:false}).limit(1);
     if(leaseErr || !leaseData || leaseData.length === 0){
       setMsg('❌ Could not resolve your property. Please refresh and try again.','err');
       btn.disabled=false; btn.textContent='📨 Submit Request'; return;
@@ -1302,7 +1325,7 @@ window.rgFiles = (function () {
   // Init
   async function init(){
     $('footerYear').textContent = new Date().getFullYear();
-    if(propertyFromUrl) $('property').value = decodeURIComponent(propertyFromUrl);
+    if(propertyFromUrl) $('property').value = propertyFromUrl;
     user = await requireAuth();
     if(!user) return;
     $('authGate').classList.add('hidden');

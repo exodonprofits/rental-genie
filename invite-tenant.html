@@ -563,7 +563,7 @@ async function loadProperties(){
   sel.innerHTML='<option value="">— Loading… —</option>';
   try{
     var cid=qp('company_id');
-    var q=window.sb.from('properties').select('id,name,address,company_id').order('name');
+    var q=window.sb.from('properties').select('id,name,address,company_id').is('archived_at',null).order('name');
     if(cid) q=q.eq('company_id',cid);
     var {data,error}=await q;
     if(error) throw error;
@@ -603,10 +603,15 @@ async function loadLeases(propName){
   $('tenantChip').classList.remove('show');
   if(!propName){sel.innerHTML='<option value="">— Select a property first —</option>';$('leaseHint').textContent='Select a property to load leases.';return;}
   try{
-    var {data,error}=await window.sb.from('leases')
+    // Leases of this property (by id when known; names are display copies), never archived ones
+    var opt=$('propertySelect').selectedOptions && $('propertySelect').selectedOptions[0];
+    var pid=opt&&opt.dataset.propertyId, cid2=opt&&opt.dataset.companyId;
+    var lq=window.sb.from('leases')
       .select('id,tenant_name,tenant_email,tenant_phone,lease_start,lease_end,status')
-      .eq('property_name',propName)
-      .order('lease_start',{ascending:false}).limit(10);
+      .is('archived_at',null);
+    lq=pid?lq.eq('property_id',pid):lq.eq('property_name',propName);
+    if(cid2) lq=lq.eq('company_id',cid2);
+    var {data,error}=await lq.order('lease_start',{ascending:false}).limit(10);
     if(error) throw error;
     var leases=data||[];
     sel.innerHTML='<option value="">— No lease (send link only) —</option>';
@@ -614,15 +619,19 @@ async function loadLeases(propName){
     leases.forEach(function(l){
       var o=document.createElement('option');
       o.value=l.id;
-      var s=l.lease_start?new Date(l.lease_start).toLocaleDateString():'—';
-      var e=l.lease_end  ?new Date(l.lease_end).toLocaleDateString():'—';
+      // Calendar dates as local dates (new Date('2026-02-01') shows Jan 31 in the US)
+      var ld=function(v){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(v||''));return m?new Date(+m[1],+m[2]-1,+m[3]).toLocaleDateString():'—';};
+      var s=ld(l.lease_start);
+      var e=ld(l.lease_end);
       o.textContent=s+' → '+e+' • '+(l.tenant_name||'Tenant')+' • '+(l.status||'—');
       o.dataset.name=l.tenant_name||''; o.dataset.email=l.tenant_email||''; o.dataset.phone=l.tenant_phone||'';
       sel.appendChild(o);
     });
     sel.disabled=false;
-    sel.value=leases[0].id;
-    prefillTenant({tenant_name:leases[0].tenant_name,tenant_email:leases[0].tenant_email,tenant_phone:leases[0].tenant_phone});
+    // Default: the newest signed lease (a draft renewal only when nothing else exists)
+    var pick=leases.filter(function(l){return String(l.status||'').toLowerCase()!=='draft';})[0]||leases[0];
+    sel.value=pick.id;
+    prefillTenant({tenant_name:pick.tenant_name,tenant_email:pick.tenant_email,tenant_phone:pick.tenant_phone});
     $('leaseHint').textContent='Latest lease selected — tenant info pre-filled.';
   }catch(e){
     sel.innerHTML='<option value="">— Error loading leases —</option>';

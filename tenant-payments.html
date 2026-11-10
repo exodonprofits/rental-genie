@@ -473,6 +473,7 @@
 </head>
 <body class="tenant-workspace tenant-resources">
 <!-- ═══ SUPABASE (body-first) ═══ -->
+<script src="shared/js/tenant-data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ══════════════════════════════ -->
 
@@ -689,6 +690,7 @@
   /* ── Helpers ────────────────────────────────────────────── */
   var params              = new URLSearchParams(location.search);
   var propertyFilterFromUrl = (params.get('property') || '').trim();
+  var propertyIdFromUrl = (params.get('property_id') || '').trim();
 
   function $(id) { return document.getElementById(id); }
   function setText(id, val) { var e = $(id); if (e) e.textContent = val ?? '—'; }
@@ -715,11 +717,9 @@
   }
   // Rent figures come from the database (rg_my_rent_schedule: the landlord's rg_rent_schedule limited
   // to this tenant's lease). As-of is the end of next month so the next due date is listed.
+  // Balances as of today; next due date from a look-ahead call for the same lease (rgTenant.schedule)
   function loadMySchedule() {
-    var now = new Date();
-    return sb.rpc('rg_my_rent_schedule', { p_as_of: ymdLocal(new Date(now.getFullYear(), now.getMonth() + 2, 0)) })
-      .then(function (r) { if (r.error) return null; return r.data || []; })
-      .catch(function () { return null; });
+    return rgTenant.schedule(sb).then(function (s) { return s.failed ? null : s; });
   }
 
   function hideOverlay() {
@@ -976,7 +976,8 @@
       if (statPaid) { statPaid.classList.remove('warn-stat','danger-stat'); statPaid.classList.add('good-stat'); }
     } else {
       var remaining = fmtMoney(st.monthBalance);
-      showStatusBanner('warn', '🕐', 'Payment pending this month', fmtMoney(paid) + ' paid — ' + remaining + ' still outstanding before due date.');
+      var dueText = st.dueDate ? (st.dueDate >= rgTenant.today() ? ' still to pay by ' + fmtDate(st.dueDate) + '.' : ' still to pay (due ' + fmtDate(st.dueDate) + ').') : ' still to pay.';
+      showStatusBanner('warn', '🕐', 'Payment pending this month', fmtMoney(paid) + ' paid — ' + remaining + dueText);
       var sp2 = $('statPaid');
       if (sp2) { sp2.classList.remove('good-stat','danger-stat'); sp2.classList.add('warn-stat'); }
     }
@@ -1099,46 +1100,17 @@
       .catch(function () { return null; });
   }
 
+  // This tenant's payments (tenant id or email, like RLS), for the rental shown; archived ones never show
   function loadPayments(user, lease, tenant) {
-    var baseSelect = 'id, property_name, date_paid, amount, method, note, inserted_at';
-    var applyProp = function (q) { return propertyFilterFromUrl ? q.eq('property_name', propertyFilterFromUrl) : q; };
-
-    function tryQuery(q) {
-      return q.then(function (res) {
-        if (res.error) throw res.error;
-        return res.data || [];
-      });
-    }
-
-    /* Strategy 0: tenant_id — preferred, doesn't depend on email at all */
-    if (tenant && tenant.id) {
-      return tryQuery(applyProp(
-        sb.from('rent_log').select(baseSelect).order('date_paid', { ascending: false }).eq('tenant_id', tenant.id)
-      ));
-    }
-
-    /* Strategy 1: tenant_email */
-    return tryQuery(applyProp(
-      sb.from('rent_log').select(baseSelect).order('date_paid', { ascending: false }).ilike('tenant_email', user.email)
-    )).catch(function (err1) {
-      var msg = String((err1 && err1.message) || err1);
-      var isMissingCol = /tenant_email/i.test(msg) && /does not exist|42703/i.test(msg);
-      if (!isMissingCol) throw err1;
-
-      /* Strategy 2: lease_id */
-      if (!lease || !lease.id) throw new Error('No lease context for lease_id fallback');
-      return tryQuery(applyProp(
-        sb.from('rent_log').select(baseSelect).order('date_paid', { ascending: false }).eq('lease_id', lease.id)
-      )).catch(function (err2) {
-        var msg2 = String((err2 && err2.message) || err2);
-        var isMissingCol2 = /lease_id/i.test(msg2) && /does not exist|42703/i.test(msg2);
-        if (!isMissingCol2) throw err2;
-
-        /* Strategy 3: tenant_name */
-        if (!lease || !lease.tenant_name) throw new Error('No tenant_name for fallback');
-        return tryQuery(applyProp(
-          sb.from('rent_log').select(baseSelect).order('date_paid', { ascending: false }).eq('tenant_name', lease.tenant_name)
-        ));
+    var q = rgTenant.mine(sb.from('rent_log')
+      .select('id, property_id, property_name, lease_id, tenant_id, tenant_email, date_paid, amount, method, note, inserted_at')
+      .is('archived_at', null), tenant, user.email)
+      .order('date_paid', { ascending: false });
+    return q.then(function (res) {
+      if (res.error) throw res.error;
+      return (res.data || []).filter(function (r) {
+        return !lease || r.lease_id === lease.id
+          || (lease.property_id ? r.property_id === lease.property_id : r.property_name === lease.property_name);
       });
     });
   }
@@ -1167,38 +1139,29 @@
         var _em = document.getElementById('userEmail'); if (_em) _em.textContent = _parts[0];
         var _fn = document.getElementById('umdFullName'); if (_fn) _fn.textContent = tenant.tenant_name;
       }
-    var leaseQ = tenant
-      ? sb.from('leases')
-          .select('id, property_name, rent_amount, tenant_name, status, rent_due_day, due_day, grace_period, late_fee_grace_days, lease_start, lease_end, owner_id, company_id')
-          .eq('tenant_id', tenant.id)
-          .order('lease_start', { ascending: false })
-      : sb.from('leases')
-          .select('id, property_name, rent_amount, tenant_name, status, rent_due_day, due_day, grace_period, late_fee_grace_days, lease_start, lease_end, owner_id, company_id')
-          .ilike('tenant_email', user.email)
+    var leaseQ = rgTenant.mine(sb.from('leases')
+          .select('id, property_id, property_name, rent_amount, tenant_name, status, rent_due_day, due_day, grace_period, late_fee_grace_days, lease_start, lease_end, terminated_date, owner_id, company_id, archived_at')
+          .is('archived_at', null), tenant, user.email)
           .order('lease_start', { ascending: false });
-    if (propertyFilterFromUrl) leaseQ = leaseQ.eq('property_name', propertyFilterFromUrl);
 
-    Promise.all([leaseQ.limit(10), loadMySchedule()]).then(function (out) {
+    Promise.all([leaseQ.limit(20), loadMySchedule()]).then(function (out) {
       var res        = out[0];
       var scheduleAvailable = out[1] !== null;
-      var schedAll   = out[1] || [];
-      var lease      = (res.data && res.data.length) ? res.data[0] : null;
+      var schedObj   = out[1];
+      var lease      = rgTenant.pickLease(rgTenant.forUrl(res.data, propertyFilterFromUrl, propertyIdFromUrl), schedObj);
       var rentAmount = lease ? Number(lease.rent_amount || 0) : 0;
 
       // Schedule rows for this lease (database figures)
       var todayISO   = ymdLocal(new Date());
-      var sched      = schedAll.filter(function (r) { return lease && r.lease_id === lease.id; })
-        .sort(function (a, b) { return a.due_date < b.due_date ? -1 : 1; });
+      var sched      = lease ? rgTenant.rowsFor(schedObj, lease.id) : [];
       var owedRows   = sched.filter(function (r) { return r.due_date <= todayISO && Number(r.balance || 0) > 0; });
       var nextRow    = owedRows[0] || sched.filter(function (r) { return r.due_date > todayISO; })[0] || null;
       var nextDue    = nextRow ? nextRow.due_date : null;
       var monthRow   = sched.filter(function (r) { return r.due_date.slice(0, 7) === todayISO.slice(0, 7); })[0] || null;
-      var graceDays  = lease ? Number(lease.grace_period || lease.late_fee_grace_days || 0) || 0 : 0;
-      var pastDue    = owedRows.some(function (r) {
-        var d = new Date(r.due_date + 'T00:00:00'); d.setDate(d.getDate() + graceDays);
-        return ymdLocal(d) < todayISO;
-      });
+      // Late = past the schedule's own grace period (the database's rule)
+      var pastDue    = owedRows.some(rgTenant.pastDue);
       var schedStatus = {
+        dueDate: monthRow ? monthRow.due_date : null,
         rent: monthRow ? Number(monthRow.rent_amount || 0) : rentAmount,
         paid: monthRow ? Number(monthRow.paid || 0) : 0,
         monthBalance: monthRow ? Number(monthRow.balance || 0) : 0,

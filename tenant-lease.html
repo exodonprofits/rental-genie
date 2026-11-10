@@ -701,6 +701,7 @@ body { overflow-x: hidden; }
   </div>
 </footer>
 
+<script src="shared/js/tenant-data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function () {
@@ -724,6 +725,7 @@ body { overflow-x: hidden; }
   /* ── Helpers ────────────────────────────────────────────── */
   var params         = new URLSearchParams(location.search);
   var propertyFilter = (params.get('property') || '').trim();
+  var propertyIdFilter = (params.get('property_id') || '').trim();
 
   function $(id) { return document.getElementById(id); }
   function setText(id, val) { var e = $(id); if (e) e.textContent = val ?? '—'; }
@@ -732,11 +734,8 @@ body { overflow-x: hidden; }
     var n = Number(v);
     return isNaN(n) ? '—' : n.toLocaleString(undefined, { style: 'currency', currency: 'USD' });
   }
-  function fmtDate(iso) {
-    if (!iso) return '—';
-    var d = new Date(iso);
-    return isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
-  }
+  // Lease dates are calendar dates: read as local dates (new Date('2026-02-01') shows Jan 31 in the US)
+  function fmtDate(iso) { return rgTenant.fmtDate(iso); }
   function escapeHtml(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
@@ -827,18 +826,19 @@ body { overflow-x: hidden; }
   }
 
   /* ── Timeline ───────────────────────────────────────────── */
-  function renderTimeline(lease) {
+  function renderTimeline(lease, state) {
     if (!lease.lease_start || !lease.lease_end) return;
     var card = $('timelineCard');
     if (card) card.style.display = 'block';
 
-    var start    = new Date(lease.lease_start);
-    var end      = new Date(lease.lease_end);
-    var now      = new Date();
-    var total    = end - start;
-    var elapsed  = now - start;
+    // Local calendar dates; the end date is the lease's last day (it counts as a day of the term)
+    var start    = rgTenant.parseDay(lease.lease_start);
+    var end      = rgTenant.parseDay(lease.lease_end);
+    var now      = rgTenant.parseDay(rgTenant.today());
+    var total    = (end - start) + 86400000;
+    var elapsed  = (now - start) + 86400000;
     var pct      = Math.min(Math.max((elapsed / total) * 100, 0), 100);
-    var daysLeft = Math.ceil((end - now) / (1000 * 60 * 60 * 24));
+    var daysLeft = rgTenant.daysUntil(lease.lease_end);
 
     setText('tlStart', fmtDate(lease.lease_start));
     setText('tlEnd',   fmtDate(lease.lease_end));
@@ -852,17 +852,24 @@ body { overflow-x: hidden; }
     }
 
     var daysMsg;
-    if (daysLeft <= 0)        daysMsg = 'Lease has ended (' + Math.abs(daysLeft) + ' days ago)';
+    if (daysLeft < 0)         daysMsg = 'Term ended ' + Math.abs(daysLeft) + ' day' + (daysLeft === -1 ? '' : 's') + ' ago';
+    else if (daysLeft === 0)  daysMsg = 'Last day of the lease';
     else if (daysLeft === 1)  daysMsg = '1 day remaining';
     else                      daysMsg = daysLeft + ' days remaining · ' + pct.toFixed(0) + '% through term';
     setText('tlDaysLeft', daysMsg);
 
-    // Expiry notice
+    // Expiry notice. Holdover: past the end date but rent continues (the rent schedule's rule)
     var notice = $('expiryNotice');
     if (notice) {
-      if (daysLeft <= 0) {
+      if (state === 'holdover') {
+        notice.classList.remove('hidden');
+        setText('expiryNoticeText', 'Your lease term ended on ' + fmtDate(lease.lease_end) + '. Rent continues each month until you sign a renewal or move out. Please contact your landlord.');
+      } else if (state === 'ended' || daysLeft < 0) {
         notice.classList.remove('hidden');
         setText('expiryNoticeText', 'Your lease has ended. Please contact your landlord about renewal or move-out arrangements.');
+      } else if (daysLeft === 0) {
+        notice.classList.remove('hidden');
+        setText('expiryNoticeText', 'Today is the last day of your lease. Please contact your landlord about renewal or move-out arrangements.');
       } else if (daysLeft <= 45) {
         notice.classList.remove('hidden');
         setText('expiryNoticeText', 'Your lease expires in ' + daysLeft + ' day(s) on ' + fmtDate(lease.lease_end) + '. Consider reaching out to your landlord about renewal.');
@@ -876,8 +883,8 @@ body { overflow-x: hidden; }
     if (!badge) return;
     var s = (status || '').toLowerCase();
     badge.classList.remove('warn', 'muted');
-    if (!s || s.includes('unknown')) badge.classList.add('muted');
-    else if (!s.includes('active') && !s.includes('signed')) badge.classList.add('warn');
+    if (!s || s.includes('unknown') || s === '—') badge.classList.add('muted');
+    else if (!s.includes('active') && !s.includes('month')) badge.classList.add('warn');
   }
 
   /* ── Renewal mailto ─────────────────────────────────────── */
@@ -963,26 +970,22 @@ body { overflow-x: hidden; }
         var _em = document.getElementById('userEmail'); if (_em) _em.textContent = _parts[0];
         var _fn = document.getElementById('umdFullName'); if (_fn) _fn.textContent = tenant.tenant_name;
       }
-      var q = tenant
-        ? sb.from('leases')
-            .select('id, property_name, tenant_name, tenant_email, tenant_phone, lease_start, lease_end, rent_amount, status, rent_due_day, due_day, grace_period, late_fee_grace_days, late_fee_amount, late_fee')
-            .eq('tenant_id', tenant.id)
-            .order('lease_start', { ascending: false })
-        : sb.from('leases')
-            .select('id, property_name, tenant_name, tenant_email, tenant_phone, lease_start, lease_end, rent_amount, status, rent_due_day, due_day, grace_period, late_fee_grace_days, late_fee_amount, late_fee')
-            .ilike('tenant_email', user.email)
+      // This tenant's leases (tenant id or email, like RLS); archived ones never show
+      var q = rgTenant.mine(sb.from('leases')
+            .select('id, property_id, property_name, tenant_name, tenant_email, tenant_phone, lease_start, lease_end, terminated_date, rent_amount, status, rent_due_day, due_day, grace_period, late_fee_grace_days, late_fee_amount, late_fee, archived_at')
+            .is('archived_at', null), tenant, user.email)
             .order('lease_start', { ascending: false });
-      if (propertyFilter) q = q.eq('property_name', propertyFilter);
 
-      q.limit(25).then(function (res) {
+      Promise.all([q.limit(25), rgTenant.schedule(sb)]).then(function (out) {
+        var res = out[0], schedObj = out[1];
         if (res.error) {
           setAlert('danger', 'Could not load lease info. Please contact your landlord.');
           console.error(res.error);
           return;
         }
 
-        var list = res.data || [];
-        setText('leaseSub', propertyFilter ? 'Property: ' + propertyFilter : 'Your lease details');
+        var list = rgTenant.forUrl(res.data || [], propertyFilter, propertyIdFilter);
+        setText('leaseSub', 'Your lease details');
 
         if (!list.length) {
           setText('leaseSub', 'No lease found for your account.');
@@ -992,15 +995,18 @@ body { overflow-x: hidden; }
           return;
         }
 
-        var lease = list[0];
+        // The lease in effect (the one the rent schedule uses), not simply the newest row
+        var lease = rgTenant.pickLease(list, schedObj);
+        var state = rgTenant.leaseState(schedObj, lease);
+        if (lease.property_name) setText('leaseSub', 'Property: ' + lease.property_name);
 
         /* Hero panel */
         var heroEl = $('leaseHero');
         if (heroEl) heroEl.style.display = 'block';
         setText('heroProperty', lease.property_name || '—');
         setText('heroTenant',   'Tenant: ' + (lease.tenant_name || user.email));
-        setText('heroStatusText', lease.status || 'Unknown');
-        applyHeroBadge(lease.status);
+        setText('heroStatusText', rgTenant.stateLabel(state));
+        applyHeroBadge(rgTenant.stateLabel(state));
 
         var rentAmt = Number(lease.rent_amount || 0);
         setText('heroRent',   rentAmt ? fmtMoney(rentAmt) : '—');
@@ -1010,21 +1016,21 @@ body { overflow-x: hidden; }
         setText('heroEnd',    fmtDate(lease.lease_end));
 
         /* Timeline */
-        renderTimeline(lease);
+        renderTimeline(lease, state);
 
         /* Details card */
         var detCard = $('detailsCard');
         if (detCard) detCard.style.display = 'block';
         setText('detTenant',   lease.tenant_name || user.email);
         setText('detProperty', lease.property_name || '—');
-        setText('detStatus',   lease.status || '—');
+        setText('detStatus',   rgTenant.stateLabel(state));
         setText('detRent',     rentAmt ? fmtMoney(rentAmt) + ' / month' : '—');
         setText('detDueDay',   dueDay ? 'Day ' + dueDay + ' of each month' : '—');
         setText('detTerm',     fmtDate(lease.lease_start) + ' → ' + fmtDate(lease.lease_end));
 
         /* Late fee policy */
         var grace   = lease.grace_period ?? lease.late_fee_grace_days;
-        var lateFee = lease.late_fee_amount ?? lease.late_fee;
+        var lateFee = lease.late_fee ?? lease.late_fee_amount;  // the lease form saves late_fee
         var graceStr   = (grace   == null || grace   === '') ? 'not specified' : grace + ' day(s)';
         var lateFeeStr = (lateFee == null || lateFee === '') ? 'not specified' : fmtMoney(lateFee);
         setText('policyText',

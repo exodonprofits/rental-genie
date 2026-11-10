@@ -519,6 +519,7 @@ body { overflow-x: hidden; }
 </head>
 <body class="tenant-workspace tenant-resources">
 
+<script src="shared/js/tenant-data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){try{var _m=new Map(),_l=null;try{_l=window.localStorage;}catch(e){}var _s={getItem:function(k){try{return(_l&&_l.getItem(k))||_m.get(k)||null;}catch(e){return _m.get(k)||null;}},setItem:function(k,v){try{_l&&_l.setItem(k,v);}catch(e){}_m.set(k,v);},removeItem:function(k){try{_l&&_l.removeItem(k);}catch(e){}_m.delete(k);}};window._rgClient=window._rgClient||window.supabase.createClient('https://xqmnaeujwumlcoyhgzuk.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxbW5hZXVqd3VtbGNveWhnenVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1NTU0NzIsImV4cCI6MjEwNjEzMTQ3Mn0.GbOKbMKaFO79esF2hx9dCNe8oSIZuMrx6W5p7kfPgXQ',{auth:{lock:undefined,persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:_s}});window.sb=window.client=window._rgClient;}catch(e){console.error('RG bootstrap failed:',e);}})(  );
@@ -681,7 +682,8 @@ body { overflow-x: hidden; }
 
   function $(id){return document.getElementById(id);}
   function safe(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-  function fmtDate(d){if(!d)return'—';const dt=new Date(d);return isNaN(dt.getTime())?String(d):dt.toLocaleDateString(undefined,{year:'numeric',month:'short',day:'2-digit'});}
+  // Calendar dates (lease_end) as local dates, timestamps as usual (rgTenant.fmtDate)
+  function fmtDate(d){return rgTenant.fmtDate(d);}
   function withProp(url){if(!propertyFromUrl)return url;return url+(url.includes('?')?'&':'?')+'property='+encodeURIComponent(propertyFromUrl);}
   function setMsg(text,type){const el=$('statusMsg');el.className='status-msg '+(type||'');el.textContent=text||'';}
 
@@ -745,16 +747,15 @@ body { overflow-x: hidden; }
       const rowClass = fromLandlord ? 'msg-row from-landlord' : 'msg-row';
       const senderLabel = fromLandlord ? '<div class="msg-sender-label">🏠 Your Landlord</div>' : '';
       const chip = fromLandlord ? '<span class="chip info" style="margin-top:6px;display:inline-flex;">📩 Received</span>' : '<span class="chip good" style="margin-top:6px;display:inline-flex;">✅ Sent</span>';
-      return `<div class="${rowClass}"><div style="flex:1;min-width:0;">${senderLabel}<div class="msg-subject">${safe(m.subject||'No subject')}</div><div class="msg-body">${safe(m.message||m.body||'').slice(0,200)}${(m.message||m.body||'').length>200?'…':''}</div></div><div style="text-align:right;flex-shrink:0;"><div class="msg-meta">${fmtDate(m.created_at||m.sent_at)}</div>${chip}</div></div>`;
+      return `<div class="${rowClass}"><div style="flex:1;min-width:0;">${senderLabel}<div class="msg-subject">${safe(m.subject||'No subject')}</div><div class="msg-body">${safe(String(m.message||m.body||'').slice(0,200))}${(m.message||m.body||'').length>200?'…':''}</div></div><div style="text-align:right;flex-shrink:0;"><div class="msg-meta">${fmtDate(m.created_at||m.sent_at)}</div>${chip}</div></div>`;
     }).join('');
     Array.from(el.querySelectorAll('.msg-row')).forEach(function(row,index){const message=visible[index];if(String(message.message||message.body||'').length<=200)return;const details=document.createElement('details'),summary=document.createElement('summary'),text=document.createElement('p');summary.textContent='Read full message';text.textContent=message.message||message.body;details.append(summary,text);row.firstElementChild.appendChild(details)});
   }
   $('messageSearch').addEventListener('input',renderHistory);
 
   async function loadHistory(){
-    const {data,error} = tenant
-      ? await sb.from('tenant_messages').select('*').eq('tenant_id',tenant.id).order('created_at',{ascending:false}).limit(20)
-      : await sb.from('tenant_messages').select('*').eq('tenant_email',user.email).order('created_at',{ascending:false}).limit(20);
+    const {data,error} = await rgTenant.mine(sb.from('tenant_messages').select('*'), tenant, user.email)
+      .order('created_at',{ascending:false}).limit(20);
     if(error){$('msgCount').textContent='—';$('messageResults').textContent='Message history unavailable. Try Refresh.';$('msgHistory').textContent='Your recent messages could not load.';return;}
     messages=data||[];
     $('msgCount').textContent=messages.length||'0';
@@ -826,8 +827,7 @@ body { overflow-x: hidden; }
 
     // Resolve company_id from the tenant's lease. The insert policy rejects messages whose
     // company_id isn't one the tenant leases from, and without it the landlord never sees them.
-    let lq=sb.from('leases').select('company_id,property_name').is('archived_at',null);
-    lq=tenant?lq.eq('tenant_id',tenant.id):lq.eq('tenant_email',user.email);
+    let lq=rgTenant.mine(sb.from('leases').select('company_id,property_name').is('archived_at',null),tenant,user.email);
     if(property_name)lq=lq.eq('property_name',property_name);
     const {data:leaseData,error:leaseErr}=await lq.order('lease_start',{ascending:false}).limit(1);
     if(leaseErr||!leaseData||!leaseData.length){
@@ -854,9 +854,10 @@ body { overflow-x: hidden; }
 
   async function init(){
     $('footerYear').textContent=new Date().getFullYear();
-    if(propertyFromUrl)$('property').value=decodeURIComponent(propertyFromUrl);
-    if(subjectFromUrl)$('subject').value=decodeURIComponent(subjectFromUrl);
-    if(messageFromUrl)$('message').value=decodeURIComponent(messageFromUrl);
+    // URLSearchParams already decoded these (decoding again throws on a literal '%')
+    if(propertyFromUrl)$('property').value=propertyFromUrl;
+    if(subjectFromUrl)$('subject').value=subjectFromUrl;
+    if(messageFromUrl)$('message').value=messageFromUrl;
     user=await requireAuth();
     if(!user)return;
     $('authGate').classList.add('hidden');$('app').classList.remove('hidden');
@@ -876,17 +877,16 @@ body { overflow-x: hidden; }
       var _em = document.getElementById('userEmail'); if (_em) _em.textContent = _parts[0];
       var _fn = document.getElementById('umdFullName'); if (_fn) _fn.textContent = tenant.tenant_name;
     }
-    if(!propertyFromUrl){
-      const {data:ld} = tenant
-        ? await sb.from('leases').select('property_name,lease_end').eq('tenant_id',tenant.id).order('lease_start',{ascending:false}).limit(1)
-        : await sb.from('leases').select('property_name,lease_end').eq('tenant_email',user.email).order('lease_start',{ascending:false}).limit(1);
-      if(ld?.[0]?.property_name)$('property').value=ld[0].property_name;
-      if(ld?.[0]?.lease_end)leaseEndForTemplate=ld[0].lease_end;
-    } else {
-      const {data:ld2} = tenant
-        ? await sb.from('leases').select('lease_end').eq('tenant_id',tenant.id).order('lease_start',{ascending:false}).limit(1)
-        : await sb.from('leases').select('lease_end').eq('tenant_email',user.email).order('lease_start',{ascending:false}).limit(1);
-      if(ld2?.[0]?.lease_end)leaseEndForTemplate=ld2[0].lease_end;
+    // The lease in effect for the property in the link (or the tenant's current one): its property
+    // fills the form and its end date goes in the renewal template
+    {
+      const {data:ls} = await rgTenant.mine(sb.from('leases').select('id,property_id,property_name,status,lease_start,lease_end,archived_at').is('archived_at',null),tenant,user.email)
+        .order('lease_start',{ascending:false}).limit(20);
+      const cur = rgTenant.pickLease(rgTenant.forUrl(ls||[], propertyFromUrl, (params.get('property_id')||'').trim()), null);
+      if(cur){
+        if(!propertyFromUrl || !(ls||[]).some(l=>l.property_name===propertyFromUrl)) $('property').value=cur.property_name||'';
+        if(cur.lease_end) leaseEndForTemplate=cur.lease_end;
+      }
     }
     wireTemplatePills();
     await loadHistory();

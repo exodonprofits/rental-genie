@@ -277,6 +277,40 @@ main {
 @media(max-width:900px) { .lease-grid { grid-template-columns: 1fr; } }
 
 .right-col { display: flex; flex-direction: column; gap: 20px; }
+.left-col  { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.detail-grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media(max-width:640px) { .detail-grid.cols-3 { grid-template-columns: 1fr 1fr; } }
+@media(max-width:480px) { .detail-grid.cols-3 { grid-template-columns: 1fr; } }
+.detail-hint { font-size: .75rem; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+.detail-note { grid-column: 1 / -1; font-size: .82rem; font-weight: 600; color: var(--navy); }
+.detail-note:empty { display: none; }
+.label-aside { font-weight: 500; text-transform: none; letter-spacing: 0; }
+.text-block {
+  background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: 12px 14px; font-size: .88rem; color: var(--navy); line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word;
+}
+.text-block.empty, .detail-value.empty { color: var(--muted); font-weight: 500; }
+.rent-balance.owed { background: var(--danger-bg); border-color: var(--danger-bdr); }
+.rent-balance.owed .detail-value { color: var(--danger-text); }
+.rent-balance.paid { background: var(--success-bg); border-color: var(--success-bdr); }
+.rent-balance.paid .detail-value { color: #065f46; }
+.pay-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 2px; }
+.pay-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 5px 11px; border-radius: 999px;
+  font-size: .8rem; font-weight: 600; border: 1px solid var(--border); background: #f8fafc; color: var(--muted);
+}
+.pay-chip.on { background: var(--success-bg); border-color: var(--success-bdr); color: #065f46; }
+.pay-pref { font-size: .8rem; font-weight: 600; color: var(--navy); margin-top: 8px; }
+.pay-details { margin-top: 12px; }
+.mono-cell { font-family: 'DM Mono', monospace; font-size: .8rem; }
+.strong-cell { font-weight: 600; }
+.empty-line { color: var(--muted); font-size: .88rem; padding: 8px; }
+.pay-details:empty { display: none; }
+.reveal-btn {
+  margin-left: 8px; padding: 2px 9px; font-size: .72rem; font-weight: 600; border-radius: 999px;
+  border: 1px solid var(--border); background: #fff; color: var(--navy); cursor: pointer; vertical-align: middle;
+}
 
 /* ── Section cards ──────────────────────────────────────────── */
 .section-card {
@@ -709,102 +743,144 @@ window.rgFiles = (function () {
   <!-- ── Two-column grid ───────────────────────────────────── -->
   <div class="lease-grid">
 
-    <!-- LEFT: Full lease details -->
-    <div class="section-card">
-      <div class="card-head">
-        <div class="card-head-left">
-          <div class="card-title">📋 Lease Details</div>
-          <div class="card-sub">Complete terms and contact information</div>
+    <!-- LEFT: the lease, in the same sections, order and labels as the edit form (lease-form.html) -->
+    <div class="left-col">
+
+      <!-- 1. Lease Status & Type -->
+      <div class="section-card">
+        <div class="card-head">
+          <div class="card-title">🏷️ Lease Status &amp; Type</div>
+          <button type="button" class="lease-id-badge" id="leaseIdBadge" title="Copy lease ID">🔑 —</button>
         </div>
-        <span class="lease-id-badge" id="leaseIdBadge" title="Click to copy lease ID">🔑 —</span>
-      </div>
-      <div class="card-body">
-        <div class="detail-grid">
-
-          <!-- Tenant info -->
-          <div class="detail-cell">
-            <div class="detail-label">Tenant Name</div>
-            <div class="detail-value" id="tenantName">—</div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="detail-cell">
+              <div class="detail-label">Status</div>
+              <div class="detail-value" id="statusDisplay">—</div>
+              <div class="detail-hint" id="statusHint"></div>
+            </div>
+            <div class="detail-cell" id="terminatedDateCell" hidden>
+              <div class="detail-label">Termination date</div>
+              <div class="detail-value" id="terminatedDate">—</div>
+              <div class="detail-hint">Rent stops accruing after this date.</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Lease Term Type</div>
+              <div class="detail-value" id="leaseTypeDisplay">—</div>
+            </div>
+            <div class="detail-cell full rent-balance" id="balanceCell" hidden>
+              <div class="detail-label">Rent balance today</div>
+              <div class="detail-value" id="balanceDisplay">—</div>
+              <div class="detail-hint" id="balanceHint"></div>
+            </div>
           </div>
-          <div class="detail-cell">
-            <div class="detail-label">Tenant Phone</div>
-            <div class="detail-value mono" id="tenantPhone">—</div>
-          </div>
-
-          <!-- Lease dates -->
-          <div class="detail-cell">
-            <div class="detail-label">Lease Start</div>
-            <div class="detail-value mono" id="leaseStart">—</div>
-          </div>
-          <div class="detail-cell">
-            <div class="detail-label">Lease End</div>
-            <div class="detail-value mono" id="leaseEnd">—</div>
-          </div>
-
-          <!-- Financial -->
-          <div class="detail-cell">
-            <div class="detail-label">Monthly Rent</div>
-            <div class="detail-value mono" id="rentAmount">—</div>
-          </div>
-          <div class="detail-cell">
-            <div class="detail-label">Rent Due Day</div>
-            <div class="detail-value" id="dueDay">—</div>
-          </div>
-          <div class="detail-cell">
-            <div class="detail-label">Late Fee</div>
-            <div class="detail-value mono" id="lateFee">—</div>
-          </div>
-          <div class="detail-cell">
-            <div class="detail-label">Grace Period</div>
-            <div class="detail-value" id="gracePeriod">—</div>
-          </div>
-
-          <!-- Divider -->
-          <div class="detail-divider"></div>
-
-          <!-- Management -->
-          <div class="detail-cell">
-            <div class="detail-label">Management Type</div>
-            <div class="detail-value" id="managementTypeDisplay">—</div>
-          </div>
-          <div class="detail-cell">
-            <div class="detail-label">Management Fee</div>
-            <div class="detail-value mono" id="managementFeeDisplay">—</div>
-          </div>
-          <div class="detail-cell full">
-            <div class="detail-label">Management Company</div>
-            <div class="detail-value" id="managementCompanyDisplay">—</div>
-          </div>
-          <div class="detail-cell full">
-            <div class="detail-label">Rent Collection Method</div>
-            <div class="detail-value" id="rentCollectionDisplay">—</div>
-          </div>
-
-          <!-- Divider -->
-          <div class="detail-divider"></div>
-
-          <!-- Status + Notes -->
-          <div class="detail-cell">
-            <div class="detail-label">Lease Status</div>
-            <div class="detail-value" id="statusDisplay">—</div>
-          </div>
-          <div class="detail-cell">
-            <div class="detail-label">Lease ID</div>
-            <div class="detail-value mono muted" id="leaseIdFull">—</div>
-          </div>
-          <div class="detail-cell full">
-            <div class="detail-label">Notes</div>
-            <div class="detail-value muted" id="leaseNotes">—</div>
-          </div>
-
-          <!-- Terms -->
-          <div class="detail-cell full">
-            <div class="detail-label" style="margin-bottom:8px">Terms &amp; Conditions</div>
-            <pre class="terms-pre" id="terms">—</pre>
-          </div>
-
         </div>
       </div>
+
+      <!-- 2. Tenant Details -->
+      <div class="section-card">
+        <div class="card-head"><div class="card-title">👤 Tenant Details</div></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="detail-cell">
+              <div class="detail-label">Full Name</div>
+              <div class="detail-value" id="tenantName">—</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Email Address</div>
+              <div class="detail-value" id="tenantEmail">—</div>
+            </div>
+            <div class="detail-cell full">
+              <div class="detail-label">Phone Number</div>
+              <div class="detail-value" id="tenantPhone">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Lease Dates -->
+      <div class="section-card">
+        <div class="card-head"><div class="card-title">📅 Lease Dates</div></div>
+        <div class="card-body">
+          <div class="detail-grid">
+            <div class="detail-cell">
+              <div class="detail-label">Start Date</div>
+              <div class="detail-value" id="leaseStart">—</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">End Date</div>
+              <div class="detail-value" id="leaseEnd">—</div>
+            </div>
+            <div class="detail-note full" id="dateDuration"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Rent & Fees -->
+      <div class="section-card">
+        <div class="card-head"><div class="card-title">💵 Rent &amp; Fees</div></div>
+        <div class="card-body">
+          <div class="detail-grid cols-3">
+            <div class="detail-cell">
+              <div class="detail-label">Monthly Rent</div>
+              <div class="detail-value" id="rentAmount">—</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Rent Due Day</div>
+              <div class="detail-value" id="dueDay">—</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Late Fee</div>
+              <div class="detail-value" id="lateFee">—</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Grace Period</div>
+              <div class="detail-value" id="gracePeriod">—</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Security Deposit</div>
+              <div class="detail-value" id="securityDeposit">—</div>
+            </div>
+            <div class="detail-cell">
+              <div class="detail-label">Pet Deposit</div>
+              <div class="detail-value" id="petDeposit">—</div>
+            </div>
+            <div class="detail-note full" id="depositSummary"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4b. How the Tenant Pays You -->
+      <div class="section-card">
+        <div class="card-head"><div class="card-title">💳 How the Tenant Pays You</div></div>
+        <div class="card-body">
+          <div class="detail-label">Accepted methods</div>
+          <div class="pay-chips" id="payMethods"></div>
+          <div class="detail-hint">The tenant sees these instructions on their Payments page.</div>
+          <div class="pay-pref" id="payTenantPref" hidden></div>
+          <div class="detail-grid pay-details" id="payDetails"></div>
+        </div>
+      </div>
+
+      <!-- 5. Internal Notes -->
+      <div class="section-card">
+        <div class="card-head"><div class="card-title">🧾 Internal Notes</div></div>
+        <div class="card-body">
+          <div class="detail-label">Notes <span class="label-aside">(landlord only — not visible to tenant)</span></div>
+          <div class="text-block" id="leaseNotes">—</div>
+        </div>
+      </div>
+
+      <!-- 6. Terms & Conditions -->
+      <div class="section-card">
+        <div class="card-head"><div class="card-title">📄 Terms &amp; Conditions</div></div>
+        <div class="card-body">
+          <div class="detail-label">Lease Terms</div>
+          <pre class="terms-pre" id="terms">—</pre>
+          <div class="detail-hint">This content may be shown to the tenant in their portal.</div>
+        </div>
+      </div>
+
     </div>
 
     <!-- RIGHT: Timeline + History + Documents stacked -->
@@ -959,11 +1035,35 @@ window.rgFiles = (function () {
     var n = Number(v);
     return isNaN(n) ? '—' : '$' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   }
+  // Lease dates are calendar dates: parse 'YYYY-MM-DD' as a local date. new Date('2026-02-01') is
+  // UTC midnight, which shows as Jan 31 anywhere west of Greenwich.
+  function parseDay(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ''));
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+  }
   function fmtDate(iso) {
     if (!iso) return '—';
-    var d = new Date(iso);
-    return isNaN(d.getTime()) ? String(iso) : d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+    var d = parseDay(iso);
+    return d ? d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : String(iso);
   }
+  function todayISO() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function clear(node) { while (node && node.firstChild) node.removeChild(node.firstChild); }
+  function setValue(id, val) {
+    var e = $(id); if (!e) return;
+    var empty = val == null || val === '';
+    e.textContent = empty ? '—' : val;
+    e.classList.toggle('empty', empty);
+  }
+  function num(v) { return v == null || v === '' || isNaN(Number(v)) ? null : Number(v); }
   function fmtDateTime(iso) {
     if (!iso) return '—';
     var d = new Date(iso);
@@ -981,27 +1081,49 @@ window.rgFiles = (function () {
     el.textContent = msg;
   }
 
-  /* ── Lease status logic ─────────────────────────────────── */
-  function getLeaseStatus(start, end) {
-    var today = new Date().toISOString().split('T')[0];
-    if (end < today)   return 'expired';
-    if (start > today) return 'upcoming';
-    return 'active';
+  /* ── Lease status ───────────────────────────────────────
+     statusLabel: the edit form's Status options, word for word.
+     leaseState:  what the badge shows, matching rg_rent_schedule: the newest started, non-draft lease
+                  of a property is the one in effect; past its end date it is a holdover (still
+                  charging), while an older lease past its end date was replaced (expired). */
+  var STATUS_LABELS = {
+    draft: 'Draft — not yet signed',
+    signed: 'Signed / In force',
+    month_to_month: 'Month-to-Month',
+    holdover: 'Holdover — expired, tenant remaining',
+    terminated: 'Terminated'
+  };
+  function statusKey(L) {
+    var st = String(L.status || '').toLowerCase();
+    if (st.indexOf('term') >= 0) return 'terminated';
+    if (st === 'holdover') return 'holdover';
+    if (st.indexOf('month') >= 0) return 'month_to_month';
+    if (st.indexOf('sign') >= 0 || st.indexOf('activ') >= 0) return 'signed';
+    return 'draft';
   }
-
-  function resolveStatus(L) {
-    var db = (L.status || '').toLowerCase();
-    if (db === 'draft')      return { label: 'Draft',      cls: 'draft' };
-    if (db === 'terminated') return { label: 'Terminated', cls: 'terminated' };
-    if (db === 'signed' || db === 'active') {
-      var t = getLeaseStatus(L.lease_start, L.lease_end);
-      var map = { active: 'Active', upcoming: 'Upcoming', expired: 'Expired' };
-      return { label: map[t], cls: t };
+  function isMonthToMonth(L) {
+    var t = String(L.lease_type || '').toLowerCase();
+    return t.indexOf('month') >= 0 || t === 'm2m' || statusKey(L) === 'month_to_month';
+  }
+  function leaseInEffectId(list) {
+    var today = todayISO();
+    var cur = (list || []).filter(function (L) { return statusKey(L) !== 'draft' && L.lease_start && L.lease_start <= today; })
+      .sort(function (a, b) { return a.lease_start < b.lease_start ? 1 : -1; })[0];
+    return cur ? cur.id : null;
+  }
+  function leaseState(L) {
+    var today = todayISO();
+    var key = statusKey(L);
+    if (key === 'draft') return { label: 'Draft', cls: 'draft' };
+    if (key === 'terminated' || L.terminated_date) return { label: 'Ended', cls: 'terminated' };
+    if (L.lease_start && L.lease_start > today) return { label: 'Upcoming', cls: 'upcoming' };
+    if (isMonthToMonth(L)) return { label: 'Month-to-month', cls: 'active' };
+    if (L.lease_end && L.lease_end < today) {
+      return L.id === leaseInEffectId(leasesCache.length ? leasesCache : [L])
+        ? { label: 'Holdover', cls: 'upcoming' }
+        : { label: 'Expired', cls: 'expired' };
     }
-    if (db) return { label: db.charAt(0).toUpperCase() + db.slice(1), cls: 'draft' };
-    var t2 = getLeaseStatus(L.lease_start, L.lease_end);
-    var map2 = { active: 'Active', upcoming: 'Upcoming', expired: 'Expired' };
-    return { label: map2[t2], cls: t2 };
+    return { label: 'Active', cls: 'active' };
   }
 
   /* ── Build nav URLs with company_id ─────────────────────── */
@@ -1219,86 +1341,184 @@ window.rgFiles = (function () {
     });
   }
 
-  /* ── Load lease info into view ──────────────────────────── */
+  /* ── Load lease info into view ──────────────────────────
+     Same sections, order and labels as lease-form.html; the form reads due_day/late_fee/grace_period
+     first and falls back to the legacy columns, and so does this. */
+  var PAY_METHODS = [
+    ['pay_accepts_zelle', 'Zelle'], ['pay_accepts_venmo', 'Venmo'], ['pay_accepts_ach', 'ACH'],
+    ['pay_accepts_bank_transfer', 'Bank Transfer'], ['pay_accepts_check', 'Check'], ['pay_accepts_cash', 'Cash']
+  ];
+
+  function detailCell(label, value, opts) {
+    var c = el('div', 'detail-cell' + (opts && opts.full ? ' full' : ''));
+    c.appendChild(el('div', 'detail-label', label));
+    var v = el('div', 'detail-value' + (value ? '' : ' empty'), value || '—');
+    c.appendChild(v);
+    return c;
+  }
+
+  // Account numbers stay hidden until asked for (screen sharing, someone looking over a shoulder).
+  function maskedCell(label, value) {
+    var c = detailCell(label, value ? '•••• ' + String(value).slice(-4) : '');
+    if (value && String(value).length > 4) {
+      var v = c.querySelector('.detail-value');
+      var b = el('button', 'reveal-btn', 'Show');
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        var shown = b.textContent === 'Hide';
+        v.firstChild.nodeValue = shown ? '•••• ' + String(value).slice(-4) : String(value);
+        b.textContent = shown ? 'Show' : 'Hide';
+      });
+      v.appendChild(b);
+    }
+    return c;
+  }
+
+  function renderPayment(L) {
+    var chips = $('payMethods'); clear(chips);
+    var any = false;
+    PAY_METHODS.forEach(function (m) {
+      var on = L[m[0]] === true;
+      if (on) any = true;
+      chips.appendChild(el('span', 'pay-chip' + (on ? ' on' : ''), (on ? '✓ ' : '') + m[1]));
+    });
+    if (!any) chips.appendChild(el('span', 'detail-hint', 'No payment methods set. Edit the lease to add them.'));
+
+    var pref = $('payTenantPref');
+    pref.hidden = !L.tenant_preferred_payment_method;
+    pref.textContent = L.tenant_preferred_payment_method ? '⭐ Tenant prefers ' + L.tenant_preferred_payment_method + ' (chosen in their portal)' : '';
+
+    var box = $('payDetails'); clear(box);
+    if (L.pay_accepts_zelle) box.appendChild(detailCell('Zelle to (email or phone)', L.pay_zelle_recipient, { full: true }));
+    if (L.pay_accepts_venmo) box.appendChild(detailCell('Venmo handle', L.pay_venmo_handle, { full: true }));
+    if (L.pay_accepts_ach || L.pay_accepts_bank_transfer) {
+      box.appendChild(detailCell('Bank name', L.pay_ach_bank_name));
+      box.appendChild(detailCell('Account holder', L.pay_ach_account_holder));
+      box.appendChild(detailCell('Routing number', L.pay_ach_routing_number));
+      box.appendChild(maskedCell('Account number', L.pay_ach_account_number));
+      var t = String(L.pay_ach_account_type || '');
+      box.appendChild(detailCell('Account type', t ? t.charAt(0).toUpperCase() + t.slice(1) : ''));
+    }
+    if (L.pay_accepts_check) {
+      box.appendChild(detailCell('Make checks payable to', L.pay_check_payable_to));
+      box.appendChild(detailCell('Mail checks to', L.pay_check_mailing_address));
+    }
+    if (L.pay_other_notes) box.appendChild(detailCell('Payment notes for the tenant', L.pay_other_notes, { full: true }));
+  }
+
+  // Balance comes from the database (rg_rent_status), never computed here; shown for the lease in effect.
+  var rentStatusCache = {};
+  function renderBalance(L) {
+    var cell = $('balanceCell');
+    cell.hidden = true;
+    cell.classList.remove('owed', 'paid');
+    var cid = L.company_id || companyId;
+    if (!cid || !L.id) return;
+    var key = cid + '|' + todayISO();
+    var p = rentStatusCache[key] || (rentStatusCache[key] = client.rpc('rg_rent_status', { p_company_id: cid, p_as_of: todayISO() })
+      .then(function (res) { if (res.error) { console.warn('rg_rent_status failed', res.error); return []; } return res.data || []; }));
+    p.then(function (rows) {
+      var r = rows.filter(function (x) { return x.lease_id === L.id; })[0];
+      if (!r || $('leaseIdBadge').dataset.leaseId !== L.id) return;
+      var bal = Number(r.balance || 0);
+      cell.hidden = false;
+      if (bal > 0.005) {
+        cell.classList.add('owed');
+        setValue('balanceDisplay', fmtMoney(bal) + ' owed');
+        $('balanceHint').textContent = (r.periods_unpaid || 0) + ' month' + (r.periods_unpaid === 1 ? '' : 's')
+          + ' unpaid, oldest due ' + fmtDate(r.oldest_unpaid_due) + '. Log payments in Lease & Rent.';
+      } else {
+        cell.classList.add('paid');
+        setValue('balanceDisplay', 'Paid up');
+        $('balanceHint').textContent = r.current_due_date ? 'Latest due date ' + fmtDate(r.current_due_date) + ' is covered.' : '';
+      }
+    });
+  }
+
   function loadLeaseInfo(L) {
     /* Hero panel */
     setText('heroProperty', L.property_name || currentProperty || '—');
     setText('heroTenant',   'Tenant: ' + (L.tenant_name || '—'));
-
-    var status = resolveStatus(L);
-    setText('heroStatus', status.label);
+    var state = leaseState(L);
+    setText('heroStatus', state.label);
     var badge = $('heroBadge');
-    if (badge) {
-      badge.className = 'hero-badge ' + status.cls;
-    }
+    if (badge) badge.className = 'hero-badge ' + state.cls;
 
-    var rentAmt = (L.rent_amount !== null && L.rent_amount !== undefined && L.rent_amount !== '') ? Number(L.rent_amount) : null;
-    var dueDay  = L.rent_due_day || L.due_day || '';
+    var rentAmt = num(L.rent_amount);
+    var dueDay  = num(L.due_day ?? L.rent_due_day);
     setText('heroRent',   rentAmt !== null ? fmtMoney(rentAmt) : '—');
-    setText('heroDueDay', dueDay  ? 'Day ' + dueDay : '—');
+    setText('heroDueDay', dueDay ? 'Day ' + dueDay : '—');
     setText('heroStart',  fmtDate(L.lease_start));
-    setText('heroEnd',    fmtDate(L.lease_end));
+    setText('heroEnd',    isMonthToMonth(L) && !L.lease_end ? 'Month-to-month' : fmtDate(L.lease_end));
 
-    /* Lease ID badge */
-    var badge2 = $('leaseIdBadge');
-    if (badge2 && L.id) {
-      badge2.textContent = '🔑 ' + L.id.substring(0, 8) + '…';
-      badge2.title = 'Click to copy: ' + L.id;
-      badge2.onclick = function () {
-        navigator.clipboard && navigator.clipboard.writeText(L.id).then(function () {
-          badge2.textContent = '✅ Copied!';
-          setTimeout(function () { badge2.textContent = '🔑 ' + L.id.substring(0, 8) + '…'; }, 1800);
+    /* Lease ID (copy) */
+    var idBadge = $('leaseIdBadge');
+    if (idBadge && L.id) {
+      idBadge.dataset.leaseId = L.id;
+      idBadge.textContent = '🔑 ' + L.id.substring(0, 8) + '…';
+      idBadge.title = 'Copy lease ID ' + L.id;
+      idBadge.onclick = function () {
+        if (!navigator.clipboard) return;
+        navigator.clipboard.writeText(L.id).then(function () {
+          idBadge.textContent = '✅ Copied';
+          setTimeout(function () { idBadge.textContent = '🔑 ' + L.id.substring(0, 8) + '…'; }, 1800);
         });
       };
     }
 
-    /* Detail cells */
-    setText('tenantName',    L.tenant_name || '—');
-    setText('tenantPhone',   L.tenant_phone || '—');
-    setText('leaseStart',    fmtDate(L.lease_start));
-    setText('leaseEnd',      fmtDate(L.lease_end));
-    setText('rentAmount',    rentAmt !== null ? fmtMoney(rentAmt) + ' / month' : '—');
-    setText('dueDay',        dueDay ? 'Day ' + dueDay + ' of each month' : '—');
+    /* 1. Lease Status & Type */
+    var key = statusKey(L);
+    setValue('statusDisplay', STATUS_LABELS[key]);
+    var hint = '';
+    if (state.label === 'Holdover') hint = 'Past its end date and still charging rent. When the tenant moves out, edit the lease and set it to Terminated.';
+    else if (state.label === 'Expired') hint = 'Replaced by a newer lease; no longer charging rent.';
+    else if (state.label === 'Upcoming') hint = 'Starts ' + fmtDate(L.lease_start) + '.';
+    $('statusHint').textContent = hint;
+    $('terminatedDateCell').hidden = !(key === 'terminated' || L.terminated_date);
+    setValue('terminatedDate', L.terminated_date ? fmtDate(L.terminated_date) : (key === 'terminated' && L.lease_end ? fmtDate(L.lease_end) + ' (lease end)' : ''));
+    setValue('leaseTypeDisplay', isMonthToMonth(L) ? 'Month-to-Month — no set end date' : 'Fixed Term — has a set end date');
+    renderBalance(L);
 
-    var lfVal = L.late_fee_amount !== null && L.late_fee_amount !== undefined ? L.late_fee_amount : (L.late_fee !== null && L.late_fee !== undefined ? L.late_fee : null);
-    setText('lateFee', lfVal !== null && lfVal !== '' ? fmtMoney(lfVal) : '—');
+    /* 2. Tenant Details */
+    setValue('tenantName',  L.tenant_name);
+    setValue('tenantEmail', L.tenant_email);
+    setValue('tenantPhone', L.tenant_phone);
 
-    var gpVal = L.late_fee_grace_days !== null && L.late_fee_grace_days !== undefined ? L.late_fee_grace_days : (L.grace_period !== null ? L.grace_period : null);
-    setText('gracePeriod', gpVal !== null && gpVal !== '' ? Number(gpVal) + ' days' : '—');
-
-    /* Management */
-    var mgmt = (L.management_type || 'self').toLowerCase();
-    setText('managementTypeDisplay', mgmt === 'pm' ? 'Property Manager' : 'Self-managed');
-
-    if (mgmt === 'pm') {
-      var parts = [L.management_company_name];
-      if (L.management_company_phone) parts.push(L.management_company_phone);
-      if (L.management_company_email) parts.push(L.management_company_email);
-      setText('managementCompanyDisplay', parts.filter(Boolean).join(' · ') || '—');
-
-      var feeText = '—';
-      if (L.management_fee_type && L.management_fee_value !== null && L.management_fee_value !== undefined && L.management_fee_value !== '') {
-        feeText = String(L.management_fee_type).toLowerCase() === 'percent'
-          ? Number(L.management_fee_value) + '%'
-          : fmtMoney(L.management_fee_value) + '/mo';
-      }
-      setText('managementFeeDisplay', feeText);
-
-      var rcm = (L.rent_collection_method || '').toLowerCase();
-      var rcmMap = { property_manager: 'Tenant pays Property Manager', landlord: 'Tenant pays Landlord', other: 'Other' };
-      setText('rentCollectionDisplay', rcmMap[rcm] || '—');
-    } else {
-      setText('managementCompanyDisplay', '—');
-      setText('managementFeeDisplay',     '—');
-      setText('rentCollectionDisplay',    '—');
+    /* 3. Lease Dates */
+    setValue('leaseStart', L.lease_start ? fmtDate(L.lease_start) : '');
+    setValue('leaseEnd',   L.lease_end ? fmtDate(L.lease_end) : (isMonthToMonth(L) ? 'None (month-to-month)' : ''));
+    var s = parseDay(L.lease_start), e = parseDay(L.lease_end), dur = '';
+    if (e) e = new Date(e.getFullYear(), e.getMonth(), e.getDate() + 1); // the end date is the lease's last day
+    if (s && e && e > s) {
+      var months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
+      var days = Math.round((e - s) / 86400000);
+      dur = '📅 Lease duration: ' + (months > 0 ? months + ' month' + (months !== 1 ? 's' : '') + ' (' + days + ' days)' : days + ' day' + (days !== 1 ? 's' : ''));
     }
+    $('dateDuration').textContent = dur;
 
-    /* Status + IDs */
-    setText('statusDisplay', status.label);
-    setText('leaseIdFull',   L.id || '—');
-    setText('leaseNotes',    L.notes || '—');
+    /* 4. Rent & Fees */
+    var lateFee = num(L.late_fee ?? L.late_fee_amount);
+    var grace   = num(L.grace_period ?? L.late_fee_grace_days);
+    var sec = num(L.security_deposit), pet = num(L.pet_deposit);
+    setValue('rentAmount',      rentAmt !== null ? fmtMoney(rentAmt) + ' / mo' : '');
+    setValue('dueDay',          dueDay ? 'Day ' + dueDay + ' / mo' : '');
+    setValue('lateFee',         lateFee !== null ? fmtMoney(lateFee) : '');
+    setValue('gracePeriod',     grace !== null ? grace + ' day' + (grace === 1 ? '' : 's') : '');
+    setValue('securityDeposit', sec !== null ? fmtMoney(sec) : '');
+    setValue('petDeposit',      pet !== null ? fmtMoney(pet) : '');
+    var total = (sec || 0) + (pet || 0);
+    $('depositSummary').textContent = total ? '💰 Total deposits: ' + fmtMoney(total)
+      + (sec && pet ? ' (Security ' + fmtMoney(sec) + ' + Pet ' + fmtMoney(pet) + ')' : '') : '';
+
+    /* 4b. How the Tenant Pays You */
+    renderPayment(L);
+
+    /* 5–6. Notes, Terms */
+    var notes = $('leaseNotes');
+    notes.textContent = L.notes || 'No notes.';
+    notes.classList.toggle('empty', !L.notes);
     var termsEl = $('terms');
-    if (termsEl) termsEl.textContent = L.terms || '—';
+    termsEl.textContent = L.terms || 'No terms entered.';
 
     /* Documents: scope to this lease's tenant + company */
     activeTenantEmail = (L.tenant_email || '').trim();
@@ -1314,116 +1534,110 @@ window.rgFiles = (function () {
     /* Renew / Edit buttons */
     var renewBtn = $('renewLeaseBtn');
     var editBtn  = $('editLeaseBtn');
-    if (renewBtn) renewBtn.onclick = function () {
-      location.href = 'lease-form.html?property=' + encodeURIComponent(currentProperty)
-        + (companyId ? '&company_id=' + encodeURIComponent(companyId) : '')
-        + '&mode=renew&id=' + L.id;
-    };
-    if (editBtn) editBtn.onclick = function () {
-      location.href = 'lease-form.html?property=' + encodeURIComponent(currentProperty)
-        + (companyId ? '&company_id=' + encodeURIComponent(companyId) : '')
-        + '&mode=edit&id=' + L.id;
-    };
+    if (renewBtn) renewBtn.onclick = function () { location.href = formUrl('renew', L.id); };
+    if (editBtn)  editBtn.onclick  = function () { location.href = formUrl('edit', L.id); };
   }
 
-  /* ── Timeline item ──────────────────────────────────────── */
-  function timelineItemHtml(L, isActive) {
-    var today = new Date().toISOString().split('T')[0];
-    var dotCls = L.lease_end < today ? 'past' : (L.lease_start > today ? 'future' : 'current');
-    return '<li class="timeline-item' + (isActive ? ' active-item' : '') + '" onclick="window._selectLease(\'' + L.id + '\')">'
-      + '<div class="timeline-dot ' + dotCls + '"></div>'
-      + '<div class="timeline-body">'
-      +   '<div class="timeline-name">' + escapeHtml(L.tenant_name || '—') + '</div>'
-      +   '<div class="timeline-dates">' + escapeHtml(L.lease_start || '—') + ' → ' + escapeHtml(L.lease_end || '—') + '</div>'
-      +   '<div class="timeline-rent">' + (L.rent_amount ? fmtMoney(L.rent_amount) + '/mo' : '') + '</div>'
-      + '</div>'
-      + '</li>';
+  function formUrl(mode, id) {
+    return 'lease-form.html?property=' + encodeURIComponent(currentProperty)
+      + (companyId ? '&company_id=' + encodeURIComponent(companyId) : '')
+      + '&mode=' + mode + '&id=' + encodeURIComponent(id);
   }
 
-  /* ── History table row ──────────────────────────────────── */
-  function historyRowHtml(L, isActive) {
-    var status = resolveStatus(L);
-    var period = escapeHtml(fmtDate(L.lease_start) + ' → ' + fmtDate(L.lease_end));
-    var rowStyle = isActive ? 'background:var(--sky-soft)' : '';
-    return '<tr style="' + rowStyle + '">'
-      + '<td style="font-family:\'DM Mono\',monospace;font-size:.8rem">' + period + '</td>'
-      + '<td style="font-weight:600">' + escapeHtml(L.tenant_name || '—') + '</td>'
-      + '<td style="font-family:\'DM Mono\',monospace;font-weight:600">' + escapeHtml(L.rent_amount ? fmtMoney(L.rent_amount) : '—') + '</td>'
-      + '<td><span class="chip ' + status.cls + '">' + escapeHtml(status.label) + '</span></td>'
-      + '<td>'
-      +   '<button class="tbl-btn" onclick="window._selectLease(\'' + L.id + '\')">🔍 View</button>'
-      +   '<button class="tbl-btn" onclick="window._editLease(\'' + L.id + '\')">✏️</button>'
-      +   '<button class="tbl-btn del" onclick="window._deleteLease(\'' + L.id + '\')">🗑️</button>'
-      + '</td>'
-      + '</tr>';
+  /* ── Timeline + history (built with createElement) ──────── */
+  function renderLists(activeId) {
+    var tl = $('timelineList'), hist = $('historyList');
+    clear(tl); clear(hist);
+    var today = todayISO();
+    var inEffect = leaseInEffectId(leasesCache);
+    leasesCache.forEach(function (L) {
+      var li = el('li', 'timeline-item' + (L.id === activeId ? ' active-item' : ''));
+      li.tabIndex = 0;
+      li.setAttribute('role', 'button');
+      li.setAttribute('aria-label', 'Show lease for ' + (L.tenant_name || 'tenant') + ' starting ' + fmtDate(L.lease_start));
+      var dot = L.id === inEffect ? 'current' : ((L.lease_start || '') > today ? 'future' : 'past');
+      li.appendChild(el('div', 'timeline-dot ' + dot));
+      var body = el('div', 'timeline-body');
+      body.appendChild(el('div', 'timeline-name', L.tenant_name || '—'));
+      body.appendChild(el('div', 'timeline-dates', fmtDate(L.lease_start) + ' → ' + (L.lease_end ? fmtDate(L.lease_end) : 'month-to-month')));
+      body.appendChild(el('div', 'timeline-rent', L.rent_amount ? fmtMoney(L.rent_amount) + '/mo' : ''));
+      li.appendChild(body);
+      li.addEventListener('click', function () { selectLease(L.id); });
+      li.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); selectLease(L.id); } });
+      tl.appendChild(li);
+
+      var state = leaseState(L);
+      var tr = el('tr');
+      if (L.id === activeId) tr.style.background = 'var(--sky-soft)';
+      tr.appendChild(el('td', 'mono-cell', fmtDate(L.lease_start) + ' → ' + (L.lease_end ? fmtDate(L.lease_end) : 'M2M')));
+      tr.appendChild(el('td', 'strong-cell', L.tenant_name || '—'));
+      tr.appendChild(el('td', 'mono-cell strong-cell', L.rent_amount ? fmtMoney(L.rent_amount) : '—'));
+      var tdS = el('td'); tdS.appendChild(el('span', 'chip ' + state.cls, state.label)); tr.appendChild(tdS);
+      var tdA = el('td');
+      var bView = el('button', 'tbl-btn', '🔍 View'); bView.type = 'button';
+      bView.addEventListener('click', function () { selectLease(L.id); });
+      var bEdit = el('button', 'tbl-btn', '✏️'); bEdit.type = 'button';
+      bEdit.title = 'Edit this lease'; bEdit.setAttribute('aria-label', 'Edit this lease');
+      bEdit.addEventListener('click', function () { location.href = formUrl('edit', L.id); });
+      var bArch = el('button', 'tbl-btn del', '🗄️'); bArch.type = 'button';
+      bArch.title = 'Archive this lease'; bArch.setAttribute('aria-label', 'Archive this lease');
+      bArch.addEventListener('click', function () { archiveLease(L); });
+      tdA.appendChild(bView); tdA.appendChild(bEdit); tdA.appendChild(bArch);
+      tr.appendChild(tdA);
+      hist.appendChild(tr);
+    });
   }
 
-  /* ── Load lease history for property ────────────────────── */
-  function loadLeaseHistory(propertyName, activeLeaseId) {
+  function selectLease(id) {
+    var found = leasesCache.filter(function (L) { return L.id === id; })[0];
+    if (!found) return;
+    loadLeaseInfo(found);
+    renderLists(id);
+    setText('pageTitle', '📜 View Lease — ' + (found.property_name || currentProperty));
+  }
+
+  // Archive, never delete: the rent log, documents and history stay; restore from Lease & Rent.
+  function archiveLease(L) {
+    if (!confirm('Archive the lease for ' + (L.tenant_name || 'this tenant') + ' (' + fmtDate(L.lease_start) + ' → ' + fmtDate(L.lease_end) + ')?\n\nIt stops counting toward rent and leaves this list. Its payments and documents are kept.')) return;
+    client.rpc('archive_lease', { p_lease_id: L.id }).then(function (res) {
+      if (res.error) { setAlert('danger', 'Could not archive the lease: ' + res.error.message); return; }
+      setAlert('info', 'Lease archived.');
+      rentStatusCache = {};
+      loadLeaseHistory(currentProperty, null);
+    });
+  }
+
+  /* ── Load lease history for property ────────────────────
+     By property_id when known (names are display copies), within the company; archived leases hidden. */
+  var propertyIdParam = pageParams.get('property_id') || '';
+  function loadLeaseHistory(propertyName, activeLeaseId, propertyId) {
     currentProperty = propertyName;
-
-    return client.from('leases')
-      .select('*')
-      .eq('property_name', propertyName)
-      .order('lease_start', { ascending: false })
+    var pid = propertyId || propertyIdParam;
+    var q = client.from('leases').select('*').is('archived_at', null);
+    q = pid ? q.eq('property_id', pid) : q.eq('property_name', propertyName);
+    if (companyId) q = q.eq('company_id', companyId);
+    return q.order('lease_start', { ascending: false })
       .then(function (res) {
-        if (res.error) { console.error('History load error:', res.error); return; }
-        var data = res.data || [];
-        leasesCache = data;
-
-        if (!data.length) {
-          $('timelineList').innerHTML = '<li style="color:var(--muted);font-size:.88rem;padding:8px">No lease records found for this property.</li>';
-          $('historyList').innerHTML  = '<tr><td colspan="5"><div class="empty-state"><div class="empty-state-icon">📭</div><p>No lease history found.</p></div></td></tr>';
+        if (res.error) { console.error('History load error:', res.error); setAlert('danger', 'Could not load the leases for this property.'); return; }
+        leasesCache = res.data || [];
+        if (!leasesCache.length) {
+          var tl = $('timelineList'); clear(tl);
+          tl.appendChild(el('li', 'empty-line', 'No lease records found for this property.'));
+          var hist = $('historyList'); clear(hist);
+          var tr = el('tr'); var td = el('td', null, 'No lease history found.'); td.colSpan = 5; tr.appendChild(td); hist.appendChild(tr);
           return;
         }
-
-        /* Use the provided activeLeaseId or default to first record */
-        var activeLease = data.find(function (L) { return L.id === activeLeaseId; }) || data[0];
-        loadLeaseInfo(activeLease);
-
-        /* Populate timeline */
-        $('timelineList').innerHTML = data.map(function (L) {
-          return timelineItemHtml(L, L.id === activeLease.id);
-        }).join('');
-
-        /* Populate history table */
-        $('historyList').innerHTML = data.map(function (L) {
-          return historyRowHtml(L, L.id === activeLease.id);
-        }).join('');
-
+        // Requested lease, else the one in effect, else the newest
+        var inEffect = leaseInEffectId(leasesCache);
+        var active = leasesCache.filter(function (L) { return L.id === activeLeaseId; })[0]
+          || leasesCache.filter(function (L) { return L.id === inEffect; })[0]
+          || leasesCache[0];
+        loadLeaseInfo(active);
+        renderLists(active.id);
       }).catch(function (err) {
         console.error('History load error:', err);
       });
   }
-
-  /* ── Global helpers for inline onclick ─────────────────── */
-  window._selectLease = function (id) {
-    var found = leasesCache.find(function (L) { return L.id === id; });
-    if (!found) return;
-    loadLeaseInfo(found);
-    /* Re-render to highlight selected */
-    $('timelineList').innerHTML = leasesCache.map(function (L) { return timelineItemHtml(L, L.id === id); }).join('');
-    $('historyList').innerHTML  = leasesCache.map(function (L) { return historyRowHtml(L, L.id === id); }).join('');
-    /* Update page title */
-    setText('pageTitle', '📜 Lease for ' + (found.property_name || currentProperty));
-  };
-  window._editLease = function (id) {
-    if (!currentProperty) return;
-    location.href = 'lease-form.html?property=' + encodeURIComponent(currentProperty)
-      + (companyId ? '&company_id=' + encodeURIComponent(companyId) : '')
-      + '&mode=edit&id=' + id;
-  };
-  window._deleteLease = function (id) {
-    if (!confirm('Are you sure you want to delete this lease record? This cannot be undone.')) return;
-    client.from('leases').delete().eq('id', id).then(function (res) {
-      if (res.error) {
-        setAlert('danger', 'Failed to delete lease: ' + res.error.message);
-      } else {
-        setAlert('info', 'Lease deleted successfully.');
-        if (currentProperty) loadLeaseHistory(currentProperty, null);
-      }
-    });
-  };
 
   /* ── INIT ───────────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', function () {
@@ -1470,8 +1684,9 @@ window.rgFiles = (function () {
             setText('pageTitle', '📜 View Lease' + (currentProperty ? ' — ' + currentProperty : ''));
             setText('pageSub',   currentProperty ? 'Property: ' + currentProperty : 'Lease details');
             if (currentProperty) {
-              loadLeaseHistory(currentProperty, lease.id);
+              loadLeaseHistory(currentProperty, lease.id, lease.property_id);
             } else {
+              leasesCache = [lease];
               loadLeaseInfo(lease);
             }
           });

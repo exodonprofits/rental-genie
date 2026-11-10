@@ -3088,8 +3088,8 @@ body.dashboard-workspace > main.page { width:100% !important; max-width:none !im
   <div class="manual-dashboard-grid">
     <div class="full-span card">
       <div class="card-header">
-        <h2 class="card-title"><span aria-hidden="true">💵</span> Financial Overview (Last 30 Days)</h2>
-        <select id="financialPeriodSelect">
+        <h2 class="card-title"><span aria-hidden="true">💵</span> <span id="financialTitleText">Financial Overview (Last 30 Days)</span></h2>
+        <select id="financialPeriodSelect" aria-label="Financial overview period">
           <option value="30">Last 30 Days</option>
           <option value="90">Last 90 Days</option>
           <option value="180">Last 180 Days</option>
@@ -3113,9 +3113,9 @@ body.dashboard-workspace > main.page { width:100% !important; max-width:none !im
           <div class="stat-note" id="maintenanceSpentNote">Open requests</div>
         </a>
         <a class="stat-card" href="reports-analytics.html">
-          <div class="stat-label">Net Operating Income</div>
+          <div class="stat-label">Net Cash Flow</div>
           <div class="stat-value loading" id="noi">…</div>
-          <div class="stat-note" id="noiNote">Rent minus maintenance</div>
+          <div class="stat-note" id="noiNote">Rent − expenses − mortgage &amp; fixed costs</div>
         </a>
       </div>
     </div>
@@ -3124,7 +3124,7 @@ body.dashboard-workspace > main.page { width:100% !important; max-width:none !im
       <div class="chart-card">
         <div class="chart-head">
           <div>
-            <div class="chart-title">📊 30-Day Performance Snapshot</div>
+            <div class="chart-title">📊 Performance Snapshot</div>
             <div class="chart-note">Quick visual view of collected rent, overdue balance, maintenance spend, and NOI.</div>
           </div>
           <span class="tag-pill">Auto</span>
@@ -3410,14 +3410,14 @@ function renderDashboardCharts(data){
   financialBarChart = new Chart(barCtx, {
     type: "bar",
     data: {
-      labels: ["Rent Collected", "Overdue Rent", "Maintenance Spent", "NOI"],
+      labels: ["Rent Collected", "Overdue Rent", "Maintenance Spent", "Net Cash Flow"],
       datasets: [{
         label: "Amount",
         data: [
           Number(data.rentCollected || 0),
           Number(data.rentOverdue || 0),
           Number(data.maintenanceSpent || 0),
-          Number(data.noi || 0)
+          Number(data.netCash || 0)
         ],
         borderWidth: 1,
         borderRadius: 8,
@@ -3630,14 +3630,14 @@ function buildAssignmentsFromData(data){
     });
   }
 
-  // ── NOI health ──
-  const noi = Number(data.noi || 0);
+  // ── Net cash flow health (rent − all expenses − mortgage & fixed costs) ──
+  const noi = Number(data.netCash || 0);
   if(noi < 0){
     items.push({
       level: "warn",
       title: `📉 Cash flow check`,
-      desc: `Last 30 days NOI is negative (${money(noi)}). Review maintenance and expense spikes.`,
-      meta: [`${money(data.rentCollected)} rent`, `${money(data.maintenanceSpent)} maintenance`],
+      desc: `${data.periodLabel} net cash flow is negative (${money(noi)}) after expenses, mortgage and fixed costs.`,
+      meta: [`${money(data.rentCollected)} rent`, `${money(data.expensesPeriod)} expenses`, `${money(data.fixedPeriod)} mortgage & fixed`],
       actions: [
         { label: "✅ Review Expenses", href: "expense-tracking.html" },
         { label: "📈 Open Reports", href: "reports-analytics.html" }
@@ -3648,8 +3648,8 @@ function buildAssignmentsFromData(data){
     items.push({
       level: "ok",
       title: `✅ Portfolio looks stable`,
-      desc: `Last 30 days NOI is ${money(noi)}. Rent and maintenance are under control.`,
-      meta: [`${money(data.rentCollected)} rent`, `${money(data.maintenanceSpent)} maintenance`, `${money(noi)} NOI`],
+      desc: `${data.periodLabel} net cash flow is ${money(noi)} after expenses, mortgage and fixed costs.`,
+      meta: [`${money(data.rentCollected)} rent`, `${money(data.expensesPeriod)} expenses`, `${money(noi)} net`],
       actions: [
         { label: "📈 Open Reports", href: "reports-analytics.html", secondary: true },
         { label: "View portfolio details", href: "#manualMode", secondary: true }
@@ -3865,10 +3865,52 @@ function setupAssistantUI(){
    - expenses
    - maintenance_requests
 ------------------------------------------------------------- */
+/* Financial Overview period (the select above the cards): 30 / 90 / 180 days or year to date */
+let _finPeriod = "30";
+function finPeriodStart(p) {
+  const d = new Date();
+  if (p === "ytd") return d.getFullYear() + "-01-01";
+  d.setDate(d.getDate() - Number(p || 30));
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function finPeriodLabel(p) { return p === "ytd" ? "Year to Date" : "Last " + p + " Days"; }
+
+// Fixed monthly costs from each property's profile: the same model as Reports (reports-analytics.html
+// fixedParts). Itemized P&I + PMI + tax + insurance + HOA, or the full "Monthly payment" (escrow
+// included; known tax/insurance treated as the escrow inside it) + HOA. Each part names the expense
+// categories that log the same cost, so a period where it was logged isn't counted twice.
+const DASH_PROP_FIXED_COLS = "monthly_payment, mortgage_pi, pmi_monthly, tax_monthly, tax_monthly_current, insurance_monthly, insurance_monthly_current, hoa_monthly";
+const DASH_MORTGAGE_CATS = ["Mortgage Payment", "Mortgage Principal", "Mortgage Interest"];
+function dashFixedParts(prop) {
+  if (!prop) return [];
+  const n = function (v) { const x = Number(v); return isFinite(x) && x > 0 ? x : 0; };
+  const tax = n(prop.tax_monthly) || n(prop.tax_monthly_current);
+  const ins = n(prop.insurance_monthly) || n(prop.insurance_monthly_current);
+  const hoa = n(prop.hoa_monthly);
+  const parts = [];
+  if (n(prop.mortgage_pi)) {
+    parts.push({ amount: n(prop.mortgage_pi), cats: DASH_MORTGAGE_CATS });
+    if (n(prop.pmi_monthly)) parts.push({ amount: n(prop.pmi_monthly), cats: ["PMI"] });
+    if (tax) parts.push({ amount: tax, cats: ["Property Tax"] });
+    if (ins) parts.push({ amount: ins, cats: ["Insurance"] });
+  } else if (n(prop.monthly_payment)) {
+    const pay = n(prop.monthly_payment);
+    const escTax = Math.min(tax, pay), escIns = Math.min(ins, pay - escTax);
+    parts.push({ amount: pay - escTax - escIns, cats: DASH_MORTGAGE_CATS.concat(["PMI"]) });
+    if (escTax) parts.push({ amount: escTax, cats: DASH_MORTGAGE_CATS.concat(["Property Tax"]) });
+    if (escIns) parts.push({ amount: escIns, cats: DASH_MORTGAGE_CATS.concat(["Insurance"]) });
+  } else {
+    if (tax) parts.push({ amount: tax, cats: ["Property Tax"] });
+    if (ins) parts.push({ amount: ins, cats: ["Insurance"] });
+  }
+  if (hoa) parts.push({ amount: hoa, cats: ["HOA"] });
+  return parts;
+}
+
 async function fetchDashboardData(user) {
   const user_id = user.id;
   const yearStart = getYearStart();
-  const days30Ago = get30DaysAgo();
+  const periodStart = finPeriodStart(_finPeriod);
   const today = getToday();
 
   // Resolve company_id (consistent with property-management / add-expense)
@@ -3888,29 +3930,20 @@ async function fetchDashboardData(user) {
   if (activeCompanyId) localStorage.setItem("rg_active_company_id", activeCompanyId);
 
     // ── Build all 8 queries upfront ─────────────────────────────────────────────
-  let propQuery      = sb.from("properties").select("id, name, occupancy_status", { count: "exact" }).order("created_at", { ascending: false });
-  let rentYTDQuery   = sb.from("rent_log").select("amount, date_paid").gte("date_paid", yearStart);
+  let propQuery      = sb.from("properties").select("id, name, occupancy_status, units, " + DASH_PROP_FIXED_COLS, { count: "exact" })
+    .is("archived_at", null).order("created_at", { ascending: false });
+  // Archived payments were removed by the landlord: they don't count anywhere
+  let rentYTDQuery   = sb.from("rent_log").select("amount, date_paid").is("archived_at", null).gte("date_paid", yearStart);
   let expYTDQuery    = sb.from("expenses").select("amount, date_paid").is("archived_at", null).gte("date_paid", yearStart);
   let maintQuery     = sb.from("maintenance_requests").select("status, urgency_level").is("archived_at", null);
-  let rent30Query    = sb.from("rent_log").select("amount, date_paid").gte("date_paid", days30Ago);
-  let maintExp30Query = sb.from("expenses").select("amount, date_paid, category").is("archived_at", null)
-    .in("category", ["Maintenance", "Repairs & Maintenance"]).gte("date_paid", days30Ago);
+  let rent30Query    = sb.from("rent_log").select("amount, date_paid").is("archived_at", null).gte("date_paid", periodStart);
+  // Every expense in the period: maintenance spend is the repair categories; net cash flow uses all
+  let maintExp30Query = sb.from("expenses").select("amount, date_paid, category, property_id, property_name").is("archived_at", null)
+    .gte("date_paid", periodStart);
   let leasesQuery    = sb.from("leases")
     .select("property_name,tenant_name,rent_amount,rent_due_day,due_day,grace_period,late_fee_grace_days,lease_end")
+    .is("archived_at", null)
     .order("lease_start", { ascending: false });
-
-  // Rent attention — query by applied_to_due_date so early/late payments
-  // are correctly matched to the month they cover, not when they were paid.
-  // We fetch a wider window (45 days back → 5 days forward) so we catch
-  // early payers and any payments slightly after the due date.
-  const now = new Date();
-  const windowStart = new Date(now.getFullYear(), now.getMonth() - 1, 15);
-  const windowEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 5);
-  const windowStartStr = windowStart.toISOString().slice(0, 10);
-  const windowEndStr   = windowEnd.toISOString().slice(0, 10);
-  let rentMonthQuery = sb.from("rent_log")
-    .select("property_name,amount,date_paid,applied_to_due_date")
-    .gte("date_paid", windowStartStr).lt("date_paid", windowEndStr);
 
   // Apply company/user filter to each query
   if (activeCompanyId) {
@@ -3921,7 +3954,6 @@ async function fetchDashboardData(user) {
     rent30Query     = rent30Query.eq("company_id", activeCompanyId);
     maintExp30Query = maintExp30Query.eq("company_id", activeCompanyId);
     leasesQuery     = leasesQuery.eq("company_id", activeCompanyId);
-    rentMonthQuery  = rentMonthQuery.eq("company_id", activeCompanyId);
   } else {
     maintQuery = maintQuery.eq("user_id", user_id);
   }
@@ -3953,11 +3985,10 @@ async function fetchDashboardData(user) {
     { data: maintenanceData, error: maintenanceError },
     { data: rent30RowsData, error: rent30Error },
     { data: maintExpense30RowsData, error: maintExpense30Error },
-    { data: leaseRows, error: leaseErr },
-    { data: rentMonthRows, error: rentMonthErr }
+    { data: leaseRows, error: leaseErr }
   ] = await Promise.all([
     propQuery, rentYTDQuery, expYTDQuery, maintQuery,
-    rent30Query, maintExp30Query, leasesQuery, rentMonthQuery
+    rent30Query, maintExp30Query, leasesQuery
   ]);
   const { data: rentStatusRows, error: rentStatusErr } = await rentStatusPromise;
   const { data: failedNotifRows, error: failedNotifErr } = await failedNotifPromise;
@@ -3969,7 +4000,7 @@ async function fetchDashboardData(user) {
   if (expensesYTDError)   console.error("Error loading YTD expenses:", expensesYTDError);
   if (maintenanceError)   console.error("Error loading maintenance_requests:", maintenanceError);
   if (rent30Error)        console.error("Error loading 30-day rent:", rent30Error);
-  if (maintExpense30Error) console.error("Error loading 30-day maintenance expenses:", maintExpense30Error);
+  if (maintExpense30Error) console.error("Error loading period expenses:", maintExpense30Error);
   if (leaseErr)           console.warn("Rent attention: leases load error", leaseErr);
 
   // Unwrap results
@@ -4077,25 +4108,44 @@ async function fetchDashboardData(user) {
     return _VACANT.has(String(p.occupancy_status || "").toLowerCase().trim());
   });
 
-  // Lease renewals -- leases expiring within 60 days
-  const _todayMs = Date.now();
-  const _60dMs   = 60 * 24 * 60 * 60 * 1000;
-  const _expiringLeases = Object.values(latestLeaseByProperty).filter(function(l){
-    if (!l.lease_end) return false;
-    const endMs = new Date(l.lease_end).getTime();
-    return endMs >= _todayMs && endMs <= (_todayMs + _60dMs);
+  // Lease renewals: the lease in effect (rg_rent_status, so no drafts, archived or ended leases) on a
+  // fixed term ending in the next 60 days. Dates are calendar dates, parsed as local dates.
+  const _dayMs = 24 * 60 * 60 * 1000;
+  const _todayLocalMs = new Date(_todayLocal.getFullYear(), _todayLocal.getMonth(), _todayLocal.getDate()).getTime();
+  const _localMs = function (iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+    return m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime() : NaN;
+  };
+  const _expiringLeases = (Array.isArray(rentStatusRows) ? rentStatusRows : []).filter(function (r) {
+    if (r.lease_state !== "active" || !r.lease_end) return false;
+    const endMs = _localMs(r.lease_end);
+    return endMs >= _todayLocalMs && endMs <= _todayLocalMs + 60 * _dayMs;
   });
   const renewals = _expiringLeases.length;
-  const expiringLeases = _expiringLeases.map(function(l){
-    const daysLeft = Math.ceil((new Date(l.lease_end).getTime() - _todayMs) / (24*60*60*1000));
-    return { property_name: l.property_name, tenant_name: l.tenant_name, lease_end: l.lease_end, daysLeft: daysLeft };
-  }).sort(function(a,b){ return a.daysLeft - b.daysLeft; });
+  const expiringLeases = _expiringLeases.map(function (r) {
+    const daysLeft = Math.round((_localMs(r.lease_end) - _todayLocalMs) / _dayMs);
+    return { property_name: r.property_name, tenant_name: r.tenant_name, lease_end: r.lease_end, daysLeft: daysLeft };
+  }).sort(function (a, b) { return a.daysLeft - b.daysLeft; });
 
   // Aggregations
   const ytdRentTotal = sumAmounts(rentYTDRows);
   const ytdExpensesTotal = sumAmounts(expensesYTDRows);
   const rentCollected30 = sumAmounts(rent30Rows);
-  const maintenanceSpent30 = sumAmounts(maintExpense30Rows);
+  const _REPAIR_CATS = ["Maintenance", "Repairs & Maintenance"];
+  const maintenanceSpent30 = sumAmounts(maintExpense30Rows.filter(function (e) { return _REPAIR_CATS.indexOf(e.category) !== -1; }));
+  const expensesPeriod = sumAmounts(maintExpense30Rows);
+  // Fixed costs for the period, prorated by days; a part logged as an expense for that property in the
+  // period counts through the expense instead (no double counting).
+  const _periodDays = Math.max(1, Math.round((_todayLocalMs - _localMs(periodStart)) / _dayMs));
+  const fixedPeriod = properties.reduce(function (t, p) {
+    const logged = new Set(maintExpense30Rows.filter(function (e) {
+      return e.property_id ? e.property_id === p.id : e.property_name === p.name;
+    }).map(function (e) { return e.category; }));
+    return t + dashFixedParts(p).reduce(function (tt, f) {
+      return f.cats.some(function (c) { return logged.has(c); }) ? tt : tt + f.amount * _periodDays / (365 / 12);
+    }, 0);
+  }, 0);
+  const unitCount = properties.reduce(function (t, p) { const u = Number(p.units); return t + (isFinite(u) && u > 0 ? u : 1); }, 0);
 
   return {
     // Quick Peek
@@ -4134,7 +4184,11 @@ async function fetchDashboardData(user) {
     rent_partial_count,
     rent_attention_items,
     maintenanceSpent: maintenanceSpent30,
-    noi: rentCollected30 - maintenanceSpent30,
+    expensesPeriod,
+    fixedPeriod,
+    netCash: rentCollected30 - expensesPeriod - fixedPeriod,
+    periodLabel: finPeriodLabel(_finPeriod),
+    unitCount,
 
     // Maintenance summary
     openTotal,
@@ -4183,12 +4237,12 @@ function buildDashboardInsights(data){
     ));
   }
 
-  // 3) NOI health (last 30 days)
-  if(Number(data.noi || 0) < 0){
+  // 3) Net cash flow (selected period)
+  if(Number(data.netCash || 0) < 0){
     items.push(insight(
       "warn",
-      `Last 30 days NOI is negative (${money(data.noi)})`,
-      `Rent collected ${money(data.rentCollected)} • Maintenance spent ${money(data.maintenanceSpent)}`,
+      `${data.periodLabel} net cash flow is negative (${money(data.netCash)})`,
+      `Rent ${money(data.rentCollected)} • Expenses ${money(data.expensesPeriod)} • Mortgage & fixed ${money(data.fixedPeriod)}`,
       [
         { label: "💸 Expense Tracking", href: "expense-tracking.html" },
         { label: "📈 Reports", href: "reports-analytics.html" }
@@ -4197,8 +4251,8 @@ function buildDashboardInsights(data){
   } else {
     items.push(insight(
       "info",
-      `Last 30 days NOI: ${money(data.noi)}`,
-      `Rent ${money(data.rentCollected)} • Maintenance ${money(data.maintenanceSpent)}`,
+      `${data.periodLabel} net cash flow: ${money(data.netCash)}`,
+      `Rent ${money(data.rentCollected)} • Expenses ${money(data.expensesPeriod)} • Mortgage & fixed ${money(data.fixedPeriod)}`,
       [
         { label: "📊 Rent Center", href: "lease-rent-center.html" }
       ]
@@ -4683,7 +4737,7 @@ function updateDashboard(data) {
         properties: data.properties,
         vacancies: data.vacancies,
         open_maintenance: data.openTotal,
-        noi_30d: data.noi,
+        net_cash_flow: data.netCash,
         rent_30d: data.rentCollected,
         maint_30d: data.maintenanceSpent
       }
@@ -4697,7 +4751,7 @@ function updateDashboard(data) {
   document.getElementById("totalPropsBadge").textContent =
     `${data.properties} Properties`;
   document.getElementById("totalUnitsBadge").textContent =
-    `${data.properties} Units`;
+    (data.unitCount || data.properties) + " Unit" + ((data.unitCount || data.properties) === 1 ? "" : "s");
   document.getElementById("ytdRent").textContent =
     `Total Rent: ${formatCurrency(data.ytdRent)}`;
   document.getElementById("ytdExpenses").textContent =
@@ -4719,7 +4773,9 @@ function updateDashboard(data) {
   document.getElementById("maintenanceSpent").textContent =
     formatCurrency(data.maintenanceSpent);
   document.getElementById("noi").textContent =
-    formatCurrency(data.noi);
+    formatCurrency(data.netCash);
+  const _finTitle = document.getElementById("financialTitleText");
+  if (_finTitle) _finTitle.textContent = "Financial Overview (" + data.periodLabel + ")";
 
   // Stat notes: give every number something to be measured against
   const _setNote = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
@@ -4740,7 +4796,7 @@ function updateDashboard(data) {
     ? "No open requests"
     : `${_open} open request${_open === 1 ? "" : "s"}`);
 
-  _setNote("noiNote", "Rent collected minus maintenance");
+  _setNote("noiNote", "Rent − " + formatCurrency(data.expensesPeriod) + " expenses − " + formatCurrency(data.fixedPeriod) + " mortgage & fixed");
 
   // First-run checklist
   try { renderSetupChecklist(data); } catch (e) { console.warn("Setup checklist failed:", e); }
@@ -4861,6 +4917,17 @@ async function initDashboardPage(preResolvedUser){
     const data = await fetchDashboardData(user);
     updateDashboard(data);
     initPayInbox(user).catch(function (e) { console.warn("Payment inbox failed to load:", e); });
+    const _perSel = document.getElementById("financialPeriodSelect");
+    if (_perSel && !_perSel.dataset.wired) {
+      _perSel.dataset.wired = "1";
+      _perSel.addEventListener("change", async function () {
+        _finPeriod = _perSel.value || "30";
+        _perSel.disabled = true;
+        try { updateDashboard(await fetchDashboardData(user)); }
+        catch (e) { console.warn("Period change failed:", e); }
+        finally { _perSel.disabled = false; }
+      });
+    }
 
     // ── Populate full GENIE_CONTEXT after real data is loaded ──
     // This ensures Ask Genie has actual portfolio numbers, not just user info
@@ -4877,7 +4944,8 @@ async function initDashboardPage(preResolvedUser){
       pendingQuotes:     data.pendingQuotes,
       lateRentCount:     data.rent_attention_count,
       lateRentAmount:    data.rentOverdue,
-      noi30d:            data.noi,
+      netCashFlow:       data.netCash,
+      netCashFlowPeriod: data.periodLabel,
       lateProperties:    (data.rent_attention_items || []).map(function(i){
         return i.property_name + (i.tenant_name ? " (" + i.tenant_name + ")" : "") +
                " — $" + Number(i.remaining||0).toFixed(2) + " outstanding";

@@ -744,13 +744,13 @@
           <span class="toggle-track"></span>
         </label>
       </div>
-      <div class="toggle-row soon">
+      <div class="toggle-row">
         <div class="toggle-info">
-          <div class="toggle-label">Monthly summary report <span class="soon-tag">Coming soon</span></div>
-          <div class="toggle-desc">A portfolio summary email at the end of each month.</div>
+          <div class="toggle-label">Monthly summary report</div>
+          <div class="toggle-desc">An email on the 1st of each month: rent collected and owed per property, expenses, open repairs, leases ending soon and payments to check.</div>
         </div>
         <label class="toggle-switch">
-          <input type="checkbox" id="notifMonthly" disabled aria-label="Monthly summary report">
+          <input type="checkbox" id="notifMonthly" checked aria-label="Monthly summary report">
           <span class="toggle-track"></span>
         </label>
       </div>
@@ -1012,11 +1012,10 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
   document.getElementById('notifOverdue').checked     = notifPrefs.overdue     !== undefined ? !!notifPrefs.overdue     : true;
   document.getElementById('notifMaintenance').checked = notifPrefs.maintenance !== undefined ? !!notifPrefs.maintenance : true;
   document.getElementById('notifLease').checked       = notifPrefs.lease       !== undefined ? !!notifPrefs.lease       : true;
-  document.getElementById('notifMonthly').checked     = notifPrefs.monthly    !== undefined ? !!notifPrefs.monthly    : false;
+  // monthlySummary, not the old 'monthly' key: that was saved as false while the switch was disabled
+  document.getElementById('notifMonthly').checked     = notifPrefs.monthlySummary !== undefined ? !!notifPrefs.monthlySummary : true;
   document.getElementById('notifMessages').checked    = notifPrefs.messages   !== undefined ? !!notifPrefs.messages   : true;
   document.getElementById('notifTenantRepair').checked = notifPrefs.tenantRepairUpdates !== undefined ? !!notifPrefs.tenantRepairUpdates : true;
-  // Not built yet: shown off and disabled until it exists
-  document.getElementById('notifMonthly').checked = false;
 
   // Account details
   setText('infoUserId',user.id?user.id.slice(0,8)+'…':'—');
@@ -1129,7 +1128,7 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
       overdue:     document.getElementById('notifOverdue').checked,
       maintenance: document.getElementById('notifMaintenance').checked,
       lease:       document.getElementById('notifLease').checked,
-      monthly:     document.getElementById('notifMonthly').checked,
+      monthlySummary: document.getElementById('notifMonthly').checked,
       messages:    document.getElementById('notifMessages').checked,
       tenantRepairUpdates: document.getElementById('notifTenantRepair').checked
     };

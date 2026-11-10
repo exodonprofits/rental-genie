@@ -150,15 +150,19 @@ should go through the same table and key scheme, not a second sender.
 Landlord alerts (rg_20/rg_21): a tenant-filed repair (`landlord_repair:<id>`, "URGENT:" for
 High/Emergency) and a tenant message (`landlord_message:<id>`, sender = 'tenant') email the company
 owner's sign-in address. The owner's Account > Notifications switches (`user_metadata.notifications.
-maintenance` / `.messages`, missing = on) decide; a switched-off alert is logged as `skipped`. The other
-switches on that tab are labelled "Coming soon" and disabled; don't re-enable one until it's built.
+maintenance` / `.messages`, missing = on) decide; a switched-off alert is logged as `skipped`. 
 Daily reminders (rg_22/rg_23): pg_cron job `rg-daily-reminders` (14:05 UTC) runs `rg_daily_reminders()`
 with today in America/Chicago, built on `rg_rent_schedule`: one email per company per kind —
 `rent_due:<company>:<due date>` (unpaid rent due in 3 days, switch `rentDue`), `rent_overdue:<company>:<day>`
 (rent whose grace period ended yesterday, still unpaid; once per due date, switch `overdue`),
 `lease_expiry:<company>:<day>` (fixed-term leases ending in 30 days, switch `lease`). Holdover leases keep
-charging, so they keep producing reminders until the lease is ended. Only the monthly summary is still
-"Coming soon".
+charging, so they keep producing reminders until the lease is ended.
+Monthly summary (rg_26): pg_cron job `rg-monthly-summary` (1st of the month, 14:10 UTC) runs
+`rg_monthly_summary()` for the month just ended: per property rent collected (by date received), due,
+unpaid and owed at month end (from `rg_rent_schedule`), expenses, open repairs, leases ending in 60 days,
+inbox items waiting, and payments that look entered twice. Key `monthly_summary:<company>:<YYYY-MM>`,
+owner switch `monthlySummary` (missing = on; the old `monthly` key was saved as false while the switch
+was disabled and isn't used). Every switch on the Notifications tab is now live.
 Notification kinds live in the `notification_kinds` table (rg_24; `notifications.kind` is a foreign key):
 add a row for a new kind, don't recreate a check constraint.
 Tenant repair updates (rg_25): `trg_repair_update` (after update of status, scheduled_at, assigned_vendor)

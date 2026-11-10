@@ -521,6 +521,7 @@ body { overflow-x: hidden; }
 <body class="tenant-workspace tenant-resources">
 
 <!-- ═══ SUPABASE (body-first) ═══ -->
+<script src="shared/js/tenant-data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ── rgFiles ────────────────────────────────────────────────────────────────
@@ -565,7 +566,8 @@ window.rgFiles = (function () {
       el.removeAttribute('data-rg-file');
       resolve(client, raw.slice(0, i), decodeURIComponent(raw.slice(i + 1))).then(function (url) {
         if (!url) { el.removeAttribute('href'); el.title = 'File unavailable'; return; }
-        if (el.tagName === 'IMG') el.src = url; else el.href = url;
+        // Open in a new tab only once the signed link exists (href="#" in a new sheet is the page itself)
+        if (el.tagName === 'IMG') el.src = url; else { el.href = url; el.target = '_blank'; el.rel = 'noopener noreferrer'; }
       });
     });
   }
@@ -743,7 +745,7 @@ window.rgFiles = (function () {
    ['mRepairs','tenant-repair-requests.html'],['mDocs','tenant-documents.html'],['mContact','tenant-contact.html']
   ].forEach(([id,base])=>{ const el=$(id); if(el) el.href=withProp(base); });
 
-  if(propertyFromUrl) $('propPill').textContent='🏠 Property: '+decodeURIComponent(propertyFromUrl);
+  if(propertyFromUrl) $('propPill').textContent='🏠 Property: '+propertyFromUrl;
 
   const ham=$('hamburgerBtn'), drw=$('mobileDrawer');
   if(ham&&drw){
@@ -826,7 +828,7 @@ window.rgFiles = (function () {
         <td>${typeChip(d.doc_type||d.type)}</td>
         <td style="max-width:240px;font-weight:600">${safe(d.title||d.filename||d.name)||'Untitled'}</td>
         <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${safe(d.property_name)||'—'}</td>
-        <td>${(d.file_path||safeDocUrl(d.file_url||d.url))?`<a class="open-btn" href="#"${rgFiles.attr('tenant-documents', d.file_path||safeDocUrl(d.file_url||d.url))} target="_blank" rel="noopener noreferrer">↗ Open</a>`:'—'}</td>
+        <td>${(d.file_path||safeDocUrl(d.file_url||d.url))?`<a class="open-btn" href="#"${rgFiles.attr('tenant-documents', d.file_path||safeDocUrl(d.file_url||d.url))}>↗ Open</a>`:'—'}</td>
       </tr>`).join('');
     const labels=['Date','Type','Title','Property','Open'];
     Array.from(body.rows).forEach(function(row){row.setAttribute('role','row');Array.from(row.cells).forEach(function(cell,index){cell.dataset.label=labels[index];cell.setAttribute('role','cell')})});
@@ -835,11 +837,12 @@ window.rgFiles = (function () {
 
   async function loadData(){
     $('docBody').innerHTML='<tr><td colspan="5"><span class="skel" style="width:60%;height:16px;"></span></td></tr>';
-    let q = tenant
-      ? sb.from('tenant_documents').select('*').eq('tenant_id', tenant.id)
-      : sb.from('tenant_documents').select('*').eq('tenant_email', user.email);
-    if(propertyFromUrl) q=q.eq('property_name',decodeURIComponent(propertyFromUrl));
-    const {data,error}=await q;
+    // Tenant id or email (like RLS: a document saved without tenant_id still shows)
+    const q = rgTenant.mine(sb.from('tenant_documents').select('*'), tenant, user.email);
+    const res=await q;
+    const error=res.error;
+    // The link's property narrows the list; a name that matches nothing (renamed property) shows all
+    const data=rgTenant.forUrl(res.data||[], propertyFromUrl, '');
     if(error){ $('documentResults').textContent='Documents unavailable. Try Refresh.'; ['kpiLease','kpiReceipts','kpiNotices','kpiTotal'].forEach(id=>$(id).textContent='—'); $('docBody').innerHTML=`<tr><td colspan="5" style="color:var(--danger)">${safe(error.message)}</td></tr>`; return; }
     // Sort client-side by whichever date column exists in this table
     docs=(data||[]).sort((a,b)=>{

@@ -643,7 +643,6 @@ body { overflow-x: hidden; }
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <button class="btn primary" id="btnSend" type="button">📨 Send Message</button>
-        <button class="btn" id="btnEmail" type="button">✉️ Open Email App</button>
       </div>
       <div class="status-msg" id="statusMsg" role="status"></div>
     </div>
@@ -837,18 +836,13 @@ body { overflow-x: hidden; }
     const payload={tenant_email:user.email,tenant_id:tenant?tenant.id:null,company_id:leaseData[0].company_id,property_name:property_name||leaseData[0].property_name,subject,message,sender:'tenant'};
     const {error}=await sb.from('tenant_messages').insert([payload]);
     if(error){setMsg('Error: '+safe(error.message),'err');btn.disabled=false;btn.textContent='📨 Send Message';return;}
-    setMsg('Message recorded in your portal. Check here for replies or contact your landlord directly if time-sensitive.','ok');
+    setMsg('✓ Message sent to your landlord. Their reply will appear here. For emergencies, call your landlord or local emergency services.','ok');
     $('subject').value='';$('message').value='';
     btn.disabled=false;btn.textContent='📨 Send Message';
     await loadHistory();
   }
 
   $('btnSend').addEventListener('click',sendMessage);
-  $('btnEmail').addEventListener('click',()=>{
-    const subject=encodeURIComponent($('subject').value||'Message from tenant');
-    const body=encodeURIComponent($('message').value||'');
-    window.open('mailto:?subject='+subject+'&body='+body);
-  });
 
   document.getElementById('btnRefresh') && document.getElementById('btnRefresh').addEventListener('click', loadHistory);
 

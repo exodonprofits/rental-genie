@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Select Property – Tenant Portal | Rental Genie</title>
+<title>Tenant Portal Access | Rental Genie</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap">
@@ -224,6 +224,20 @@ main {
   .prop-grid { grid-template-columns: 1fr; }
 }
 
+/* Portal access cards (not links: the portal opens only as the tenant) */
+.prop-card { cursor: default; }
+.prop-card:hover { transform: none; }
+.portal-status { font-size: .8rem; color: var(--muted); font-weight: 500; line-height: 1.45; }
+.card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.card-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 40px; padding: 8px 14px; border-radius: 999px; font: inherit;
+  font-size: .82rem; font-weight: 700; text-decoration: none; cursor: pointer;
+  border: 1px solid var(--border); background: #fff; color: var(--navy);
+}
+.card-btn.primary { background: var(--navy); border-color: var(--navy); color: #fff; }
+.card-btn:hover { border-color: var(--sky); }
+.card-btn:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
 /* CLAUDE.md: no sideways scroll on phones */
 body { overflow-x: hidden; }
 </style>
@@ -271,8 +285,8 @@ body { overflow-x: hidden; }
 
     <div class="picker-hero">
       <div class="picker-icon">🏠</div>
-      <h1>Select a Property</h1>
-      <p>Choose which property's tenant portal you'd like to view.</p>
+      <h1>Tenant Portal</h1>
+      <p>Each tenant signs in with their own email and sees only their own lease, payments and repairs. Invite them here, or copy their portal link.</p>
     </div>
 
     <!-- Loading state -->
@@ -324,57 +338,84 @@ body { overflow-x: hidden; }
     return emojis[code % emojis.length];
   }
 
-  function statusChip(status) {
-    var s = (status||'').toLowerCase();
-    if (s === 'active' || s === 'occupied')
-      return '<span class="meta-chip active"><span class="chip-dot"></span> Active</span>';
-    if (s === 'vacant' || s === 'inactive')
-      return '<span class="meta-chip inactive">Vacant</span>';
-    if (s === 'pending')
-      return '<span class="meta-chip warn">Pending</span>';
-    return '<span class="meta-chip plain">' + escHtml(status || 'Unknown') + '</span>';
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function chip(cls, text) { return el('span', 'meta-chip ' + cls, text); }
+
+  var STATE = { active: ['active', 'Active lease'], holdover: ['warn', 'Holdover'], month_to_month: ['active', 'Month-to-month'], ended: ['inactive', 'Lease ended'] };
+
+  // Portal link the tenant opens (they sign in as themselves; property_id survives renames)
+  function portalLink(p) {
+    var q = new URLSearchParams(); q.set('property', p.name); q.set('property_id', p.id);
+    return new URL('tenant-portal.html?' + q.toString(), location.href).href;
+  }
+  function inviteLink(p) {
+    var q = new URLSearchParams(); q.set('property', p.name); q.set('property_id', p.id);
+    return 'invite-tenant.html?' + q.toString();
   }
 
-  function renderProperties(props) {
-    if (!props.length) { show('stateEmpty'); return; }
+  function copyText(text, btn) {
+    var done = function (ok) {
+      var old = btn.textContent; btn.textContent = ok ? '✓ Copied' : 'Copy failed';
+      setTimeout(function () { btn.textContent = old; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    } else {
+      try { var t = el('textarea'); t.value = text; document.body.appendChild(t); t.select(); done(document.execCommand('copy')); t.remove(); }
+      catch (e) { done(false); }
+    }
+  }
 
+  // rows: { prop, status (rg_rent_status row or null), lease (id, tenant_email), tenant (auth_user_id) }
+  function renderProperties(rows) {
+    if (!rows.length) { show('stateEmpty'); return; }
     var grid = document.getElementById('propGrid');
-    grid.innerHTML = props.map(function(p) {
-      var name    = p.property_name || 'Unnamed Property';
-      var address = '';  // not in leases table
-      var status  = p.status || '';
-      var tenant  = p.tenant_name ? '👤 ' + p.tenant_name : '';
-      var rent    = p.rent_amount ? '💵 $' + Number(p.rent_amount).toLocaleString() + '/mo' : '';
-      // Lease date range as sub-label
-      if (p.lease_start || p.lease_end) {
-        var ls = p.lease_start ? p.lease_start.slice(0,10) : '?';
-        var le = p.lease_end   ? p.lease_end.slice(0,10)   : 'ongoing';
-        address = '📅 ' + ls + ' → ' + le;
+    grid.textContent = '';
+    rows.forEach(function (r) {
+      var p = r.prop, st = r.status;
+      var card = el('div', 'prop-card');
+      var top = el('div', 'prop-card-top');
+      var av = el('div', 'prop-avatar', propEmoji(p.name)); av.setAttribute('aria-hidden', 'true');
+      var info = el('div', 'prop-info');
+      info.appendChild(el('div', 'prop-name', p.name || 'Unnamed property'));
+      if (p.address) info.appendChild(el('div', 'prop-address', '📍 ' + p.address));
+      top.appendChild(av); top.appendChild(info);
+      card.appendChild(top);
+
+      var meta = el('div', 'prop-meta');
+      var current = st && st.lease_state && st.lease_state !== 'ended';
+      if (current) {
+        var s = STATE[st.lease_state] || ['plain', st.lease_state];
+        meta.appendChild(chip(s[0], s[1]));
+        if (st.tenant_name) meta.appendChild(chip('plain', '👤 ' + st.tenant_name));
+      } else {
+        meta.appendChild(chip('inactive', 'No current lease'));
       }
-      var url     = 'tenant-portal.html?property=' + encodeURIComponent(name);
+      card.appendChild(meta);
 
-      return '<a class="prop-card" href="' + url + '">' +
-        '<div class="prop-card-top">' +
-          '<div class="prop-avatar">' + propEmoji(name) + '</div>' +
-          '<div class="prop-info">' +
-            '<div class="prop-name">' + escHtml(name) + '</div>' +
-            (address ? '<div class="prop-address">📍 ' + escHtml(address) + '</div>' : '') +
-          '</div>' +
-          '<span class="prop-arrow">›</span>' +
-        '</div>' +
-        '<div class="prop-meta">' +
-          (status ? statusChip(status) : '') +
-          (tenant ? '<span class="meta-chip plain">' + escHtml(tenant) + '</span>' : '') +
-          (rent   ? '<span class="meta-chip plain">' + escHtml(rent)   + '</span>' : '') +
-        '</div>' +
-      '</a>';
-    }).join('');
+      var msg;
+      if (!current) msg = 'You can still send a portal link, for example to a tenant whose lease starts soon.';
+      else if (!r.lease || !r.lease.tenant_email) msg = 'No email on the lease yet. Add one when you send the invite.';
+      else if (r.tenant && r.tenant.auth_user_id) msg = '✓ ' + r.lease.tenant_email + ' has signed in to the portal.';
+      else msg = r.lease.tenant_email + ' hasn\'t signed in yet. Send them an invite.';
+      card.appendChild(el('p', 'portal-status', msg));
 
+      var actions = el('div', 'card-actions');
+      var inv = el('a', 'card-btn primary', (r.tenant && r.tenant.auth_user_id) ? '✉️ Resend sign-in link' : '✉️ Invite tenant');
+      inv.href = inviteLink(p);
+      var cp = el('button', 'card-btn', '🔗 Copy portal link'); cp.type = 'button';
+      cp.setAttribute('aria-label', 'Copy the tenant portal link for ' + (p.name || 'this property'));
+      cp.addEventListener('click', function () { copyText(portalLink(p), cp); });
+      actions.appendChild(inv); actions.appendChild(cp);
+      card.appendChild(actions);
+      grid.appendChild(card);
+    });
     show('propGrid');
-  }
-
-  function escHtml(s) {
-    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   async function init() {
@@ -387,7 +428,7 @@ body { overflow-x: hidden; }
       if (r2.data && r2.data.session) { user = r2.data.session.user; break; }
       await new Promise(function(res){ setTimeout(res, 180); });
     }
-    if (!user) { location.href = 'login.html'; return; }
+    if (!user) { location.href = 'login.html?returnTo=' + encodeURIComponent(location.pathname + location.search); return; }
 
     // Try to get company_id
     var companyId = null;
@@ -398,44 +439,49 @@ body { overflow-x: hidden; }
 
     if (!companyId) {
       try {
-        var cm = await sb.from('company_members').select('company_id').eq('user_id', user.id).single();
+        var cm = await sb.from('company_members').select('company_id').eq('user_id', user.id).limit(1).maybeSingle();
         if (cm.data) companyId = cm.data.company_id;
       } catch(e){}
     }
     if (!companyId) {
       try {
-        var co = await sb.from('companies').select('id').eq('owner_user_id', user.id).single();
+        var co = await sb.from('companies').select('id').eq('owner_user_id', user.id).limit(1).maybeSingle();
         if (co.data) companyId = co.data.id;
       } catch(e){}
     }
 
-    // Query distinct properties from leases (no separate properties table)
+    // Properties (never archived), the lease in effect for each from rg_rent_status, and whether
+    // that tenant has signed in (tenants.auth_user_id is set when their login claims the row)
     try {
-      var q = sb.from('leases')
-        .select('property_name, tenant_name, tenant_email, rent_amount, status, lease_start, lease_end')
-        .order('property_name', { ascending: true });
+      var pq = sb.from('properties').select('id, name, address, company_id').is('archived_at', null).order('name', { ascending: true });
+      if (companyId) pq = pq.eq('company_id', companyId);
+      var t = new Date();
+      var today = t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0');
+      var res = await Promise.all([
+        pq,
+        companyId ? sb.rpc('rg_rent_status', { p_company_id: companyId, p_as_of: today }) : Promise.resolve({ data: [] })
+      ]);
+      if (res[0].error) throw res[0].error;
+      var props = res[0].data || [];
+      var byProp = {};
+      ((res[1] && !res[1].error && res[1].data) || []).forEach(function (s) { byProp[s.property_id] = s; });
 
-      if (companyId) q = q.eq('company_id', companyId);
-
-      var res = await q;
-      if (res.error) throw res.error;
-
-      // Deduplicate by property_name — keep the best lease per property
-      var seen = new Map();
-      (res.data || []).forEach(function(row) {
-        var key = (row.property_name || '').trim();
-        if (!key) return;
-        if (!seen.has(key)) { seen.set(key, row); return; }
-        var existing    = seen.get(key);
-        var existActive = (existing.status||'').toLowerCase() === 'active';
-        var rowActive   = (row.status||'').toLowerCase() === 'active';
-        if (!existActive && rowActive) { seen.set(key, row); }
-        else if (existActive === rowActive && (row.lease_start||'') > (existing.lease_start||'')) {
-          seen.set(key, row);
+      var leaseIds = Object.keys(byProp).map(function (k) { return byProp[k].lease_id; }).filter(Boolean);
+      var leases = {}, tenants = {};
+      if (leaseIds.length) {
+        var lr = await sb.from('leases').select('id, tenant_id, tenant_email').in('id', leaseIds);
+        (lr.data || []).forEach(function (l) { leases[l.id] = l; });
+        var tIds = (lr.data || []).map(function (l) { return l.tenant_id; }).filter(Boolean);
+        if (tIds.length) {
+          var tr = await sb.from('tenants').select('id, auth_user_id').in('id', tIds);
+          (tr.data || []).forEach(function (x) { tenants[x.id] = x; });
         }
-      });
-
-      renderProperties(Array.from(seen.values()));
+      }
+      renderProperties(props.map(function (p) {
+        var st = byProp[p.id] || null;
+        var lease = st && leases[st.lease_id] || null;
+        return { prop: p, status: st, lease: lease, tenant: lease && lease.tenant_id ? tenants[lease.tenant_id] || null : null };
+      }));
     } catch(err) {
       document.getElementById('errMsg').textContent = err.message || 'Failed to load properties.';
       show('stateError');

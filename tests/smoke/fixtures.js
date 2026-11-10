@@ -69,7 +69,7 @@ function base() {
     rpc: {
       rg_rent_schedule: sched,
       rg_my_rent_schedule: sched,
-      rg_rent_status: [{ property_id: P1, property_name: 'Oak Street', company_id: C, tenant_name: 'Test Tenant', lease_state: 'active',
+      rg_rent_status: [{ property_id: P1, property_name: 'Oak Street', company_id: C, lease_id: L1, tenant_name: 'Test Tenant', lease_state: 'active',
         rent_amount: 1500, total_due: 4500, total_paid: 3500, balance: 1000, past_due: 1000, months_unpaid: 1, last_paid_date: sched[2].due_date }],
       rg_claim_tenant_row: T1,
       rg_dismiss_notification: true

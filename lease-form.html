@@ -1167,6 +1167,7 @@ function updateDateDuration() {
   if (!start || !end) { el.style.display = 'none'; return; }
   var s = new Date(start + 'T00:00:00');
   var e = new Date(end   + 'T00:00:00');
+  e.setDate(e.getDate() + 1); // the end date is the lease's last day: Feb 1 – Jan 31 is 12 months
   if (isNaN(s) || isNaN(e) || e <= s) { el.style.display = 'none'; return; }
   var months = (e.getFullYear() - s.getFullYear()) * 12 + (e.getMonth() - s.getMonth());
   var days   = Math.round((e - s) / (1000 * 60 * 60 * 24));

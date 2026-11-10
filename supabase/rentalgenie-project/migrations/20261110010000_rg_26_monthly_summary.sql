@@ -9,13 +9,14 @@
 --
 -- Contents, all from the database (rent from rg_rent_schedule, the single source of truth):
 --   - per property: rent collected in the month (by date received), rent due in the month and what
---     of it is still unpaid, and the balance owed today;
+--     of it is still unpaid, and the balance owed at month end;
 --   - expenses logged in the month, top categories;
 --   - open repairs (high/emergency counted), leases ending in the next 60 days, payment-inbox items
 --     waiting to be confirmed;
 --   - payments that look entered twice (same rule as Reports: several payments on one due date adding
 --     up to at least twice the largest, or the same amount on the same day), last 18 months.
--- Companies with no properties are skipped.
+-- Companies with no properties are skipped. Tested rolled back 2026-11-10 with p_today = 2026-11-01:
+-- one email queued to the owner (October 2026), figures matching rg_rent_schedule.
 
 create or replace function public.rg_monthly_summary(p_today date default (now() at time zone 'America/Chicago')::date)
 returns integer
@@ -59,7 +60,7 @@ begin
                    || case when r.due > 0 then ' · due ' || public.rg_money(r.due)
                         || case when r.unpaid > 0 then ' (' || public.rg_money(r.unpaid) || ' unpaid)' else ' (paid)' end
                       else ' · no rent due' end
-                   || case when r.owed > 0 then ' · owes ' || public.rg_money(r.owed) || ' in total' else '' end
+                   || case when r.owed > 0 then ' · owes ' || public.rg_money(r.owed) || ' at month end' else '' end
                    || chr(10);
         v_coll := v_coll + r.collected; v_due := v_due + r.due; v_unpaid := v_unpaid + r.unpaid; v_owed := v_owed + r.owed;
       end loop;
@@ -106,7 +107,7 @@ begin
         || 'Collected in ' || to_char(v_from, 'FMMonth') || ': ' || public.rg_money(v_coll) || chr(10)
         || 'Due in ' || to_char(v_from, 'FMMonth') || ': ' || public.rg_money(v_due)
         || case when v_unpaid > 0 then ', ' || public.rg_money(v_unpaid) || ' of it still unpaid' else ', all paid' end || chr(10)
-        || 'Owed in total today: ' || public.rg_money(v_owed) || chr(10) || chr(10)
+        || 'Owed at the end of ' || to_char(v_from, 'FMMonth') || ': ' || public.rg_money(v_owed) || chr(10) || chr(10)
         || v_lines || chr(10)
         || 'EXPENSES' || chr(10)
         || 'Logged in ' || to_char(v_from, 'FMMonth') || ': ' || public.rg_money(v_exp)

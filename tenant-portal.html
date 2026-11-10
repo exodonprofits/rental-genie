@@ -477,6 +477,7 @@ body { overflow-x: hidden; }
 </head>
 <body class="tenant-workspace">
 <!-- ═══ SUPABASE BOOTSTRAP (body-first) ═══ -->
+<script src="shared/js/tenant-data.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- ══════════════════════════════════════════ -->
 
@@ -724,6 +725,7 @@ body { overflow-x: hidden; }
   /* ── Helpers ────────────────────────────────────────────── */
   var params         = new URLSearchParams(location.search);
   var propertyFromUrl = (params.get('property') || '').trim();
+  var propertyIdFromUrl = (params.get('property_id') || '').trim();
 
   function $(id) { return document.getElementById(id); }
 
@@ -869,10 +871,9 @@ body { overflow-x: hidden; }
   // Rent figures for the tenant come from the database (rg_my_rent_schedule: the landlord's
   // rg_rent_schedule limited to this tenant's lease). As-of is the end of next month so the next
   // due date is listed; rows after today are upcoming and not owed yet.
+  // Balances as of today, next due date from a look-ahead call for the same lease (rgTenant.schedule)
   function loadMySchedule() {
-    var now = new Date();
-    return sb.rpc('rg_my_rent_schedule', { p_as_of: ymdLocal(new Date(now.getFullYear(), now.getMonth() + 2, 0)) })
-      .then(function (r) { if (r.error) throw r.error; return r.data || []; });
+    return rgTenant.schedule(sb).then(function (s) { if (s.failed) throw new Error('rent schedule unavailable'); return s; });
   }
 
   /* ── Hero stat accent ───────────────────────────────────── */
@@ -940,27 +941,23 @@ body { overflow-x: hidden; }
         var _em = document.getElementById('userEmail'); if (_em) _em.textContent = _parts[0];
         var _fn = document.getElementById('umdFullName'); if (_fn) _fn.textContent = tenant.tenant_name;
       }
-    var leaseQ = tenant
-      ? sb.from('leases')
-          .select('id, property_name, tenant_name, tenant_email, rent_amount, status, rent_due_day, due_day, lease_start, lease_end, grace_period, late_fee_grace_days')
-          .eq('tenant_id', tenant.id)
-          .order('lease_start', { ascending: false })
-      : sb.from('leases')
-          .select('id, property_name, tenant_name, tenant_email, rent_amount, status, rent_due_day, due_day, lease_start, lease_end, grace_period, late_fee_grace_days')
-          .ilike('tenant_email', user.email)
+    // This tenant's leases (tenant id or email, like RLS), never archived ones; the lease shown is the
+    // one the rent schedule uses (rgTenant.pickLease), narrowed by ?property_id= / ?property=
+    var leaseQ = rgTenant.mine(sb.from('leases')
+          .select('id, property_id, property_name, tenant_name, tenant_email, rent_amount, status, rent_due_day, due_day, lease_start, lease_end, terminated_date, grace_period, late_fee_grace_days, archived_at')
+          .is('archived_at', null), tenant, user.email)
           .order('lease_start', { ascending: false });
-    if (propertyFromUrl) leaseQ = leaseQ.eq('property_name', propertyFromUrl);
 
-    // Payment query
+    // Payment query (archived payments were removed by the landlord and never show)
     var payQ = sb.from('rent_log')
-      .select('id, property_name, date_paid, inserted_at, amount, method, note, applied_to_due_date, tenant_id, tenant_email, lease_id')
+      .select('id, property_id, property_name, date_paid, inserted_at, amount, method, note, applied_to_due_date, tenant_id, tenant_email, lease_id')
+      .is('archived_at', null)
       .order('date_paid', { ascending: false });
-    if (propertyFromUrl) payQ = payQ.eq('property_name', propertyFromUrl);
 
-    Promise.all([leaseQ.limit(10), payQ, loadMySchedule()]).then(function (results) {
+    Promise.all([leaseQ.limit(20), payQ, loadMySchedule()]).then(function (results) {
       var leaseRes = results[0];
       var payRes   = results[1];
-      var schedAll = results[2] || [];
+      var schedObj = results[2];
 
       if (leaseRes.error) {
         console.warn('Lease load failed:', leaseRes.error);
@@ -970,14 +967,19 @@ body { overflow-x: hidden; }
         console.warn('Payments load failed:', payRes.error);
       }
 
-      var lease = (leaseRes.data && leaseRes.data.length) ? leaseRes.data[0] : null;
+      var lease = rgTenant.pickLease(rgTenant.forUrl(leaseRes.data, propertyFromUrl, propertyIdFromUrl), schedObj);
+      var leaseState = rgTenant.leaseState(schedObj, lease);
       // Only this tenant's own payments. RLS already limits a tenant to their rows, but a signed-in
       // landlord who is also on a lease can read every payment in their company.
       var myEmail = String(user.email || '').toLowerCase();
       var rows  = (payRes.data || []).filter(function (r) {
-        return (tenant && r.tenant_id === tenant.id)
+        var isMine = (tenant && r.tenant_id === tenant.id)
           || (lease && r.lease_id === lease.id)
           || (myEmail && String(r.tenant_email || '').toLowerCase() === myEmail);
+        // Payments for the rental shown (a tenant with two rentals sees each on its own)
+        var thisRental = !lease || r.lease_id === lease.id
+          || (lease.property_id ? r.property_id === lease.property_id : r.property_name === lease.property_name);
+        return isMine && thisRental;
       });
       var now   = new Date();
 
@@ -989,8 +991,7 @@ body { overflow-x: hidden; }
 
       // Schedule rows for this lease (database figures)
       var todayISO = ymdLocal(now);
-      var sched = schedAll.filter(function (r) { return lease && r.lease_id === lease.id; })
-        .sort(function (a, b) { return a.due_date < b.due_date ? -1 : 1; });
+      var sched = lease ? rgTenant.rowsFor(schedObj, lease.id) : [];
       var owedRows   = sched.filter(function (r) { return r.due_date <= todayISO && Number(r.balance || 0) > 0; });
       var balanceDue = owedRows.reduce(function (t, r) { return t + Number(r.balance || 0); }, 0);
       var nextRow    = owedRows[0] || sched.filter(function (r) { return r.due_date > todayISO; })[0] || null;
@@ -998,11 +999,8 @@ body { overflow-x: hidden; }
       var monthRow   = sched.filter(function (r) { return monthKey(new Date(r.due_date + 'T00:00:00')) === monthKey(now); })[0] || null;
       // "Paid this month" = paid toward this month's due date, which is how the landlord's ledger counts it
       var paidThisMonth = monthRow ? Number(monthRow.paid || 0) : 0;
-      var graceDays = lease ? Number(lease.grace_period || lease.late_fee_grace_days || 0) || 0 : 0;
-      var pastDue = owedRows.some(function (r) {
-        var d = new Date(r.due_date + 'T00:00:00'); d.setDate(d.getDate() + graceDays);
-        return ymdLocal(d) < todayISO;
-      });
+      // Late = past the schedule's own grace period (the database's rule, not the page's)
+      var pastDue = owedRows.some(rgTenant.pastDue);
 
       var last = rows.length ? rows[0] : null;
 
@@ -1035,17 +1033,9 @@ body { overflow-x: hidden; }
         setText('qpLeaseStatus', statusText);
         setStatAccent('statLease', statusAccent);
       } else {
-        var s = (lease.status || '').toLowerCase();
-        if (s.includes('signed') || s.includes('active')) {
-          statusText   = '✓ Active';
-          statusAccent = 'good';
-        } else if (s) {
-          statusText   = lease.status;
-          statusAccent = 'warn';
-        } else {
-          statusText   = 'Unknown';
-          statusAccent = 'warn';
-        }
+        // State as the rent schedule sees it: a holdover lease is past its end date but still charging
+        statusText   = rgTenant.stateLabel(leaseState);
+        statusAccent = (leaseState === 'active' || leaseState === 'month_to_month') ? 'good' : 'warn';
         setText('qpLeaseStatus', statusText);
         setStatAccent('statLease', statusAccent);
         setText('qpLeaseTerm', lease.lease_start && lease.lease_end
@@ -1060,9 +1050,9 @@ body { overflow-x: hidden; }
         : '—');
       setText('qpRentDetail',  rentAmount ? fmtMoney(rentAmount) + ' / mo' : '—');
       setText('qpDueDay',      dueDay ? 'Day ' + dueDay + ' of each month' : '—');
-      setText('qpGrace',       lease && lease.grace_period ? lease.grace_period + ' days' :
-                                (lease && lease.late_fee_grace_days ? lease.late_fee_grace_days + ' days' : '—'));
-      setText('qpStatus',      lease ? (lease.status || '—') : '—');
+      var _grace = lease ? (lease.grace_period ?? lease.late_fee_grace_days) : null;
+      setText('qpGrace',       _grace != null ? _grace + ' day' + (Number(_grace) === 1 ? '' : 's') : '—');
+      setText('qpStatus',      lease ? rgTenant.stateLabel(leaseState) : '—');
 
       /* ── Action hints ── */
       setText('leaseHint',  lease ? 'Ends: ' + fmtDate(lease.lease_end) : 'View details');
@@ -1074,12 +1064,14 @@ body { overflow-x: hidden; }
       if (!lease) {
         attention.push('No active lease found for your email.');
       } else {
-        if (lease.lease_end) {
-          var daysLeft = Math.ceil((new Date(lease.lease_end) - now) / (1000 * 60 * 60 * 24));
-          if (!isNaN(daysLeft) && daysLeft <= 45 && daysLeft > 0)
-            attention.push('Your lease ends in ' + daysLeft + ' day(s). Consider reaching out about renewal.');
-          if (!isNaN(daysLeft) && daysLeft <= 0)
-            attention.push('Your lease end date has passed. Please contact your landlord.');
+        var daysLeft = rgTenant.daysUntil(lease.lease_end);
+        if (leaseState === 'holdover') {
+          attention.push('Your lease ended on ' + fmtDate(lease.lease_end) + '. Rent continues each month until you sign a renewal or move out. Please contact your landlord.');
+        } else if (leaseState === 'ended') {
+          attention.push('This lease has ended.');
+        } else if (leaseState === 'active' && !isNaN(daysLeft)) {
+          if (daysLeft === 0) attention.push('Your lease ends today. Consider reaching out about renewal.');
+          else if (daysLeft > 0 && daysLeft <= 45) attention.push('Your lease ends in ' + daysLeft + ' day' + (daysLeft === 1 ? '' : 's') + '. Consider reaching out about renewal.');
         }
       }
       if (rentAmount) {
@@ -1105,16 +1097,8 @@ body { overflow-x: hidden; }
 
   /* ── Repairs snapshot ───────────────────────────────────── */
   function loadRepairsSnapshot(user, tenant, propName) {
-    var q = tenant
-      ? sb.from('maintenance_requests')
-          .select('id, property_name, issue_description, status, created_at').is('archived_at', null)
-          .eq('tenant_id', tenant.id)
-          .neq('status', 'Resolved')
-          .order('created_at', { ascending: false })
-          .limit(5)
-      : sb.from('maintenance_requests')
-          .select('id, property_name, issue_description, status, created_at').is('archived_at', null)
-          .eq('tenant_email', user.email)
+    var q = rgTenant.mine(sb.from('maintenance_requests')
+          .select('id, property_name, issue_description, status, created_at').is('archived_at', null), tenant, user.email)
           .neq('status', 'Resolved')
           .order('created_at', { ascending: false })
           .limit(5);

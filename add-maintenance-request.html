@@ -202,6 +202,13 @@ body { overflow-x: hidden; }
   background-size: 200% 100% !important; animation: rgShimmer 1.1s linear infinite !important; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Menu button: same size and look as dashboard.html (it was an unstyled 28x21 button) */
+#hamburgerBtn.hamburger {
+  min-width: 44px; min-height: 44px; padding: 6px 12px; font-size: 1.4rem; line-height: 1;
+  border: 1px solid rgba(255,255,255,0.25); border-radius: 10px;
+  background: rgba(255,255,255,0.1); color: #fff; cursor: pointer;
+}
 </style>
 </head>
 

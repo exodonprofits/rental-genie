@@ -437,6 +437,12 @@ body { overflow-x: hidden; }
   background-size: 200% 100% !important; animation: rgShimmer 1.1s linear infinite !important; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Phones: tap targets at least 44px tall (Apple's minimum) */
+@media (max-width: 860px) {
+  #pageBackLink { display: inline-block; padding-top: 12px; padding-bottom: 12px; margin-top: -12px; margin-bottom: -12px; }
+  #navBell { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+}
 </style>
 </head>
 <body class="auth-guest">

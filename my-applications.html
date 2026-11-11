@@ -60,6 +60,7 @@ h1{font-size:1.5rem; font-weight:800; color:var(--navy);}
 .msg-form button{padding:10px 18px; border-radius:10px; border:none; background:var(--navy); color:#fff; font-weight:700; font-size:.85rem; cursor:pointer;}
 .msg-form button:disabled{opacity:.6;}
 
+.msg-note{font-size:.76rem; color:var(--muted); margin-top:8px;}
 .empty-state{text-align:center; padding:60px 20px; color:var(--muted);}
 .empty-state h3{color:var(--navy); margin-bottom:8px;}
 .loading{text-align:center; padding:40px; color:var(--muted); font-size:.9rem;}
@@ -94,6 +95,8 @@ function $(id){ return document.getElementById(id); }
 function escapeHtml(s){
   return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
+
+const STATUS_LABELS = { submitted: "Submitted", reviewed: "Reviewed", approved: "Approved", denied: "Not selected" };
 
 const SCREENING_LABELS = {
   not_requested: { text: "Not Requested", cls: "" },
@@ -136,27 +139,28 @@ async function loadApplications(){
   container.innerHTML = applications.map(a => {
     const screening = SCREENING_LABELS[a.screening_status] || SCREENING_LABELS.not_requested;
     return `
-      <div class="app-card" data-id="${a.id}">
-        <div class="app-card-header" data-toggle="${a.id}">
+      <div class="app-card" data-id="${escapeHtml(a.id)}">
+        <div class="app-card-header" data-toggle="${escapeHtml(a.id)}" tabindex="0" role="button" aria-expanded="false">
           <div>
             <div class="app-card-title">${escapeHtml(a.property_name || "Property")}</div>
             <div class="app-card-addr">${escapeHtml(a.property_address || "")}</div>
             <div class="app-card-date">Applied ${new Date(a.created_at).toLocaleDateString()}</div>
           </div>
-          <span class="status-pill ${a.status}">${a.status}</span>
+          <span class="status-pill ${STATUS_LABELS[a.status] ? a.status : ""}">${escapeHtml(STATUS_LABELS[a.status] || a.status || "")}</span>
         </div>
-        <div class="app-card-body" id="body-${a.id}">
+        <div class="app-card-body" id="body-${escapeHtml(a.id)}">
           <div class="screening-row">
             🔍 Background/credit screening:
             <span class="screening-pill">${screening.text}</span>
           </div>
           <div class="thread">
             <h3>💬 Messages with the landlord</h3>
-            <div class="msg-list" id="msgs-${a.id}"><div class="msg-empty">Loading messages…</div></div>
+            <div class="msg-list" id="msgs-${escapeHtml(a.id)}"><div class="msg-empty">Loading messages…</div></div>
             <div class="msg-form">
-              <input type="text" id="msgInput-${a.id}" placeholder="Write a message…" />
-              <button type="button" data-send="${a.id}">Send</button>
+              <input type="text" id="msgInput-${escapeHtml(a.id)}" placeholder="Write a message…" maxlength="2000" aria-label="Message to the landlord" />
+              <button type="button" data-send="${escapeHtml(a.id)}">Send</button>
             </div>
+            <div class="msg-note">The landlord gets your message by email. Replies show up here and in your inbox.</div>
           </div>
         </div>
       </div>
@@ -164,13 +168,16 @@ async function loadApplications(){
   }).join("");
 
   container.querySelectorAll("[data-toggle]").forEach(el => {
-    el.addEventListener("click", () => {
+    const toggle = () => {
       const id = el.getAttribute("data-toggle");
       const body = $("body-" + id);
       const wasOpen = body.classList.contains("open");
       body.classList.toggle("open");
+      el.setAttribute("aria-expanded", String(!wasOpen));
       if (!wasOpen) loadMessages(id);
-    });
+    };
+    el.addEventListener("click", toggle);
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
   });
 
   container.querySelectorAll("[data-send]").forEach(btn => {
@@ -196,7 +203,7 @@ async function loadMessages(applicationId){
   }
 
   list.innerHTML = data.map(m => `
-    <div class="msg ${m.sender_role}">
+    <div class="msg ${m.sender_role === "landlord" ? "landlord" : "applicant"}">
       ${escapeHtml(m.message)}
       <div class="msg-time">${new Date(m.created_at).toLocaleString()}</div>
     </div>

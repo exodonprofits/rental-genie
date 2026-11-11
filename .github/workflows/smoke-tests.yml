@@ -46,8 +46,15 @@ jobs:
       - name: Syntax-check inline scripts
         run: node check-scripts.js
 
+      # Browser first, then its system packages as a best effort: --with-deps pulls fonts and
+      # libraries from the Ubuntu mirror, and when that mirror is unreachable from the runner
+      # (Nov 11 2026: "Temporary failure resolving azure.archive.ubuntu.com") apt retries until the
+      # step times out and nothing can deploy. GitHub's Ubuntu image already has the libraries
+      # Chromium needs; if it still can't start, the test steps below fail loudly.
       - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+        run: |
+          npx playwright install chromium
+          timeout 180 npx playwright install-deps chromium || echo "::warning::Playwright system packages not installed (Ubuntu mirror unavailable?); using the runner's preinstalled libraries."
 
       - name: Load every page (phone and desktop)
         run: node run.js

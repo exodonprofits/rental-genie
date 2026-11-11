@@ -109,7 +109,14 @@ columns of properties with `is_public_listing`. Each listing has a `listing_appl
 non-archived listing in `rental_genie` mode (`rg_listing_accepts_applications`), and only as a plain
 submission: status, screening and tenant fields keep their defaults. anon's INSERT grant covers the
 applicant columns only, so add a column there if the public form starts sending a new field.
-`auto_unpublish_listing` unlists an occupied property unless its available date is in the future.
+`auto_unpublish_listing` unlists an occupied property unless its available date is in the future. `public_listings`
+runs as its owner on purpose (anon reads it) and is SELECT-only (rg_27: write grants on it let any signed-in user
+rewrite listed properties); it never shows archived properties. A before-insert guard trims and validates the
+public form, caps lengths, and refuses a second application for the same listing and email within 24 hours or more
+than 30 per listing per hour. Landlords and company members see a property's applications
+(`rg_can_access_property`); `claim_my_applications()` needs a confirmed email. New applications and applicant
+replies email the owner (`landlord_application:…`, switch `applications`, missing = on); a landlord message or an
+approve/deny emails the applicant (`applicant_update`). Only landlord actions email the address an applicant typed.
 
 **Property identity is `property_id`.** Every table that references a property has a `property_id`
 with a foreign key; `property_name` is a display copy. Renaming a property updates every copy

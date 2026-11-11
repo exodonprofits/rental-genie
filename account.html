@@ -706,6 +706,16 @@
       </div>
       <div class="toggle-row">
         <div class="toggle-info">
+          <div class="toggle-label">Rental applications</div>
+          <div class="toggle-desc">Email me when a renter applies to one of my listings or replies to my message.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notifApplications" checked aria-label="Rental applications">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info">
           <div class="toggle-label">Repair updates to tenants</div>
           <div class="toggle-desc">Email the tenant (and post in their portal) when you schedule, assign, start or complete a repair they filed.</div>
         </div>
@@ -1016,6 +1026,7 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
   document.getElementById('notifMonthly').checked     = notifPrefs.monthlySummary !== undefined ? !!notifPrefs.monthlySummary : true;
   document.getElementById('notifMessages').checked    = notifPrefs.messages   !== undefined ? !!notifPrefs.messages   : true;
   document.getElementById('notifTenantRepair').checked = notifPrefs.tenantRepairUpdates !== undefined ? !!notifPrefs.tenantRepairUpdates : true;
+  document.getElementById('notifApplications').checked = notifPrefs.applications !== undefined ? !!notifPrefs.applications : true;
 
   // Account details
   setText('infoUserId',user.id?user.id.slice(0,8)+'…':'—');
@@ -1130,7 +1141,8 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
       lease:       document.getElementById('notifLease').checked,
       monthlySummary: document.getElementById('notifMonthly').checked,
       messages:    document.getElementById('notifMessages').checked,
-      tenantRepairUpdates: document.getElementById('notifTenantRepair').checked
+      tenantRepairUpdates: document.getElementById('notifTenantRepair').checked,
+      applications: document.getElementById('notifApplications').checked
     };
     var res=await client.auth.updateUser({data:{notifications:notifications}});
     if(res.error){

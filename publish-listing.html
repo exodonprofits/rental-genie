@@ -102,7 +102,7 @@ h1{font-size:1.6rem; font-weight:800; color:var(--navy); margin-bottom:4px;}
 .app-status.reviewed{background:#fffbeb; color:#92400e;}
 .app-status.approved{background:var(--success-bg); color:#166534;}
 .app-status.denied{background:#fef2f2; color:#7f1d1d;}
-.app-actions{display:flex; gap:6px;}
+.app-actions{display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
 .app-actions button{padding:6px 10px; border-radius:8px; border:1px solid #cbd5e1; background:#fff; font-size:.78rem; cursor:pointer;}
 .app-actions button:hover{background:#f1f5f9;}
 .empty-apps{color:var(--muted); font-size:.88rem; text-align:center; padding:20px;}
@@ -111,6 +111,8 @@ h1{font-size:1.6rem; font-weight:800; color:var(--navy); margin-bottom:4px;}
 .app-row-body.open{display:block; padding-top:14px;}
 
 .app-detail-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-bottom:12px;}
+.create-lease-link{display:inline-flex; align-items:center; padding:6px 12px; border-radius:999px; background:var(--navy); color:#fff; font-size:.78rem; font-weight:700; text-decoration:none; white-space:nowrap;}
+.create-lease-link:focus-visible{outline:3px solid var(--sky); outline-offset:2px;}
 .screening-report-link{display:inline-block; margin-top:8px; font-size:.82rem; font-weight:700; color:var(--sky);}
 .app-detail-label{font-size:.7rem; font-weight:700; text-transform:uppercase; color:#94a3b8; letter-spacing:.02em;}
 .app-detail-value{font-size:.85rem; font-weight:600; color:var(--text); margin-top:2px;}
@@ -557,6 +559,16 @@ const SCREENING_LABELS = {
 
 const APP_STATUSES = ["submitted", "reviewed", "approved", "denied"];
 
+// New lease prefilled from this application (lease-form.html reads application_id)
+function leaseLink(a){
+  const q = new URLSearchParams();
+  q.set("application_id", a.id);
+  q.set("property_id", a.property_id || propertyId || "");
+  if (CURRENT_PROPERTY && CURRENT_PROPERTY.name) q.set("property", CURRENT_PROPERTY.name);
+  if (CURRENT_PROPERTY && CURRENT_PROPERTY.company_id) q.set("company_id", CURRENT_PROPERTY.company_id);
+  return "lease-form.html?" + q.toString();
+}
+
 function detail(label, value){
   return h("div", null,
     h("div", { class: "app-detail-label", text: label }),
@@ -575,7 +587,8 @@ function renderApplication(a){
   const actions = h("div", { class: "app-actions" },
     status !== "approved" ? h("button", { "data-action": "approved", text: "Approve" }) : null,
     status !== "denied" ? h("button", { "data-action": "denied", text: "Deny" }) : null,
-    status === "submitted" ? h("button", { "data-action": "reviewed", text: "Mark Reviewed" }) : null);
+    status === "submitted" ? h("button", { "data-action": "reviewed", text: "Mark Reviewed" }) : null,
+    status === "approved" ? h("a", { class: "create-lease-link", href: leaseLink(a), text: "📝 Create lease" }) : null);
 
   const header = h("div", { class: "app-row-header", "data-toggle": id },
     h("div", { class: "app-info" },

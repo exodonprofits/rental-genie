@@ -141,6 +141,13 @@ match the page's `<option>` values.
 setup in `payment-inbox.md`; the old Postmark/n8n workflow JSON was never connected). `rg_ingest_payment_email` (service role only) queues forwarded payment alerts;
 `rg_confirm_incoming_payment` writes them to `rent_log`, splitting across unpaid months oldest-first;
 `rg_dismiss_incoming_payment` handles "not rent". Version 1 never logs a payment automatically.
+**Recording payments (rg_28):** `rg_apply_payment(company, property, amount, date, method, note, source, …)` is the one
+place that turns a payment into `rent_log` rows: unpaid months oldest first, then prepayment in rent-sized pieces,
+stamped with the lease, tenant id and email of the lease in effect (so tenants see them). The payment inbox's
+confirm calls it; online payments will too (`source = 'stripe'`, `online_payment_id`). Don't write another split.
+**Online payments (design in `docs/design/stripe-online-rent.md`, foundation rg_28, not live yet):** `online_payments`
+(one row per attempt; landlord and paying tenant read, service role writes), `companies.stripe_*` (written only by the
+service role: `trg_companies_protect_stripe` refuses signed-in users), `leases.pay_accepts_online`.
 
 **Notifications (rg_17):** `notifications` is the outbox and delivery log, one row per event and
 channel under a unique `event_key` (e.g. `maint_ack:<request id>`), so nothing is sent twice. For a

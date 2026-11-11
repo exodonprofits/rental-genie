@@ -436,6 +436,41 @@
   background-size: 200% 100% !important; animation: rgShimmer 1.1s linear infinite !important; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── Mobile drawer: same layout as dashboard.html (account row, 2-column grid, sign out) ── */
+#mobileDrawer.drawer { padding: 0; border-radius: 18px; overflow: hidden; }
+#mobileDrawer .drawer-user-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 16px 14px; border-bottom: 1px solid #f1f5f9; border-radius: 0;
+  text-decoration: none; background: #fafbfc;
+}
+#mobileDrawer .drawer-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #1a3a6b, #1e5799); color: #fff;
+  font-weight: 700; font-size: .78rem; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; text-transform: uppercase; box-shadow: 0 2px 8px rgba(12,30,58,.2);
+}
+#mobileDrawer .drawer-username { font-weight: 700; font-size: .95rem; color: #0c1e3a; }
+#mobileDrawer .drawer-grid { display: grid; grid-template-columns: 1fr 1fr; padding: 8px 10px; gap: 2px; }
+#mobileDrawer .drawer-grid-divider { grid-column: 1 / -1; height: 1px; background: #f1f5f9; margin: 2px 0; }
+#mobileDrawer .drawer-grid a {
+  display: flex; align-items: center; gap: 8px; padding: 11px 10px;
+  font-weight: 600; font-size: .88rem; color: #0c1e3a; text-decoration: none;
+  border-radius: 9px; background: transparent; border: none; width: auto;
+}
+#mobileDrawer .drawer-grid a:hover { background: #f1f5f9; color: #1a3a6b; }
+#mobileDrawer .drawer-grid a.nav-active { background: #eff4ff; color: #1a3a6b; font-weight: 700; }
+#mobileDrawer .drawer-login {
+  display: block; padding: 11px 16px; font-weight: 600; color: #0c1e3a;
+  font-size: .9rem; border-top: 1px solid #f1f5f9; border-bottom: none; text-decoration: none;
+}
+#mobileDrawer #mobileLogoutContainer { border-top: 1px solid #f1f5f9; padding: 6px 10px 8px; margin: 0; }
+#mobileDrawer #mobileLogoutContainer button {
+  width: 100%; padding: 10px; background: none; border: none; text-align: left;
+  font-weight: 700; color: #dc2626; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  font-size: .9rem; border-radius: 8px;
+}
+#mobileDrawer #mobileLogoutContainer button:hover { background: #fef2f2; }
 </style>
 </head>
 

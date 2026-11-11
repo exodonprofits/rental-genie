@@ -134,6 +134,12 @@ h1{font-size:1.6rem; font-weight:800; color:var(--navy); margin-bottom:4px;}
 .msg-form{display:flex; gap:8px;}
 .msg-form input{flex:1; padding:8px 12px; border-radius:8px; border:1px solid #cbd5e1; font-family:'DM Sans',sans-serif; font-size:.84rem;}
 .msg-form button{padding:8px 16px; border-radius:8px; border:none; background:var(--navy); color:#fff; font-weight:700; font-size:.8rem; cursor:pointer;}
+
+/* Phones: tap targets at least 44px tall (Apple's minimum) */
+@media (max-width: 860px) {
+  .back-link { display: inline-block; padding-top: 12px; padding-bottom: 12px; margin-top: -12px; margin-bottom: -12px; }
+  #aiSuggestBtn, #addPhotoBtn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+}
 </style>
 </head>
 <body>

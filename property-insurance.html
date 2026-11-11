@@ -679,12 +679,7 @@ document.getElementById("mobileLogoutBtn")?.addEventListener("click", async () =
   location.href = "login.html";
 });
 
-// Mobile drawer toggle
-document.getElementById("hamburgerBtn")?.addEventListener("click", () => {
-  const d = document.getElementById("mobileDrawer");
-  if (!d) return;
-  d.style.display = d.style.display === "block" ? "none" : "block";
-});
+// Mobile drawer toggle: wired once in rgWireHeader() above (a second toggle here closed it again on every tap)
 
 async function requireAuth() {
     const { data: { session } } = await db.auth.getSession();

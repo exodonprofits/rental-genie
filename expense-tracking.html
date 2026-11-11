@@ -3075,6 +3075,11 @@ document.addEventListener('DOMContentLoaded', () => {
   .page, main.page { padding-left: 14px !important; padding-right: 14px !important; }
 }
 
+
+/* Phones: tap targets at least 44px tall (Apple's minimum) */
+@media (max-width: 860px) {
+  .expense-repair-link { display: inline-block; padding-top: 12px; padding-bottom: 12px; margin-top: -12px; margin-bottom: -12px; }
+}
 </style>
 
 

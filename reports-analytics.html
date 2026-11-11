@@ -622,7 +622,9 @@ main {
   display: grid; grid-template-columns: repeat(3, 1fr);
   border-bottom: 1px solid var(--border);
 }
-@media(max-width: 600px) { .maint-summary-grid { grid-template-columns: 1fr 1fr; } }
+/* Rent report: four totals on wide screens, two per row on phones (an inline 4-column style cut them off) */
+#rentKpiRow { grid-template-columns: repeat(4, 1fr); }
+@media(max-width: 600px) { .maint-summary-grid, #rentKpiRow { grid-template-columns: 1fr 1fr; } }
 .maint-kpi {
   padding: 16px 18px; border-right: 1px solid var(--border); text-align: center;
 }
@@ -688,6 +690,11 @@ main {
   main.page > * { max-width: 100%; box-sizing: border-box; }
   .filter-card, .toolbar, .card, .stat-card, .kpi { max-width: 100%; box-sizing: border-box; }
   input[type="search"], input[type="text"], select { max-width: 100%; box-sizing: border-box; }
+}
+
+/* Phones: tap targets at least 44px tall (Apple's minimum) */
+@media (max-width: 860px) {
+  #trendModeProperty, #trendModePortfolio, .btn-export { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 }
 </style>
 </head>
@@ -934,7 +941,7 @@ main {
     </div>
     <div class="report-section-body">
       <!-- Summary KPIs -->
-      <div class="maint-summary-grid" id="rentKpiRow" style="grid-template-columns:repeat(4,1fr);">
+      <div class="maint-summary-grid" id="rentKpiRow">
         <div class="maint-kpi">
           <div class="maint-kpi-val" id="rpt-rent-expected">$—</div>
           <div class="maint-kpi-label">Expected</div>

@@ -2053,6 +2053,14 @@ body.rent-workspace > main.page { max-width:none !important; width:100% !importa
 .rent-workspace .tabs { background:white !important; border:1px solid #dce3eb; padding:6px !important; border-radius:14px !important; gap:6px; }
 .rent-workspace .tab-btn { min-height:48px; }
 .rent-workspace .tab-btn.active { background:#164c45 !important; color:white !important; }
+/* Phones: the two tabs share the row equally and shrink to fit, instead of scrolling off the edge */
+@media (max-width: 520px) {
+  .rent-workspace .tabs { display:grid !important; grid-template-columns:1fr 1fr; overflow:visible !important; padding:4px !important; gap:4px !important; }
+  .rent-workspace .tab-btn { justify-content:center; min-width:0; padding:8px 6px !important; gap:5px !important; min-height:44px; white-space:normal !important; text-align:center; border-radius:10px !important; }
+  .rent-workspace .tab-btn .tab-ico { font-size:14px !important; }
+  .rent-workspace .tab-btn .tab-label { font-size:0.8rem !important; line-height:1.2; }
+  .rent-workspace .tab-badge { margin-left:2px; }
+}
 .rent-workspace .quick-peek { grid-template-columns:repeat(4,minmax(0,1fr)) !important; gap:12px; }
 .rent-workspace .qp-main { overflow-wrap:anywhere; }
 .rent-workspace .attention-filter-bar { flex-wrap:wrap; gap:16px; }

@@ -194,6 +194,16 @@ body {
 .drawer-divider { height: 1px; background: var(--border); margin: 4px 0; }
 .drawer-signout { color: #ef4444 !important; }
 
+/* Drawer account row: avatar and name on one line (same as the other pages) */
+.drawer-user-row { display: flex; align-items: center; gap: 12px; }
+.drawer-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #1a3a6b, #1e5799); color: #fff;
+  font-weight: 700; font-size: .78rem; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; text-transform: uppercase; box-shadow: 0 2px 8px rgba(12,30,58,.2);
+}
+.drawer-username { font-weight: 700; font-size: .95rem; color: #0c1e3a; }
+
 /* ── Main ───────────────────────────────────────────────────── */
 main {
   flex: 1; max-width: 1280px; width: 100%;
@@ -780,7 +790,7 @@ async function setupAuth() {
     $('umdEmail').textContent = user.email || '';
     var da = $('drawerAvatar'); if (da) da.textContent = initials;
     var ml = $('mobileUsernameLabel'); if (ml) ml.textContent = uname;
-    var ma = $('mobileAccountLink'); if (ma) ma.style.display = 'block';
+    var ma = $('mobileAccountLink'); if (ma) ma.style.display = 'flex';
     var mlo = $('mobileLogoutContainer'); if (mlo) mlo.style.display = 'block';
 
     client.auth.onAuthStateChange(function (event) {

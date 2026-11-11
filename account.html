@@ -134,6 +134,16 @@
   .drawer a:last-of-type { border-bottom: none; }
   .drawer a:hover { background: #f8fafc; }
 
+/* Drawer account row: avatar and name on one line (same as the other pages) */
+.drawer-user-row { display: flex; align-items: center; gap: 12px; }
+.drawer-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #1a3a6b, #1e5799); color: #fff;
+  font-weight: 700; font-size: .78rem; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; text-transform: uppercase; box-shadow: 0 2px 8px rgba(12,30,58,.2);
+}
+.drawer-username { font-weight: 700; font-size: .95rem; color: #0c1e3a; }
+
   /* ── Page layout ───────────────────────────────────────────── */
   main.page {
     max-width: 900px; width: min(900px, calc(100% - 32px));
@@ -994,7 +1004,7 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
   var _uEM=document.getElementById('umdEmail'); if(_uEM) _uEM.textContent=user.email||'';
   var _dA=document.getElementById('drawerAvatar'); if(_dA) _dA.textContent=_inits;
   var mAcc=document.getElementById('mobileAccountLink');
-  if(mAcc) mAcc.style.display='block';
+  if(mAcc) mAcc.style.display='flex';
   var mLgout=document.getElementById('mobileLogoutContainer');
   if(mLgout) mLgout.style.display='block';
 

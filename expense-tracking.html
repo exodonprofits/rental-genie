@@ -132,7 +132,7 @@ body.auth-guest #mobileLogin{ display:block !important; }
 body.auth-guest #mobileAccountLink,
 body.auth-guest #mobileLogoutContainer{ display:none !important; }
 body.auth-ready #mobileLogin{ display:none !important; }
-body.auth-ready #mobileAccountLink{ display:block !important; }
+body.auth-ready #mobileAccountLink{ display:flex !important; }
 body.auth-ready #mobileLogoutContainer{ display:block !important; }
 
 .user-menu { position:relative; display:none; }
@@ -1426,7 +1426,7 @@ body.auth-ready #nav-login { display: none !important; }
 body.auth-ready .user-menu { display: block !important; }
 body.auth-guest .user-menu { display: none !important; }
 body.auth-ready #mobileLogin { display: none !important; }
-body.auth-ready #mobileAccountLink { display: block !important; }
+body.auth-ready #mobileAccountLink { display: flex !important; }
 body.auth-ready #mobileLogoutContainer { display: block !important; }
 body.auth-guest #mobileLogin { display: block !important; }
 body.auth-guest #mobileAccountLink { display: none !important; }
@@ -2818,7 +2818,9 @@ function bindHeaderAuthUi(){
 
 document.addEventListener("DOMContentLoaded", () => {
   bindHeaderAuthUi();
-  applyHeaderAuthState(null);
+  // Start as signed out only if the boot hasn't already confirmed the user (it can finish first,
+  // and resetting then hid the name and account row in the menu)
+  if (!document.body.classList.contains("auth-ready")) applyHeaderAuthState(null);
 });
 </script>
 

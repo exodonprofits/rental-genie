@@ -435,6 +435,41 @@ body { overflow-x: hidden; }
 /* Bottom tab labels (icons alone were hard to learn) */
 .mnav-label { display: block; line-height: 1.1; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 360px) { .mnav-label { font-size: 9px; letter-spacing: -.2px; } .mnav { padding-left: 2px !important; padding-right: 2px !important; } }
+
+/* ── Mobile drawer: same layout as dashboard.html (account row, 2-column grid, sign out) ── */
+#mobileDrawer.drawer { padding: 0; border-radius: 18px; overflow: hidden; }
+#mobileDrawer .drawer-user-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 16px 14px; border-bottom: 1px solid #f1f5f9; border-radius: 0;
+  text-decoration: none; background: #fafbfc;
+}
+#mobileDrawer .drawer-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #1a3a6b, #1e5799); color: #fff;
+  font-weight: 700; font-size: .78rem; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; text-transform: uppercase; box-shadow: 0 2px 8px rgba(12,30,58,.2);
+}
+#mobileDrawer .drawer-username { font-weight: 700; font-size: .95rem; color: #0c1e3a; }
+#mobileDrawer .drawer-grid { display: grid; grid-template-columns: 1fr 1fr; padding: 8px 10px; gap: 2px; }
+#mobileDrawer .drawer-grid-divider { grid-column: 1 / -1; height: 1px; background: #f1f5f9; margin: 2px 0; }
+#mobileDrawer .drawer-grid a {
+  display: flex; align-items: center; gap: 8px; padding: 11px 10px;
+  font-weight: 600; font-size: .88rem; color: #0c1e3a; text-decoration: none;
+  border-radius: 9px; background: transparent; border: none; width: auto;
+}
+#mobileDrawer .drawer-grid a:hover { background: #f1f5f9; color: #1a3a6b; }
+#mobileDrawer .drawer-grid a.nav-active { background: #eff4ff; color: #1a3a6b; font-weight: 700; }
+#mobileDrawer .drawer-login {
+  display: block; padding: 11px 16px; font-weight: 600; color: #0c1e3a;
+  font-size: .9rem; border-top: 1px solid #f1f5f9; border-bottom: none; text-decoration: none;
+}
+#mobileDrawer #mobileLogoutContainer { border-top: 1px solid #f1f5f9; padding: 6px 10px 8px; margin: 0; }
+#mobileDrawer #mobileLogoutContainer button {
+  width: 100%; padding: 10px; background: none; border: none; text-align: left;
+  font-weight: 700; color: #dc2626; cursor: pointer; font-family: 'DM Sans', sans-serif;
+  font-size: .9rem; border-radius: 8px;
+}
+#mobileDrawer #mobileLogoutContainer button:hover { background: #fef2f2; }
 </style>
 <link rel="stylesheet" href="shared/css/form-guide.css">
 <script src="shared/js/form-guide.js" defer></script>
@@ -489,17 +524,27 @@ body { overflow-x: hidden; }
 
 <!-- Mobile Drawer -->
 <div class="drawer" id="mobileDrawer">
-  <a href="dashboard.html">📊 Dashboard</a>
-  <a href="property-management.html">🏘️ Properties</a>
-  <a href="lease-rent-center.html" class="nav-active">💰 Lease &amp; Rent</a>
-  <a href="expense-tracking.html">💸 Expenses</a>
-  <a href="maintenance-requests.html">🛠 Maintenance</a>
-  <a href="tenant-messages.html">💬 Messages</a>
-  <a href="reports-analytics.html">📈 Reports</a>
-  <div class="drawer-divider"></div>
-  <a href="account.html">⚙️ Account Settings</a>
-  <a href="account.html">👤 Account</a>
-  <button class="drawer-signout" id="mobileLogoutBtn">🚪 Sign Out</button>
+  <!-- User row (shown when signed in) -->
+  <a href="account.html" id="mobileAccountLink" style="display:none;" class="drawer-user-row">
+    <span class="drawer-avatar" id="drawerAvatar">?</span>
+    <span class="drawer-username" id="mobileUsernameLabel">Account</span>
+  </a>
+  <!-- 2-col nav grid with row dividers (same as dashboard.html) -->
+  <div class="drawer-grid">
+    <a href="dashboard.html">📊 Dashboard</a>
+    <a href="property-management.html">🏘️ Properties</a>
+    <div class="drawer-grid-divider"></div>
+    <a href="lease-rent-center.html" class="nav-active">💰 Lease &amp; Rent</a>
+    <a href="expense-tracking.html">💸 Expenses</a>
+    <div class="drawer-grid-divider"></div>
+    <a href="maintenance-requests.html">🛠 Maintenance</a>
+    <a href="tenant-messages.html">💬 Messages</a>
+    <a href="reports-analytics.html">📈 Reports</a>
+  </div>
+  <a href="login.html" id="mobileLogin" class="drawer-login" style="display:none;">Log in</a>
+  <div id="mobileLogoutContainer" style="display:none;">
+    <button id="mobileLogoutBtn">Sign Out</button>
+  </div>
 </div>
 
 <!-- ── Main ──────────────────────────────────────────────────── -->
@@ -846,6 +891,18 @@ body { overflow-x: hidden; }
 <!-- Supabase bootstrap — CDN loaded here in body (lease-rent-center pattern) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* Fill the mobile menu's account row once the user is known (avatar initials + name, sign-out shown) */
+function rgFillDrawerUser(name) {
+  name = String(name || 'Account');
+  var parts = name.trim().split(/\s+/);
+  var ini = (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0] : name.slice(0, 2)).toUpperCase();
+  var a = document.getElementById('drawerAvatar'); if (a) a.textContent = ini;
+  var n = document.getElementById('mobileUsernameLabel'); if (n) n.textContent = name;
+  var row = document.getElementById('mobileAccountLink'); if (row) row.style.display = 'flex';
+  var lo = document.getElementById('mobileLogoutContainer'); if (lo) lo.style.display = 'block';
+  var li = document.getElementById('mobileLogin'); if (li) li.style.display = 'none';
+}
+
 /* ============================================================
    SUPABASE — safeStorage bootstrap (matches lease-rent-center)
 ============================================================ */
@@ -1679,6 +1736,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     var fn = $('umdFullName'); if (fn) fn.textContent = uname;
     var em = $('umdEmail');    if (em) em.textContent = _authUser.email || '';
     var ul = $('usernameLabel'); if (ul) ul.textContent = uname;
+    rgFillDrawerUser(uname);
 
     document.body.classList.remove('auth-guest');
     document.body.classList.add('auth-ready');

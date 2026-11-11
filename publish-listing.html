@@ -111,6 +111,7 @@ h1{font-size:1.6rem; font-weight:800; color:var(--navy); margin-bottom:4px;}
 .app-row-body.open{display:block; padding-top:14px;}
 
 .app-detail-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-bottom:12px;}
+.screening-report-link{display:inline-block; margin-top:8px; font-size:.82rem; font-weight:700; color:var(--sky);}
 .app-detail-label{font-size:.7rem; font-weight:700; text-transform:uppercase; color:#94a3b8; letter-spacing:.02em;}
 .app-detail-value{font-size:.85rem; font-weight:600; color:var(--text); margin-top:2px;}
 .app-message-note{background:var(--bg); border-radius:10px; padding:10px 12px; font-size:.85rem; font-style:italic; color:#475569; margin-bottom:12px;}
@@ -398,6 +399,13 @@ async function loadProperty(){
   }
 
   CURRENT_PROPERTY = p;
+  if (p.archived_at){
+    const notice = $("notVacantNotice");
+    notice.textContent = "";
+    notice.appendChild(h("div", { class: "notice info" },
+      "🗄️ This property is archived, so it can't be listed. Restore it in Property Management first."));
+    $("publicToggle").disabled = true;
+  }
   $("propertyLabel").textContent = `${p.name || ""} — ${p.address || ""}`;
   renderFactsGrid(p);
 
@@ -465,6 +473,17 @@ $("saveBtn").addEventListener("click", async () => {
     return;
   }
 
+  const contactEmail = $("fContactEmail").value.trim();
+  if (contactEmail && !/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(contactEmail)){
+    statusMsg.textContent = "❌ The contact email doesn't look right. Check it, or leave it blank.";
+    statusMsg.className = "status-msg err";
+    return;
+  }
+  if (isPublic && CURRENT_PROPERTY && CURRENT_PROPERTY.archived_at){
+    statusMsg.textContent = "❌ This property is archived. Restore it before listing it.";
+    statusMsg.className = "status-msg err";
+    return;
+  }
   const badPhoto = getPhotoUrls().find(u => !safeUrl(u));
   if (badPhoto){
     statusMsg.textContent = "❌ Photo links must start with https:// (or http://). Check: " + badPhoto;
@@ -488,9 +507,13 @@ $("saveBtn").addEventListener("click", async () => {
     listing_application_mode: applyMode,
     listing_application_url: applyMode === "external" ? applyUrl : (applyUrl || null),
   };
-  if (isPublic) payload.listing_published_at = new Date().toISOString();
+  // The publish date is when it first went public (re-saving a live listing doesn't bump it)
+  if (isPublic && !(CURRENT_PROPERTY && CURRENT_PROPERTY.is_public_listing && CURRENT_PROPERTY.listing_published_at)){
+    payload.listing_published_at = new Date().toISOString();
+  }
 
-  const { error } = await sb.from("properties").update(payload).eq("id", propertyId);
+  const { data: saved, error } = await sb.from("properties").update(payload).eq("id", propertyId)
+    .select("id, is_public_listing, listing_published_at, occupancy_status, listing_available_date");
 
   btn.disabled = false;
   btn.textContent = "💾 Save Listing";
@@ -500,10 +523,29 @@ $("saveBtn").addEventListener("click", async () => {
     statusMsg.className = "status-msg err";
     return;
   }
+  if (!saved || !saved.length){
+    statusMsg.textContent = "❌ Not saved: you don't have access to change this property.";
+    statusMsg.className = "status-msg err";
+    return;
+  }
+  CURRENT_PROPERTY = Object.assign(CURRENT_PROPERTY || {}, payload, saved[0]);
+  // The database unlists an occupied property unless its Available Date is in the future
+  if (isPublic && !saved[0].is_public_listing){
+    $("publicToggle").checked = false;
+    statusMsg.textContent = "⚠️ Saved, but not published: the property is marked occupied. Set an Available Date in the future to pre-lease it.";
+    statusMsg.className = "status-msg err";
+    return;
+  }
   statusMsg.textContent = isPublic ? "✅ Listing published — now visible on the public site." : "✅ Saved.";
   statusMsg.className = "status-msg ok";
 });
 
+function fmtDay(v){
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v || ""));
+  return m ? new Date(+m[1], +m[2] - 1, +m[3]).toLocaleDateString() : "";
+}
+// Report links and other stored URLs: web links only
+function webUrl(u){ return safeUrl(u); }
 function fmtMoney(n){ return (n === null || n === undefined || n === "") ? null : "$" + Number(n).toLocaleString(); }
 
 const SCREENING_LABELS = {
@@ -527,7 +569,7 @@ function renderApplication(a){
   const sub = [
     a.applicant_email || "",
     a.applicant_phone || "",
-    a.desired_move_in ? "Move-in: " + new Date(a.desired_move_in).toLocaleDateString() : ""
+    a.desired_move_in ? "Move-in: " + fmtDay(a.desired_move_in) : ""
   ].filter(Boolean).join(" · ");
 
   const actions = h("div", { class: "app-actions" },
@@ -577,14 +619,18 @@ function renderApplication(a){
           ? h("button", { type: "button", class: "screening-btn", "data-screening-status": id, "data-value": "completed", text: "Mark Complete" }) : null)),
     h("div", { class: "screening-report-row" },
       reportInput,
-      h("button", { type: "button", class: "screening-btn", "data-save-report": id, text: "Save" })));
+      h("button", { type: "button", class: "screening-btn", "data-save-report": id, text: "Save" })),
+    webUrl(a.screening_report_url)
+      ? h("a", { href: webUrl(a.screening_report_url), target: "_blank", rel: "noopener noreferrer", class: "screening-report-link", text: "Open saved report ↗" })
+      : null);
 
   const thread = h("div", { class: "thread-box" },
     h("h4", { text: "💬 Messages" }),
     h("div", { class: "msg-list", id: "landlordMsgs-" + id }, h("div", { class: "msg-empty", text: "Loading…" })),
     h("div", { class: "msg-form" },
-      h("input", { type: "text", id: "landlordMsgInput-" + id, placeholder: "Write a message to the applicant…" }),
-      h("button", { type: "button", "data-send-msg": id, text: "Send" })));
+      h("input", { type: "text", id: "landlordMsgInput-" + id, placeholder: "Write a message to the applicant…", maxlength: "2000", "aria-label": "Message to " + (a.applicant_name || "the applicant") }),
+      h("button", { type: "button", "data-send-msg": id, text: "Send" })),
+    h("div", { class: "field-hint", text: "The applicant gets your message by email and can reply after signing in." }));
 
   const body = h("div", { class: "app-row-body", id: "appBody-" + id },
     grid,
@@ -593,6 +639,16 @@ function renderApplication(a){
     thread);
 
   return h("div", { class: "app-row", "data-id": id }, header, body);
+}
+
+// Every application change reports failure (a change the database refuses comes back as 0 rows)
+async function updateApplication(id, payload){
+  const { data, error } = await sb.from("applications").update(payload).eq("id", id).select("id");
+  if (error || !data || !data.length){
+    alert("Couldn't save: " + ((error && error.message) || "you don't have access to this application."));
+    return false;
+  }
+  return true;
 }
 
 async function loadApplications(){
@@ -633,8 +689,14 @@ async function loadApplications(){
       const row = e.target.closest(".app-row");
       const id = row.getAttribute("data-id");
       const newStatus = e.target.getAttribute("data-action");
-      await sb.from("applications").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", id);
-      loadApplications();
+      // Approving or denying emails the applicant (rg_27), so say so first
+      if ((newStatus === "approved" || newStatus === "denied") && !confirm(
+        newStatus === "approved"
+          ? "Approve this application? The applicant gets an email saying it was approved and that you'll be in touch about the lease."
+          : "Deny this application? The applicant gets a short, polite email saying you won't move forward.")) return;
+      e.target.disabled = true;
+      if (await updateApplication(id, { status: newStatus, updated_at: new Date().toISOString() })) loadApplications();
+      else e.target.disabled = false;
     });
   });
 
@@ -652,8 +714,7 @@ async function loadApplications(){
       const value = e.target.getAttribute("data-value");
       const payload = { screening_status: value };
       if (value === "requested") payload.screening_requested_at = new Date().toISOString();
-      await sb.from("applications").update(payload).eq("id", id);
-      loadApplications();
+      if (await updateApplication(id, payload)) loadApplications();
     });
   });
 
@@ -661,8 +722,15 @@ async function loadApplications(){
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const id = e.target.getAttribute("data-save-report");
-      const url = $("reportUrl-" + id).value.trim() || null;
-      await sb.from("applications").update({ screening_report_url: url }).eq("id", id);
+      const raw = $("reportUrl-" + id).value.trim();
+      const url = raw ? webUrl(raw) : null;
+      if (raw && !url){ alert("The report link must start with https://"); return; }
+      const btnEl = e.target;
+      if (await updateApplication(id, { screening_report_url: url })){
+        btnEl.textContent = "✓ Saved";
+        setTimeout(() => { btnEl.textContent = "Save"; }, 1500);
+        loadApplications();
+      }
     });
   });
 
@@ -694,7 +762,7 @@ async function loadApplicationMessages(applicationId){
   data.forEach(m => {
     el.appendChild(h("div", { class: "msg " + (m.sender_role === "landlord" ? "mine" : "theirs") },
       m.message || "",
-      h("div", { class: "msg-time", text: new Date(m.created_at).toLocaleString() })));
+      h("div", { class: "msg-time", text: (m.sender_role === "landlord" ? "You · " : "") + new Date(m.created_at).toLocaleString() })));
   });
   el.scrollTop = el.scrollHeight;
 }
@@ -716,9 +784,11 @@ async function sendLandlordMessage(applicationId){
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const { data } = await sb.auth.getUser();
-  if (!data?.user){
-    window.location.href = "login.html";
+  let user = null;
+  try { const r = await sb.auth.getUser(); user = r.data && r.data.user; } catch (e) {}
+  if (!user){ try { const r = await sb.auth.getSession(); user = r.data && r.data.session && r.data.session.user; } catch (e) {} }
+  if (!user){
+    window.location.href = "login.html?returnTo=" + encodeURIComponent(location.pathname + location.search);
     return;
   }
   await loadProperty();

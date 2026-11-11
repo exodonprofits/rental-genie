@@ -333,17 +333,17 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
 
         <div class="apply-form" id="applyForm">
           <div class="form-row">
-            <div class="form-field"><label for="apName">Full Name</label><input id="apName" type="text" required /></div>
-            <div class="form-field"><label for="apEmail">Email</label><input id="apEmail" type="email" required /></div>
+            <div class="form-field"><label for="apName">Full Name</label><input id="apName" maxlength="200" type="text" required /></div>
+            <div class="form-field"><label for="apEmail">Email</label><input id="apEmail" maxlength="254" type="email" required /></div>
           </div>
           <div class="form-row">
-            <div class="form-field"><label for="apPhone">Phone</label><input id="apPhone" type="tel" /></div>
+            <div class="form-field"><label for="apPhone">Phone</label><input id="apPhone" maxlength="40" type="tel" /></div>
             <div class="form-field"><label for="apMoveIn">Desired Move-in</label><input id="apMoveIn" type="date" /></div>
           </div>
 
           <div class="form-field full" style="margin-bottom:12px;">
             <label for="apCurrentAddress">Current Address</label>
-            <input id="apCurrentAddress" type="text" placeholder="Street, city, state" />
+            <input id="apCurrentAddress" maxlength="500" type="text" placeholder="Street, city, state" />
           </div>
 
           <div class="form-row">
@@ -358,10 +358,10 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
                 <option value="retired">Retired</option>
               </select>
             </div>
-            <div class="form-field"><label for="apEmployer">Employer Name</label><input id="apEmployer" type="text" /></div>
+            <div class="form-field"><label for="apEmployer">Employer Name</label><input id="apEmployer" maxlength="200" type="text" /></div>
           </div>
           <div class="form-row">
-            <div class="form-field"><label for="apIncome">Monthly Income ($)</label><input id="apIncome" type="number" placeholder="e.g. 5000" /></div>
+            <div class="form-field"><label for="apIncome">Monthly Income ($)</label><input id="apIncome" type="number" min="0" placeholder="e.g. 5000" /></div>
             <div class="form-field"><label for="apOccupants"># of Occupants</label><input id="apOccupants" type="number" min="1" placeholder="e.g. 2" /></div>
           </div>
 
@@ -369,17 +369,17 @@ a.apply-link{display:block; box-sizing:border-box; text-align:center; text-decor
             <label style="display:flex; align-items:center; gap:8px; text-transform:none; font-size:.85rem; cursor:pointer;">
               <input type="checkbox" id="apHasPets" style="width:auto;" /> I have pet(s)
             </label>
-            <input id="apPetDetails" type="text" placeholder="Type, breed, weight (if applicable)" style="margin-top:8px; display:none;" />
+            <input id="apPetDetails" maxlength="1000" type="text" placeholder="Type, breed, weight (if applicable)" style="margin-top:8px; display:none;" />
           </div>
 
           <div class="form-row">
-            <div class="form-field"><label for="apEmergencyName">Emergency Contact Name</label><input id="apEmergencyName" type="text" /></div>
-            <div class="form-field"><label for="apEmergencyPhone">Emergency Contact Phone</label><input id="apEmergencyPhone" type="tel" /></div>
+            <div class="form-field"><label for="apEmergencyName">Emergency Contact Name</label><input id="apEmergencyName" maxlength="200" type="text" /></div>
+            <div class="form-field"><label for="apEmergencyPhone">Emergency Contact Phone</label><input id="apEmergencyPhone" maxlength="40" type="tel" /></div>
           </div>
 
           <div class="form-field full" style="margin-bottom:12px;">
             <label for="apMessage">Message (optional)</label>
-            <textarea id="apMessage" placeholder="Tell the landlord a bit about yourself…"></textarea>
+            <textarea id="apMessage" maxlength="5000" placeholder="Tell the landlord a bit about yourself…"></textarea>
           </div>
 
           <div class="form-field full" style="margin-bottom:14px; background:#f8fafc; border-radius:10px; padding:12px 14px;">
@@ -502,18 +502,18 @@ function renderGrid(list){
     const rent = money(l.listing_rent);
     const avail = availabilityLabel(l.listing_available_date);
     return `
-      <article class="listing-card" data-id="${l.id}">
+      <article class="listing-card" data-id="${escapeHtml(l.id)}" tabindex="0" role="button" aria-label="${escapeHtml((l.name || "Rental") + (rent ? ", " + rent + " per month" : ""))}">
         <div class="listing-photo">
           ${photo ? "" : `<span class="no-photo-icon">${placeholderIcon(l.property_type)}</span><span class="no-photo-label">Photos coming soon</span>`}
         </div>
         <div class="listing-body">
-          <div class="listing-rent">${rent || "Contact for price"} ${rent ? "<span>/mo</span>" : ""}</div>
+          <div class="listing-rent">${escapeHtml(rent || "Contact for price")} ${rent ? "<span>/mo</span>" : ""}</div>
           <div class="listing-name">${escapeHtml(l.name||"")}</div>
           <div class="listing-addr">${escapeHtml(l.address||"")}</div>
           <div class="listing-meta">
-            ${l.bedrooms ? `<span>${l.bedrooms} bd</span>` : ""}
-            ${l.bathrooms ? `<span>${l.bathrooms} ba</span>` : ""}
-            ${l.square_feet ? `<span>${l.square_feet} sqft</span>` : ""}
+            ${l.bedrooms ? `<span>${escapeHtml(l.bedrooms)} bd</span>` : ""}
+            ${l.bathrooms ? `<span>${escapeHtml(l.bathrooms)} ba</span>` : ""}
+            ${l.square_feet ? `<span>${escapeHtml(l.square_feet)} sqft</span>` : ""}
           </div>
           <div class="listing-avail${avail.soon ? " soon" : ""}">${avail.text}</div>
         </div>
@@ -525,11 +525,13 @@ function renderGrid(list){
     const l = list.find(x => String(x.id) === card.getAttribute("data-id"));
     const photoEl = card.querySelector(".listing-photo");
     if (l && photoEl) setPhotoBackground(photoEl, firstPhoto(l.listing_photos));
-    card.addEventListener("click", () => {
+    const open = () => {
       const id = card.getAttribute("data-id");
       const listing = ALL_LISTINGS.find(l => String(l.id) === String(id));
       if (listing) openModal(listing);
-    });
+    };
+    card.addEventListener("click", open);
+    card.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } });
   });
 }
 
@@ -677,6 +679,11 @@ document.getElementById("apSubmitBtn").addEventListener("click", async () => {
     statusEl.className = "form-status err";
     return;
   }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+    statusEl.textContent = "Please check your email address. The landlord replies there.";
+    statusEl.className = "form-status err";
+    return;
+  }
   if (!ACTIVE_LISTING){ return; }
 
   const btn = document.getElementById("apSubmitBtn");
@@ -710,15 +717,27 @@ document.getElementById("apSubmitBtn").addEventListener("click", async () => {
   btn.textContent = "Submit Application";
 
   if (error){
+    // 23505 already applied today, 22023 bad email/name, 22001 too long, 54000 too many right now:
+    // the database's own message is written for the applicant (rg_27)
     statusEl.textContent = error.code === "42501"
       ? "This listing isn't taking applications here right now. Please contact the landlord."
-      : "Something went wrong: " + (error.message || "please try again.");
+      : ["23505", "22023", "22001", "54000"].includes(error.code)
+        ? error.message
+        : "Something went wrong. Please try again in a moment.";
     statusEl.className = "form-status err";
     return;
   }
 
   resetApplyForm();
-  statusEl.innerHTML = `✅ Application submitted! <a href="login.html?role=applicant" style="color:inherit; text-decoration:underline;">Create a free account</a> to track its status and message the landlord.`;
+  statusEl.textContent = "";
+  statusEl.appendChild(document.createTextNode("✅ Application sent. The landlord has been notified and will reply by email. "));
+  const track = document.createElement("a");
+  track.href = "login.html?role=applicant";
+  track.style.color = "inherit";
+  track.style.textDecoration = "underline";
+  track.textContent = "Sign in with " + email;
+  statusEl.appendChild(track);
+  statusEl.appendChild(document.createTextNode(" to track it and message the landlord."));
   statusEl.className = "form-status ok";
 });
 

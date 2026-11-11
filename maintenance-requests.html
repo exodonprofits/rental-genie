@@ -3495,6 +3495,11 @@ function setProgress(pct, statusText, activeStep) {
   }
 }
 
+
+/* Phones: tap targets at least 44px tall (Apple's minimum) */
+@media (max-width: 860px) {
+  .maintenance-vendor-phone { display: inline-block; padding-top: 12px; padding-bottom: 12px; margin-top: -12px; margin-bottom: -12px; }
+}
 </style>
 
 

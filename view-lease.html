@@ -596,6 +596,12 @@ body { overflow-x: hidden; }
   font-size: .9rem; border-radius: 8px;
 }
 #mobileDrawer #mobileLogoutContainer button:hover { background: #fef2f2; }
+
+/* Phones: tap targets at least 44px tall (Apple's minimum) */
+@media (max-width: 860px) {
+  #navBell { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+  #leaseIdBadge, #backToLeaseCenter { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+}
 </style>
 </head>
 <body>

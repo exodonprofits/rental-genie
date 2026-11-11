@@ -633,6 +633,11 @@ body.property-workspace { background:#f4f6f9; }
  .property-workspace .property-hero-name { overflow-wrap:anywhere; }
 }
 @media(prefers-reduced-motion:reduce) { .property-workspace * { animation:none !important; transition:none !important; } }
+
+/* Phones: tap targets at least 44px tall (Apple's minimum) */
+@media (max-width: 860px) {
+  #editPropertyBtn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+}
 </style>
 </head>
 <body class="property-workspace">

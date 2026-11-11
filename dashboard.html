@@ -5155,6 +5155,11 @@ function setProgress(pct, statusText, activeStep) {
   gap:6px !important;
   white-space:nowrap;
 }
+
+/* Phones: tap targets at least 44px tall (Apple's minimum) */
+@media (max-width: 860px) {
+  #assistantAskBtn, .tiny-btn, #payInboxSetupBtn, .pi-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+}
 </style>
 
 

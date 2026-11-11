@@ -177,6 +177,12 @@
   }
   .tab-bar::-webkit-scrollbar { display: none; }
   .tab-btn { flex-shrink: 0; white-space: nowrap; }
+  /* Phones: the four tabs as a 2x2 grid instead of a row that hides Workspace off the edge */
+  @media (max-width: 520px) {
+    .tab-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; border-bottom: none; overflow: visible; }
+    .tab-bar .tab-btn { justify-content: center; min-height: 44px; border-radius: 10px; white-space: normal; margin-bottom: 0; border: 1px solid var(--border); background: #fff; }
+    .tab-bar .tab-btn.active { border-color: var(--navy); background: rgba(12,30,58,.06); }
+  }
   .tab-btn {
     display: inline-flex; align-items: center; gap: 6px;
     padding: 9px 16px; border-radius: 8px 8px 0 0;

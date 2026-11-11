@@ -513,6 +513,9 @@ body { overflow-x: hidden; }
   background-size: 200% 100% !important; animation: rgShimmer 1.1s linear infinite !important; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* Result count under the message search: same size as the hints around it */
+#messageResults { font-size: .8rem; color: var(--muted, #556275); margin: 8px 0 6px; }
 </style>
 <link rel="stylesheet" href="shared/css/tenant-workspace.css">
 <script src="shared/js/tenant-resources.js" defer></script>

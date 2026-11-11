@@ -52,6 +52,11 @@ input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(45
 
 /* CLAUDE.md: no sideways scroll on phones */
 body { overflow-x: hidden; }
+
+/* Phones: tap targets at least 44px tall (Apple's minimum) */
+@media (max-width: 860px) {
+  .auth-footer-row a { display: inline-block; padding-top: 12px; padding-bottom: 12px; margin-top: -12px; margin-bottom: -12px; }
+}
 </style>
 </head>
 <body>

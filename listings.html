@@ -502,7 +502,7 @@ function renderGrid(list){
     const rent = money(l.listing_rent);
     const avail = availabilityLabel(l.listing_available_date);
     return `
-      <article class="listing-card" data-id="${escapeHtml(l.id)}" tabindex="0" role="button" aria-label="${escapeHtml((l.name || "Rental") + (rent ? ", " + rent + " per month" : ""))}">
+      <article class="listing-card" data-id="${escapeHtml(l.id)}" tabindex="0" role="button">
         <div class="listing-photo">
           ${photo ? "" : `<span class="no-photo-icon">${placeholderIcon(l.property_type)}</span><span class="no-photo-label">Photos coming soon</span>`}
         </div>

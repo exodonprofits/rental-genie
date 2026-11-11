@@ -1,6 +1,6 @@
 # Online rent payments with Stripe: design
 
-Status: **draft for review, nothing built.** Decisions marked **[decide]** need Jimmy's call before code.
+Status: **approved 2026-11-11, not built yet.** Decisions in section 10.
 Stripe's prices in section 8 are **from memory, not checked against stripe.com** (the design session couldn't
 reach Stripe's site). Confirm them on stripe.com/pricing and stripe.com/connect/pricing before deciding 3.4.
 
@@ -67,7 +67,7 @@ to absorb it (see 3.4).
 - Bank account linked instantly through Financial Connections (online bank login), with microdeposits as the
   fallback.
 
-### 3.4 Who pays the fees **[decide]**
+### 3.4 Who pays the fees (decided: landlord, option 1)
 Options for an ACH payment (Stripe's fee per payment is capped, see section 8):
 1. **Landlord absorbs it** (taken from the payout). Simplest; tenant pays exactly the rent.
 2. **Rental Genie absorbs it** as part of a paid plan. Ties into plan limits (option D).
@@ -183,12 +183,12 @@ Timing (also unverified): ACH Direct Debit payments sit in `processing` for abou
 
 Estimated work: migration + 3 Edge Functions + 4 page changes ≈ 3–4 sessions, plus the pilot month.
 
-## 10. Questions for Jimmy **[decide]**
+## 10. Decisions (Jimmy, 2026-11-11)
 
-1. Fees: landlord absorbs the ACH fee (recommended), Rental Genie absorbs, or tenant fee?
-2. Express (we carry negative-balance risk, simpler for landlords) or Standard (no risk, more Stripe for
-   landlords)?
-3. Pilot on your own properties first, before any other landlord? (Recommended.)
-4. Do you already have a Stripe account for Exodon Profits LLC to be the platform, or should it be a new
-   one for Rental Genie / GenieSphere?
-5. Cards: leave out of version 1 (recommended)?
+1. **Fees:** the landlord absorbs the ACH fee, taken from the payout. Revisit with plan limits (D).
+2. **Accounts:** Express. We accept the negative-balance exposure from ACH returns after payout.
+3. **Pilot:** Jimmy's own properties first, live keys, before any other landlord.
+4. **Platform Stripe account:** a new Stripe account for Rental Genie, separate from Exodon Profits LLC's
+   other business. Jimmy creates it and turns on Connect (Express); its test-mode secret key and webhook
+   signing secrets go into Supabase Edge Function secrets, never into chat or a page.
+5. **Cards:** not in version 1.

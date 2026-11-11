@@ -207,6 +207,8 @@ main {
 .mode-banner-title { font-size: .9rem; font-weight: 700; }
 .mode-banner.renew .mode-banner-title { color: var(--info-text); }
 .mode-banner.edit  .mode-banner-title { color: var(--warn-text); }
+.mode-banner-check { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: .82rem; font-weight: 600; color: var(--text); cursor: pointer; text-transform: none; letter-spacing: 0; }
+.mode-banner-check input[type="checkbox"] { appearance: auto; -webkit-appearance: checkbox; width: 18px; height: 18px; margin: 0; padding: 0; flex-shrink: 0; accent-color: var(--sky); }
 .mode-banner-sub   { font-size: .78rem; color: var(--muted); margin-top: 2px; }
 
 /* Property pill */
@@ -521,6 +523,7 @@ body { overflow-x: hidden; }
     </div>
 
     <!-- Mode banner (renew / edit) -->
+    <div class="mode-banner renew" id="appBanner" style="display:none"></div>
     <div class="mode-banner renew" id="renewBanner" style="display:none">
       <div class="mode-banner-icon">🔄</div>
       <div class="mode-banner-text">
@@ -892,6 +895,8 @@ var companyId    = _p.get('company_id') || _p.get('company') || _p.get('workspac
 // lease_id being saved over the current lease.
 var isRenew      = ['true', '1'].indexOf(_p.get('renew')) !== -1 || _p.get('mode') === 'renew';
 var isEdit       = !!leaseId && !isRenew;
+// A new lease started from an approved rental application (publish-listing.html → Create lease)
+var applicationId = (!isEdit && !isRenew) ? (_p.get('application_id') || '') : '';
 
 /* ============================================================
    HELPERS
@@ -1539,7 +1544,7 @@ function saveLease() {
       fullPayload.created_by = user.id;
       db.from('leases').insert([fullPayload])
         .then(function(result) {
-          if (!result.error) { doRedirect(); return; }
+          if (!result.error) { return unlistIfAsked().then(doRedirect); }
           if (result.error.code !== 'PGRST204') throw result.error;
           // Column missing — probe then retry
           return probeLeaseColumns().then(function(knownCols) {
@@ -1547,7 +1552,7 @@ function saveLease() {
             return db.from('leases').insert([safePayload]);
           }).then(function(result2) {
             if (result2 && result2.error) throw result2.error;
-            doRedirect();
+            return unlistIfAsked().then(doRedirect);
           });
         })
         .catch(onSaveError);
@@ -1557,6 +1562,90 @@ function saveLease() {
     setStatus('❌ Auth error: ' + (e.message || ''), 'err');
     btn.disabled = false; btn.innerHTML = '💾 Save Lease';
   });
+}
+
+/* ============================================================
+   FROM A RENTAL APPLICATION
+   Fills empty fields from the application and the listing (rent, deposit, available date).
+   Nothing is saved until Save; the banner offers to take the listing down after saving.
+============================================================ */
+function isoDay(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function setIfEmpty(id, v) {
+  var el = $(id);
+  if (el && !el.value && v !== null && v !== undefined && v !== '') el.value = v;
+}
+async function prefillFromApplication() {
+  var ar = await db.from('applications')
+    .select('id, property_id, applicant_name, applicant_email, applicant_phone, desired_move_in, has_pets, pet_details, occupants_count, status, created_at')
+    .eq('id', applicationId).maybeSingle();
+  if (ar.error || !ar.data) { setStatus('Could not load that application. Fill in the lease by hand.', 'err'); return; }
+  var a = ar.data;
+  var pr = await db.from('properties')
+    .select('id, name, company_id, listing_rent, listing_deposit, listing_available_date, is_public_listing')
+    .eq('id', a.property_id).maybeSingle();
+  var prop = pr.data || {};
+
+  // The lease belongs to the application's property
+  if (prop.id) {
+    propertyId = prop.id;
+    propertyName = prop.name || propertyName;
+    companyId = companyId || prop.company_id || '';
+    $('propertyNameLabel').textContent = propertyName;
+    $('propPill').style.display = 'inline-flex';
+  }
+
+  setIfEmpty('tenantName', a.applicant_name);
+  setIfEmpty('tenantEmail', a.applicant_email);
+  setIfEmpty('tenantPhone', a.applicant_phone);
+  // Start: the applicant's move-in date, else when the listing is available; never in the past
+  var today = isoDay(new Date());
+  var start = [a.desired_move_in, prop.listing_available_date].filter(function (d) { return d && d >= today; })[0] || '';
+  setIfEmpty('leaseStart', start);
+  if (start && $('leaseType').value !== 'month_to_month') {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(start);
+    setIfEmpty('leaseEnd', isoDay(new Date(+m[1] + 1, +m[2] - 1, +m[3] - 1)));   // one year, ending the day before
+  }
+  setIfEmpty('rentAmount', prop.listing_rent);
+  setIfEmpty('securityDeposit', prop.listing_deposit);
+  var notes = ['From rental application of ' + new Date(a.created_at).toLocaleDateString() + '.'];
+  if (a.occupants_count) notes.push('Occupants: ' + a.occupants_count + '.');
+  if (a.has_pets) notes.push('Pets: ' + (a.pet_details || 'yes') + '.');
+  setIfEmpty('leaseNotes', notes.join(' '));
+  $('status').value = 'draft';
+  updateStatusAccent();
+
+  var banner = $('appBanner');
+  banner.textContent = '';
+  var icon = document.createElement('div'); icon.className = 'mode-banner-icon'; icon.textContent = '📋';
+  var text = document.createElement('div'); text.className = 'mode-banner-text';
+  var title = document.createElement('div'); title.className = 'mode-banner-title';
+  title.textContent = 'From ' + (a.applicant_name || 'an') + '\'s application';
+  var sub = document.createElement('div'); sub.className = 'mode-banner-sub';
+  sub.textContent = 'Name, contact, dates, rent and deposit are filled in from the application and the listing. '
+    + 'Check everything, add the due day, late fee and terms, and change Status to Signed once the lease is signed.'
+    + (a.status !== 'approved' ? ' This application isn\'t marked approved yet.' : '');
+  text.appendChild(title); text.appendChild(sub);
+  if (prop.is_public_listing) {
+    var lab = document.createElement('label'); lab.className = 'mode-banner-check';
+    var cb = document.createElement('input'); cb.type = 'checkbox'; cb.id = 'unlistAfterSave'; cb.checked = true;
+    lab.appendChild(cb);
+    lab.appendChild(document.createTextNode('Take the listing down after saving'));
+    text.appendChild(lab);
+  }
+  banner.appendChild(icon); banner.appendChild(text);
+  banner.style.display = 'flex';
+}
+
+// After a lease from an application is saved: unlist the property if the landlord left the box ticked
+function unlistIfAsked() {
+  var cb = $('unlistAfterSave');
+  if (!applicationId || !cb || !cb.checked || !propertyId) return Promise.resolve();
+  return db.from('properties').update({ is_public_listing: false }).eq('id', propertyId).select('id')
+    .then(function (r) {
+      if (r.error || !r.data || !r.data.length) console.warn('Listing not taken down:', r.error);
+    }, function () {});
 }
 
 /* ============================================================
@@ -1653,6 +1742,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
   } else {
     prefillPayFromCompany();
+    if (applicationId) {
+      try { await prefillFromApplication(); } catch (e) { console.error('Application prefill:', e); }
+      updateLeaseType();
+    }
   }
 });
 </script>

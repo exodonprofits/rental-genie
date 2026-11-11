@@ -1,7 +1,6 @@
 # Online rent payments with Stripe: design
 
-Status: **approved 2026-11-11, not built yet.** Decisions in section 10; one question still open (the
-platform's Stripe account).
+Status: **approved 2026-11-11, not built yet.** Decisions in section 10.
 Stripe's prices in section 8 are **from memory, not checked against stripe.com** (the design session couldn't
 reach Stripe's site). Confirm them on stripe.com/pricing and stripe.com/connect/pricing before deciding 3.4.
 
@@ -189,6 +188,7 @@ Estimated work: migration + 3 Edge Functions + 4 page changes ≈ 3–4 sessions
 1. **Fees:** the landlord absorbs the ACH fee, taken from the payout. Revisit with plan limits (D).
 2. **Accounts:** Express. We accept the negative-balance exposure from ACH returns after payout.
 3. **Pilot:** Jimmy's own properties first, live keys, before any other landlord.
-4. **Platform Stripe account: open.** Exodon Profits LLC's existing account or a new one for Rental Genie /
-   GenieSphere. Needed before test mode starts (the keys come from it).
+4. **Platform Stripe account:** a new Stripe account for Rental Genie, separate from Exodon Profits LLC's
+   other business. Jimmy creates it and turns on Connect (Express); its test-mode secret key and webhook
+   signing secrets go into Supabase Edge Function secrets, never into chat or a page.
 5. **Cards:** not in version 1.

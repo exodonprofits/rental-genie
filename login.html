@@ -428,6 +428,14 @@ body[data-role="landlord"] .only-magic { display: none !important; }
 
 /* CLAUDE.md: no sideways scroll on phones */
 body { overflow-x: hidden; }
+
+/* Phones: tap targets at least 44px tall (Apple's minimum) */
+@media (max-width: 860px) {
+  .forgot-link, .auth-footer-row a, .back-link a { display: inline-block; padding-top: 12px; padding-bottom: 12px; margin-top: -12px; margin-bottom: -12px; }
+}
+
+/* Show-password button: 44px hit area, icon unchanged */
+.pass-toggle { min-width: 44px; min-height: 44px; right: 2px; display: inline-flex; align-items: center; justify-content: center; }
 </style>
 </head>
 

@@ -3824,9 +3824,12 @@ async function loadPayments() {
 
   const { data, error } = await client
     .from("rent_log")
-    .select("id, inserted_at, date_paid, tenant_name, amount, method, note, property_name, applied_to_due_date")
+    .select("id, inserted_at, date_paid, tenant_name, amount, method, note, property_name, applied_to_due_date, source")
     .eq("company_id", getSelectedPropertyCompanyId())
     .eq("property_name", currentProperty)
+    // Archived payments (duplicates archived in Reports, online payments returned by the bank) aren't rent paid:
+    // the balance from rg_rent_schedule already leaves them out, so the month rows must too
+    .is("archived_at", null)
     .order("date_paid", { ascending: false });
 
   if (error) {

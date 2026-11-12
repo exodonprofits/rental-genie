@@ -467,8 +467,27 @@
   background-size: 200% 100% !important; animation: rgShimmer 1.1s linear infinite !important; }
 #authOverlay > * { display: none !important; }
 @keyframes rgShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-</style>
-<link rel="stylesheet" href="shared/css/tenant-workspace.css">
+
+/* Pay online card */
+.po-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.po-field { flex: 1 1 160px; min-width: 0; }
+.po-field label { display: block; font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.po-field input { width: 100%; box-sizing: border-box; min-height: 46px; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 12px; font: inherit; font-size: 1.05rem; font-weight: 700; color: var(--navy); background: #fff; }
+.po-field input:focus { outline: none; border-color: var(--navy-light); box-shadow: 0 0 0 3px rgba(30,87,153,.12); }
+.po-btn { min-height: 46px; padding: 10px 20px; border: none; border-radius: 12px; background: linear-gradient(135deg, var(--navy), var(--navy-light)); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.po-btn:disabled { opacity: .55; cursor: default; }
+.po-note { font-size: .82rem; color: var(--muted); line-height: 1.5; margin: 10px 0 0; }
+.po-msg { font-size: .86rem; margin-top: 10px; }
+.po-msg.err { color: #b91c1c; }
+.po-msg.ok { color: #166534; }
+.po-list { list-style: none; margin: 14px 0 0; padding: 0; border-top: 1px solid var(--border); }
+.po-list li { display: flex; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: .86rem; flex-wrap: wrap; }
+.po-pill { font-size: .74rem; font-weight: 700; border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
+.po-pill.processing { background: #eff6ff; color: #1e40af; }
+.po-pill.succeeded { background: #f0fdf4; color: #166534; }
+.po-pill.failed, .po-pill.refunded, .po-pill.disputed { background: #fef2f2; color: #991b1b; }
+.po-pill.created, .po-pill.expired { background: #f8fafc; color: #475569; }
+</style><link rel="stylesheet" href="shared/css/tenant-workspace.css">
 <script src="shared/js/tenant-resources.js" defer></script>
 </head>
 <body class="tenant-workspace tenant-resources">
@@ -587,6 +606,17 @@
       <div class="status-banner-title info" id="statusTitle">—</div>
       <div class="status-banner-sub" id="statusSub">—</div>
     </div>
+  </div>
+
+  <!-- ── Pay online (Stripe; shown only when the landlord takes online payments for this lease) ── -->
+  <div class="section-card" id="payOnlineCard" style="display:none">
+    <div class="card-head">
+      <div class="card-head-left">
+        <div class="card-title">🏦 Pay rent online</div>
+        <div class="card-sub">From your bank account, through Stripe. No fee for you.</div>
+      </div>
+    </div>
+    <div class="card-body" id="payOnlineBody"></div>
   </div>
 
   <!-- ── How to pay ──────────────────────────────────────────── -->
@@ -910,6 +940,84 @@
     return wrap;
   }
 
+  /* ── Pay online (docs/design/stripe-online-rent.md) ─────────────────────
+     The Pay button shows only when rg_my_online_pay_options says this lease can be paid online. The
+     amount is checked again on the server (rg-stripe-checkout) against the database's rent schedule.
+     Rent is recorded only when the bank payment clears (webhook), so here it shows as Processing. */
+  var PO_LABEL = { created: 'Started', processing: 'Processing', succeeded: 'Paid', failed: 'Failed', expired: 'Not finished', refunded: 'Refunded', disputed: 'Returned' };
+  function poEl(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function loadPayOnline(lease, balanceDue, rent) {
+    var card = $('payOnlineCard'), body = $('payOnlineBody');
+    if (!card || !body) return;
+    Promise.all([
+      sb.rpc('rg_my_online_pay_options').then(function (r) { return r.error ? [] : (r.data || []); }, function () { return []; }),
+      sb.from('online_payments').select('id, amount, status, created_at, paid_at, failure_reason')
+        .eq('lease_id', lease.id).order('created_at', { ascending: false }).limit(5)
+        .then(function (r) { return r.error ? [] : (r.data || []); }, function () { return []; })
+    ]).then(function (out) {
+      var opt = out[0].filter(function (o) { return o.lease_id === lease.id; })[0];
+      var recent = out[1].filter(function (p) { return p.status !== 'created' && p.status !== 'expired'; });
+      if (!(opt && opt.can_pay_online) && !recent.length) { card.style.display = 'none'; return; }
+      body.textContent = '';
+      var processing = recent.filter(function (p) { return p.status === 'processing'; })[0];
+      var msg = poEl('div', 'po-msg'); msg.setAttribute('role', 'status');
+
+      var qs = new URLSearchParams(location.search);
+      if (qs.get('paid')) { msg.textContent = '✓ Thanks! Your payment is processing. Bank payments take about 4 business days to clear; we\'ll email you when it does.'; msg.className = 'po-msg ok'; }
+      else if (qs.get('canceled')) { msg.textContent = 'Payment canceled. Nothing was charged.'; }
+
+      if (opt && opt.can_pay_online) {
+        var row = poEl('div', 'po-row');
+        var field = poEl('div', 'po-field');
+        var lab = poEl('label', null, 'Amount ($)'); lab.setAttribute('for', 'poAmount');
+        var inp = poEl('input'); inp.id = 'poAmount'; inp.type = 'text'; inp.inputMode = 'decimal'; inp.autocomplete = 'off';
+        var suggested = balanceDue > 0 ? balanceDue : rent;
+        inp.value = suggested > 0 ? Number(suggested).toFixed(2) : '';
+        field.appendChild(lab); field.appendChild(inp);
+        var btn = poEl('button', 'po-btn', processing ? 'Payment processing…' : 'Pay online'); btn.type = 'button';
+        btn.disabled = !!processing;
+        btn.addEventListener('click', function () {
+          var amt = String(inp.value || '').replace(/[$,\s]/g, '');
+          if (!/^\d+(\.\d{1,2})?$/.test(amt)) { msg.textContent = 'Enter the amount in dollars and cents, like 1500 or 1500.00.'; msg.className = 'po-msg err'; return; }
+          if (Number(amt) < 1) { msg.textContent = 'The smallest online payment is $1.00.'; msg.className = 'po-msg err'; return; }
+          btn.disabled = true; btn.textContent = 'Opening secure payment page…'; msg.textContent = ''; msg.className = 'po-msg';
+          sb.functions.invoke('rg-stripe-checkout', { body: { lease_id: lease.id, amount: Number(amt) } }).then(function (r) {
+            if (r.error) {
+              return (r.error.context && r.error.context.json ? r.error.context.json() : Promise.resolve({})).then(function (j) {
+                throw new Error((j && j.error) || 'Couldn\'t open the payment page. Please try again.');
+              }, function () { throw new Error('Couldn\'t open the payment page. Please try again.'); });
+            }
+            if (r.data && r.data.url) { location.href = r.data.url; return; }
+            throw new Error('Couldn\'t open the payment page. Please try again.');
+          }).catch(function (e) {
+            msg.textContent = e.message; msg.className = 'po-msg err';
+            btn.disabled = false; btn.textContent = 'Pay online';
+          });
+        });
+        row.appendChild(field); row.appendChild(btn);
+        body.appendChild(row);
+        body.appendChild(poEl('p', 'po-note', processing
+          ? 'A payment is already processing for this lease. You can pay again once it clears.'
+          : 'You\'ll pay on Stripe\'s secure page by linking your bank account. Bank payments take about 4 business days to clear; until then they show as Processing below and aren\'t counted as paid yet.'));
+      }
+      body.appendChild(msg);
+
+      if (recent.length) {
+        var ul = poEl('ul', 'po-list');
+        recent.forEach(function (p) {
+          var li = poEl('li');
+          var left = poEl('span', null, fmtMoney(p.amount) + ' · ' + fmtDate(String(p.paid_at || p.created_at).slice(0, 10)));
+          var pill = poEl('span', 'po-pill ' + (PO_LABEL[p.status] ? p.status : 'created'), PO_LABEL[p.status] || p.status);
+          li.appendChild(left); li.appendChild(pill);
+          if (p.status === 'failed' && p.failure_reason) li.appendChild(poEl('span', 'po-note', p.failure_reason));
+          ul.appendChild(li);
+        });
+        body.appendChild(ul);
+      }
+      card.style.display = '';
+    });
+  }
+
   function loadHowToPay(lease) {
     var companyQ = sb.from('payment_settings')
       .select('venmo_handle, venmo_note, zelle_email, zelle_phone')
@@ -1175,6 +1283,7 @@
       setText('nextDueSub', nextDue ? 'Next due: ' + fmtDate(nextDue) : (lease ? 'No rent due' : 'Due day not set'));
 
       if (lease && lease.company_id && lease.id) loadHowToPay(lease);
+      if (lease && lease.id) loadPayOnline(lease, schedStatus.balanceDue, rentAmount);
 
       /* Load payments */
       loadPayments(user, lease, tenant).then(function (rows) {

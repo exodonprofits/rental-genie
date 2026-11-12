@@ -46,6 +46,11 @@ jobs:
       - name: Syntax-check inline scripts
         run: node check-scripts.js
 
+      - name: Stripe helper and webhook tests (online rent payments)
+        run: |
+          node --experimental-strip-types ../stripe/stripe.test.ts
+          node --experimental-strip-types ../stripe/webhook.test.ts
+
       # Browser first, then its system packages as a best effort: --with-deps pulls fonts and
       # libraries from the Ubuntu mirror, and when that mirror is unreachable from the runner
       # (Nov 11 2026: "Temporary failure resolving azure.archive.ubuntu.com") apt retries until the

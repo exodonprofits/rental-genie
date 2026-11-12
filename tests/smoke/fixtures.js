@@ -60,6 +60,9 @@ function base() {
     applications: [],
     application_messages: [],
     incoming_rent_payments: [],
+    online_payments: [
+      { id: '88888888-8888-4888-8888-888888888881', company_id: C, property_id: P1, lease_id: L1, tenant_id: T1, amount: 1500, status: 'processing', created_at: today + 'T15:00:00Z', paid_at: null, failure_reason: null },
+      { id: '88888888-8888-4888-8888-888888888882', company_id: C, property_id: P1, lease_id: L1, tenant_id: T1, amount: 1500, status: 'failed', created_at: today + 'T09:00:00Z', paid_at: null, failure_reason: 'Insufficient funds' }],
     vendors: [{ id: '77777777-7777-4777-8777-777777777771', company_id: C, name: 'Ace Plumbing', trade: 'Plumbing', phone: '555-0142', email: 'office@ace.example.com', archived_at: null }],
     notifications: [{ id: 1, company_id: C, event_key: 'maint_ack:1', kind: 'maintenance_ack', channel: 'email', maintenance_request_id: 1,
       property_id: P1, tenant_id: T1, recipient: 'tenant@example.com', status: 'failed', attempts: 1, dismissed_at: null,
@@ -72,6 +75,7 @@ function base() {
       rg_rent_status: [{ property_id: P1, property_name: 'Oak Street', company_id: C, lease_id: L1, tenant_name: 'Test Tenant', lease_state: 'active',
         rent_amount: 1500, total_due: 4500, total_paid: 3500, balance: 1000, past_due: 1000, months_unpaid: 1, last_paid_date: sched[2].due_date }],
       rg_claim_tenant_row: T1,
+      rg_my_online_pay_options: [{ lease_id: L1, company_id: C, property_id: P1, property_name: 'Oak Street', can_pay_online: true }],
       rg_dismiss_notification: true
     }
   };

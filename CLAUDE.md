@@ -145,9 +145,17 @@ setup in `payment-inbox.md`; the old Postmark/n8n workflow JSON was never connec
 place that turns a payment into `rent_log` rows: unpaid months oldest first, then prepayment in rent-sized pieces,
 stamped with the lease, tenant id and email of the lease in effect (so tenants see them). The payment inbox's
 confirm calls it; online payments will too (`source = 'stripe'`, `online_payment_id`). Don't write another split.
-**Online payments (design in `docs/design/stripe-online-rent.md`, foundation rg_28, not live yet):** `online_payments`
-(one row per attempt; landlord and paying tenant read, service role writes), `companies.stripe_*` (written only by the
-service role: `trg_companies_protect_stripe` refuses signed-in users), `leases.pay_accepts_online`.
+**Online payments (design in `docs/design/stripe-online-rent.md`; rg_28/rg_29; not live until the Stripe keys are set
+and the landlord connects):** Stripe Connect Express, destination charges with `on_behalf_of`, ACH only, the ACH fee taken as
+the application fee (landlord absorbs it). `rg-stripe-connect` (landlord JWT, owner only: onboard / status / dashboard),
+`rg-stripe-checkout` (tenant JWT: checks `rg_my_online_pay_options` and that the amount is $1 to balance + one month from
+`rg_my_rent_schedule`, one processing payment per lease, then a Checkout Session), `rg-stripe-webhook` (verify_jwt false,
+Stripe-Signature checked against `STRIPE_WEBHOOK_SECRET` / `STRIPE_CONNECT_WEBHOOK_SECRET`; event logic in `handle.ts`).
+Shared helpers in `supabase/functions/_shared/stripe.ts`; tests in `tests/stripe/` (run in CI). Rent is recorded only by
+`rg_online_payment_succeeded` (row-locked, idempotent, via `rg_apply_payment`); `rg_online_payment_reversed` archives the
+rent rows on a refund or dispute. Tables: `online_payments` (landlord and paying tenant read, service role writes),
+`companies.stripe_*` (service role only: `trg_companies_protect_stripe`), `leases.pay_accepts_online`. Emails:
+`payment_received` / `payment_failed` (owner switch `onlinePayments`), `payment_receipt` (tenant).
 
 **Notifications (rg_17):** `notifications` is the outbox and delivery log, one row per event and
 channel under a unique `event_key` (e.g. `maint_ack:<request id>`), so nothing is sent twice. For a
@@ -226,7 +234,8 @@ of the name, which is what tenants see.
 
 ## Known gaps — don't extend these, fix or retire them
 
-- Online rent payments aren't built. Stripe Connect is scoped, not started.
+- Online rent payments are built but not switched on: they need the Stripe keys (`STRIPE_SECRET_KEY`, webhook secrets) and a
+  test-mode round trip before the pilot (design doc, section 9).
 - Escrow reconciliation doesn't exist. The old page read tables that were never created and was
   removed along with the legacy duplicate pages (rent-log, rent-payments, manage-properties,
   lease-center, rental-tracker, tenant-history, submit-request, landing, rent-analyzer).

@@ -307,6 +307,11 @@
   .badge-blue  { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
   .badge-green { background: #f0fdf4; color: #166534; border-color: #bbf7d0; }
   .badge-slate { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+  .badge-amber { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+  .pay-online-body p { font-size: .88rem; color: var(--muted); line-height: 1.55; margin: 0 0 10px; }
+  .pay-online-body ul { margin: 0 0 12px 18px; padding: 0; font-size: .86rem; color: var(--text); line-height: 1.6; }
+  .pay-online-msg { font-size: .85rem; margin-top: 10px; }
+  .pay-online-msg.err { color: #b91c1c; }
 
   /* ── Info rows (account details) ───────────────────────────── */
   .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -757,6 +762,16 @@
       </div>
       <div class="toggle-row">
         <div class="toggle-info">
+          <div class="toggle-label">Online rent payments</div>
+          <div class="toggle-desc">Email me when a tenant's online payment clears, fails or is returned by their bank.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="notifOnlinePayments" checked aria-label="Online rent payments">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+      <div class="toggle-row">
+        <div class="toggle-info">
           <div class="toggle-label">Rental applications</div>
           <div class="toggle-desc">Email me when a renter applies to one of my listings or replies to my message.</div>
         </div>
@@ -853,6 +868,17 @@
         <a href="invite-tenant.html" class="btn-secondary">✉️ Invite Tenant</a>
         <button type="button" class="btn-secondary" id="refreshWorkspaceBtn">🔄 Refresh</button>
       </div>
+    </div>
+
+    <div class="card" id="payOnlineCard">
+      <div class="card-header">
+        <div class="card-title">
+          <div class="card-title-icon">💳</div>
+          Get paid online
+        </div>
+        <span class="badge badge-slate" id="payOnlineBadge">Checking…</span>
+      </div>
+      <div id="payOnlineBody" class="pay-online-body"></div>
     </div>
 
     <div class="card">
@@ -987,6 +1013,86 @@ function initials(name,email){
   return '?';
 }
 
+/* ── Get paid online (Stripe) ──────────────────────────────────────────
+   Only the company owner connects: payouts go to their bank. Account state lives in companies.stripe_*,
+   written by the rg-stripe-connect Edge Function (signed-in users can't write those columns). */
+function payEl(tag, attrs, text) {
+  var e = document.createElement(tag);
+  Object.keys(attrs || {}).forEach(function (k) { if (k === 'class') e.className = attrs[k]; else e.setAttribute(k, attrs[k]); });
+  if (text != null) e.textContent = text;
+  return e;
+}
+async function stripeCall(action) {
+  var r = await client.functions.invoke('rg-stripe-connect', { body: { action: action } });
+  if (r.error) {
+    var msg = 'Something went wrong. Please try again.';
+    try { var j = await r.error.context.json(); if (j && j.error) msg = j.error; } catch (e) {}
+    throw new Error(msg);
+  }
+  return r.data || {};
+}
+function renderPayOnline(c, isOwner) {
+  var body = document.getElementById('payOnlineBody'), badge = document.getElementById('payOnlineBadge');
+  if (!body || !badge) return;
+  body.textContent = '';
+  var msg = payEl('div', { class: 'pay-online-msg', role: 'status' });
+  function btn(label, cls, action, after) {
+    var b = payEl('button', { type: 'button', class: cls }, label);
+    b.addEventListener('click', async function () {
+      b.disabled = true; var old = b.textContent; b.textContent = 'Opening…'; msg.textContent = ''; msg.className = 'pay-online-msg';
+      try { var d = await stripeCall(action); if (d.url) { location.href = d.url; return; } if (after) after(d); }
+      catch (e) { msg.textContent = e.message; msg.className = 'pay-online-msg err'; }
+      b.disabled = false; b.textContent = old;
+    });
+    return b;
+  }
+  var row = payEl('div', { class: 'btn-row' });
+  if (!c) { badge.textContent = 'Unavailable'; body.appendChild(payEl('p', null, 'No company found for your account.')); return; }
+  if (c.stripe_charges_enabled) {
+    badge.textContent = 'On'; badge.className = 'badge badge-green';
+    body.appendChild(payEl('p', null, 'Tenants can pay rent from their bank account on their Payments page. Each payment is recorded in your ledger when it clears (about 4 business days) and Stripe pays it out to your bank.'));
+    if (isOwner) {
+      row.appendChild(btn('Open Stripe dashboard', 'btn-secondary', 'dashboard'));
+      row.appendChild(btn('Check status', 'btn-secondary', 'status', function () { loadPayOnline(window._rgUser); }));
+    }
+  } else {
+    badge.textContent = c.stripe_account_id ? 'Setup not finished' : 'Off';
+    badge.className = 'badge ' + (c.stripe_account_id ? 'badge-amber' : 'badge-slate');
+    body.appendChild(payEl('p', null, 'Let tenants pay rent from their bank account through Rental Genie.'));
+    var ul = payEl('ul');
+    ['The money goes straight to your bank through Stripe. Rental Genie never holds it.',
+     'Stripe\'s bank-payment fee (0.8%, at most $5 per payment) comes out of the payout.',
+     'Payments are recorded in your ledger automatically when they clear, oldest unpaid month first.',
+     'You can switch it off for any lease on the lease form.'].forEach(function (t) { ul.appendChild(payEl('li', null, t)); });
+    body.appendChild(ul);
+    if (isOwner) row.appendChild(btn(c.stripe_account_id ? 'Continue setup on Stripe' : 'Set up online payments', 'btn-primary', 'onboard'));
+    else body.appendChild(payEl('p', null, 'Only the account owner can set this up.'));
+  }
+  body.appendChild(row);
+  body.appendChild(msg);
+}
+async function loadPayOnline(user) {
+  window._rgUser = user;
+  var q = await client.from('companies')
+    .select('id, owner_user_id, stripe_account_id, stripe_charges_enabled, stripe_payouts_enabled, stripe_details_submitted')
+    .eq('owner_user_id', user.id).is('archived_at', null).order('created_at', { ascending: true }).limit(1).maybeSingle();
+  var c = q.data, isOwner = !!c;
+  if (!c) {
+    var m = await client.from('company_members').select('company_id').eq('user_id', user.id).limit(1).maybeSingle();
+    if (m.data) {
+      var r2 = await client.from('companies').select('id, owner_user_id, stripe_account_id, stripe_charges_enabled').eq('id', m.data.company_id).maybeSingle();
+      c = r2.data;
+    }
+  }
+  // Back from Stripe's onboarding: refresh the flags from Stripe once
+  var sp = new URLSearchParams(location.search);
+  if (isOwner && c && c.stripe_account_id && (sp.get('stripe') === 'return' || sp.get('stripe') === 'refresh') && !window._rgStripeSynced) {
+    window._rgStripeSynced = true;
+    try { var st = await stripeCall('status'); if (st.connected) { c.stripe_charges_enabled = st.stripe_charges_enabled; } } catch (e) {}
+  }
+  renderPayOnline(c, isOwner);
+}
+
 /* ── Tab switching ── */
 document.querySelectorAll('.tab-btn').forEach(function(btn){
   btn.addEventListener('click',function(){
@@ -997,6 +1103,12 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
     if(panel) panel.classList.add('active');
   });
 });
+// ?tab=workspace (Stripe sends landlords back here) opens that tab
+(function(){
+  var t=new URLSearchParams(location.search).get('tab');
+  var b=t&&document.querySelector('.tab-btn[data-tab="'+t.replace(/[^a-z]/g,'')+'"]');
+  if(b) b.click();
+})();
 
 /* ── Nav wiring ── */
 (function(){
@@ -1078,6 +1190,7 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
   document.getElementById('notifMessages').checked    = notifPrefs.messages   !== undefined ? !!notifPrefs.messages   : true;
   document.getElementById('notifTenantRepair').checked = notifPrefs.tenantRepairUpdates !== undefined ? !!notifPrefs.tenantRepairUpdates : true;
   document.getElementById('notifApplications').checked = notifPrefs.applications !== undefined ? !!notifPrefs.applications : true;
+  document.getElementById('notifOnlinePayments').checked = notifPrefs.onlinePayments !== undefined ? !!notifPrefs.onlinePayments : true;
 
   // Account details
   setText('infoUserId',user.id?user.id.slice(0,8)+'…':'—');
@@ -1119,6 +1232,9 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
       setText('wsCompanyName','Not linked to a workspace');
     }
   }catch(err){console.warn('Workspace load error:',err);}
+
+  // Online payments (Stripe Connect Express; docs/design/stripe-online-rent.md)
+  try { await loadPayOnline(user); } catch (err) { console.warn('Online payments load error:', err); }
 
   // Dismiss overlay
   var _ov=document.getElementById('authOverlay');
@@ -1193,7 +1309,8 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
       monthlySummary: document.getElementById('notifMonthly').checked,
       messages:    document.getElementById('notifMessages').checked,
       tenantRepairUpdates: document.getElementById('notifTenantRepair').checked,
-      applications: document.getElementById('notifApplications').checked
+      applications: document.getElementById('notifApplications').checked,
+      onlinePayments: document.getElementById('notifOnlinePayments').checked
     };
     var res=await client.auth.updateUser({data:{notifications:notifications}});
     if(res.error){

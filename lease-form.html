@@ -335,6 +335,9 @@ textarea { resize: vertical; min-height: 88px; }
 }
 .pay-chip:has(input:checked) { border-color: var(--sky); background: #fff; }
 .pay-detail { margin-top: 14px; }
+.pay-online-toggle { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; text-transform: none; letter-spacing: 0; font-size: .88rem; color: var(--text); font-weight: 600; }
+.pay-online-toggle input[type="checkbox"] { appearance: auto; -webkit-appearance: checkbox; width: 18px; height: 18px; margin: 2px 0 0; padding: 0; flex-shrink: 0; accent-color: var(--sky); }
+.pay-online-toggle small { display: block; font-weight: 500; color: var(--muted); font-size: .78rem; margin-top: 3px; line-height: 1.45; }
 .field-hint.full { grid-column: 1 / -1; margin-top: 0; }
 .pay-pref { display: block; margin-top: 6px; font-size: .8rem; color: var(--text); font-weight: 600; }
 
@@ -754,6 +757,13 @@ body { overflow-x: hidden; }
           </div>
           <span class="field-hint">The tenant sees these instructions on their Payments page.</span>
           <span class="pay-pref" id="payTenantPref" style="display:none"></span>
+        </div>
+
+        <div class="form-group">
+          <label class="pay-online-toggle" for="payOnline">
+            <input type="checkbox" id="payOnline" checked />
+            <span><b>Accept online payments</b><small>Tenant pays from their bank account on their Payments page; recorded automatically when it clears. Works once you've set it up in Account &gt; Workspace &gt; Get paid online.</small></span>
+          </label>
         </div>
 
         <div class="form-grid pay-detail" id="payZelleBox" style="display:none">
@@ -1424,6 +1434,7 @@ function applyLeaseToForm(data, renewMode) {
   $('leaseNotes').value    = data.notes  || '';
   $('terms').value         = data.terms  || '';
   applyPayFields(data);
+  if ($('payOnline')) $('payOnline').checked = data.pay_accepts_online !== false;
   showTenantPreference(data.tenant_preferred_payment_method || '');
   payCarriedPreference = renewMode ? (data.tenant_preferred_payment_method || null) : null;
   payLoadedSnapshot = renewMode ? '' : JSON.stringify(readPayFields());
@@ -1526,6 +1537,7 @@ function saveLease() {
     terminated_date:  $('status').value === 'terminated' ? ($('terminatedDate').value || null) : null,
   };
 
+  fullPayload.pay_accepts_online = !!($('payOnline') && $('payOnline').checked);
   var payFields = readPayFields();
   Object.keys(payFields).forEach(function (col) { fullPayload[col] = payFields[col]; });
   if (JSON.stringify(payFields) !== payLoadedSnapshot) fullPayload.pay_instructions_updated_at = new Date().toISOString();

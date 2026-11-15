@@ -155,16 +155,16 @@ function leasePrompt(properties: { name: string; address: string | null }[], tod
   const list = properties.length
     ? properties.map((p) => `- ${p.name}${p.address ? ` (${p.address})` : ""}`).join("\n")
     : "(none on file)";
-  return `This is a residential lease a landlord uploaded. Read it and fill in the lease record.
+  return `This is a lease (residential or commercial) a landlord uploaded. Read it and fill in the lease record.
 
 Today is ${today}.
 
 The landlord's properties:
 ${list}
 
-- tenant_name: every tenant named on the lease, joined with " & ". tenant_email / tenant_phone: the first tenant's, if the lease lists them.
+- tenant_name: every tenant named on the lease, joined with " & ". If the tenant is a business, its legal name (add "d/b/a" if the lease gives one). tenant_email / tenant_phone: the first tenant's, if the lease lists them.
 - lease_start / lease_end: the term dates. A month-to-month lease has no end date: set lease_type "month_to_month" and lease_end null.
-- rent_amount: the monthly rent. due_day: the day of the month rent is due (1 if it says "the first").
+- rent_amount: the monthly rent at the start of the term (base rent for a commercial lease). If the rent changes during the term, put the schedule in key_terms; if there are extra monthly charges (CAM, taxes, insurance), mention them in key_terms and do not add them to rent_amount. due_day: the day of the month rent is due (1 if it says "the first").
 - late_fee: the flat late fee in dollars; if it is a percentage or daily amount, give the first-month dollar figure and list late_fee in unsure. grace_period: days after the due date before the late fee applies.
 - security_deposit / pet_deposit: dollar amounts, or null if none.
 - property_address: the rented premises as written. property_name: the matching property above, or null if none matches.

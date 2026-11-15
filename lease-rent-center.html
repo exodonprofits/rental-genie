@@ -3438,7 +3438,7 @@ async function loadLatestLease() {
 
   const { data: leases, error } = await client
     .from("leases")
-    .select("id, property_id, property_name, tenant_name, lease_start, lease_end, rent_amount, rent_due_day, due_day, status, lease_type, terminated_date, late_fee, late_fee_amount, grace_period, late_fee_grace_days, " + LEASE_PAY_COLUMNS)
+    .select("id, property_id, property_name, tenant_name, lease_start, lease_end, rent_amount, current_rent, rent_due_day, due_day, status, lease_type, terminated_date, late_fee, late_fee_amount, grace_period, late_fee_grace_days, " + LEASE_PAY_COLUMNS)
     .eq("company_id", getSelectedPropertyCompanyId())
     .eq("property_name", currentProperty)
     .order("lease_start", { ascending: false })
@@ -3457,7 +3457,7 @@ async function loadLeaseHistory() {
   if (!currentProperty) return [];
   const { data, error } = await client
     .from("leases")
-    .select("id, property_id, property_name, tenant_name, lease_start, lease_end, rent_amount, rent_due_day, due_day, status, lease_type, terminated_date, late_fee, late_fee_amount, grace_period, late_fee_grace_days, " + LEASE_PAY_COLUMNS)
+    .select("id, property_id, property_name, tenant_name, lease_start, lease_end, rent_amount, current_rent, rent_due_day, due_day, status, lease_type, terminated_date, late_fee, late_fee_amount, grace_period, late_fee_grace_days, " + LEASE_PAY_COLUMNS)
     .eq("company_id", getSelectedPropertyCompanyId())
     .eq("property_name", currentProperty)
     .order("lease_start", { ascending: false });
@@ -3713,7 +3713,7 @@ async function updateLeasePanel() {
       var leasePanel = document.getElementById("tabLease");
       if (leasePanel) leasePanel.insertAdjacentElement("afterbegin", banner);
     }());
-    elRent.textContent = formatMoney(Number(lease.rent_amount || 0) || 0);
+    elRent.textContent = formatMoney(leaseRentNow(lease));
 
     const dueDay = getLeaseDueDay(lease) || "—";
     const grace = getLeaseGraceDays(lease);
@@ -3736,7 +3736,7 @@ async function updateLeasePanel() {
       const start = l.lease_start ? formatDate(toISODateOnly(l.lease_start)) : "—";
       const end = l.lease_end ? formatDate(toISODateOnly(l.lease_end)) : "—";
       const tenant = l.tenant_name || "—";
-      const rent = formatMoney(Number(l.rent_amount || 0) || 0);
+      const rent = formatMoney(leaseRentNow(l));
       const leaseKey = getLeaseIdentityKey(l);
       const isCurrentLeaseRow = leaseKey === currentKey;
       const isSelectedLeaseRow = leaseKey === selectedKey;
@@ -3793,6 +3793,12 @@ async function loadSchedule() {
   scheduleRows = (data || []).filter(r => r.property_name === currentProperty);
 }
 
+// Rent in effect today: the current_rent computed field (rg_30 rent changes), else the starting rent
+function leaseRentNow(l) {
+  if (!l) return 0;
+  return Number(l.current_rent != null ? l.current_rent : (l.rent_amount || l.monthly_rent || 0)) || 0;
+}
+
 // One row per due date for the lease on screen: { dueISO, rent, paid, balance, upcoming }.
 function ledgerRowsForLease(lease) {
   if (!lease) return [];
@@ -3807,7 +3813,7 @@ function ledgerRowsForLease(lease) {
   // A past lease (or one not yet in force): the database schedule covers only the lease currently
   // in force, so list its due dates from the lease terms and the payments recorded against them.
   // Display only; totals and the attention queue always come from the database.
-  const rent = Number(lease.rent_amount || 0) || 0;
+  const rent = leaseRentNow(lease);
   return buildMonthlyDueDates(lease).map(d => {
     const dueISO = toISODateOnly(d);
     const paid = Number((paidByDueDate.get(dueISO) || {}).totalPaid || 0) || 0;
@@ -3910,7 +3916,7 @@ async function updateQuickPeek() {
   const leaseEnd = hasLease ? toDateOnly(lease.lease_end) : null;
 
   // --- Monthly Rent + Due meta ---
-  const monthlyRent = hasLease ? (Number(lease.rent_amount || 0) || 0) : 0;
+  const monthlyRent = hasLease ? leaseRentNow(lease) : 0;
   elMonthlyRent.textContent = hasLease ? formatMoney(monthlyRent) : "—";
 
   if (!hasLease) {
@@ -4242,7 +4248,7 @@ async function renderDueLedger() {
       if (action === "markPaid") {
         const due = btn.getAttribute("data-due");
         const ledgerLease = getLedgerLease();
-        const rentAmt = Number(ledgerLease?.rent_amount || ledgerLease?.monthly_rent || 0) || 0;
+        const rentAmt = leaseRentNow(ledgerLease);
         const tenantName = ledgerLease?.tenant_name || "";
         const suggest = Number(btn.getAttribute("data-suggest") || 0) || 0;
         openMarkPaidModal({ dueISO: due, tenant: tenantName, rent: rentAmt, suggestedAmount: suggest });
@@ -4466,7 +4472,7 @@ function fillDueSelect(rows, selectedISO) {
 function applyDueChoice(dueISO) {
   const row = paymentDueRows().find(r => r.dueISO === dueISO);
   const lease = getLedgerLease();
-  const rent = row ? row.rent : (Number(lease?.rent_amount || 0) || 0);
+  const rent = row ? row.rent : leaseRentNow(lease);
   markPaidState.dueISO = dueISO || "";
   markPaidState.rent = rent;
   // What's still owed for that month (partial payments), or the full rent once it's paid

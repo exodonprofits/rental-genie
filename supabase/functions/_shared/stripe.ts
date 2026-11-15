@@ -33,7 +33,9 @@ export type ScheduleRow = { lease_id: string; due_date: string; rent_amount: num
 export function payBounds(rows: ScheduleRow[], leaseId: string) {
   const mine = rows.filter((r) => r.lease_id === leaseId);
   const balance = Math.round(mine.reduce((s, r) => s + Number(r.balance || 0), 0) * 100);
-  const rent = Math.round(Number(mine[0]?.rent_amount || 0) * 100);
+  // one month ahead at the latest month's rent (rent can change during a lease, rg_30)
+  const latest = mine.reduce<ScheduleRow | undefined>((a, r) => (!a || r.due_date > a.due_date ? r : a), undefined);
+  const rent = Math.round(Number(latest?.rent_amount || 0) * 100);
   return { balanceCents: balance, rentCents: rent, minCents: 100, maxCents: balance + rent, known: mine.length > 0 };
 }
 

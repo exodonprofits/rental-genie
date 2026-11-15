@@ -123,6 +123,20 @@
     return ymd(d) < today();
   }
 
+  // The next rent change on a lease after today (rg_30 lease_rent_changes), or null. Never throws.
+  function nextRentChange(sb, leaseId) {
+    if (!sb || !leaseId) return Promise.resolve(null);
+    return sb.from('lease_rent_changes').select('effective_date, rent_amount')
+      .eq('lease_id', leaseId).is('archived_at', null).gt('effective_date', today())
+      .order('effective_date', { ascending: true }).limit(1)
+      .then(function (r) { return (r && !r.error && r.data && r.data[0]) || null; }, function () { return null; });
+  }
+  // Rent in effect today: the current_rent computed field when the query selected it, else the lease's rent
+  function rentNow(lease) {
+    if (!lease) return 0;
+    return Number(lease.current_rent != null ? lease.current_rent : (lease.rent_amount || 0)) || 0;
+  }
+
   // URLSearchParams values are already decoded; decoding again throws on a literal '%'
   function safeDecode(v) { try { return decodeURIComponent(v); } catch (e) { return v; } }
 
@@ -130,6 +144,6 @@
     ymd: ymd, parseDay: parseDay, fmtDate: fmtDate, today: today, daysUntil: daysUntil,
     mine: mine, schedule: schedule, forUrl: forUrl, pickLease: pickLease, rowsFor: rowsFor,
     leaseState: leaseState, stateLabel: function (s) { return STATE_LABELS[s] || s || '—'; },
-    pastDue: pastDue, safeDecode: safeDecode
+    pastDue: pastDue, safeDecode: safeDecode, nextRentChange: nextRentChange, rentNow: rentNow
   };
 })();

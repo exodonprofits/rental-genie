@@ -949,7 +949,7 @@ body { overflow-x: hidden; }
     // This tenant's leases (tenant id or email, like RLS), never archived ones; the lease shown is the
     // one the rent schedule uses (rgTenant.pickLease), narrowed by ?property_id= / ?property=
     var leaseQ = rgTenant.mine(sb.from('leases')
-          .select('id, property_id, property_name, tenant_name, tenant_email, rent_amount, status, rent_due_day, due_day, lease_start, lease_end, terminated_date, grace_period, late_fee_grace_days, archived_at')
+          .select('id, property_id, property_name, tenant_name, tenant_email, rent_amount, current_rent, status, rent_due_day, due_day, lease_start, lease_end, terminated_date, grace_period, late_fee_grace_days, archived_at')
           .is('archived_at', null), tenant, user.email)
           .order('lease_start', { ascending: false });
 
@@ -991,7 +991,7 @@ body { overflow-x: hidden; }
       var propertyLabel = lease ? lease.property_name : propertyFromUrl;
       setText('portalTitle', propertyLabel ? '🏠 Tenant Portal – ' + propertyLabel : '🏠 Tenant Portal');
 
-      var rentAmount = lease ? Number(lease.rent_amount || 0) : 0;
+      var rentAmount = lease ? rgTenant.rentNow(lease) : 0;
       var dueDay     = lease ? (lease.rent_due_day || lease.due_day || '') : '';
 
       // Schedule rows for this lease (database figures)
@@ -1088,6 +1088,14 @@ body { overflow-x: hidden; }
         attention.push('Monthly rent amount is not set on your lease — contact your landlord.');
       }
       showAttention(attention);
+      if (lease && lease.id) rgTenant.nextRentChange(sb, lease.id).then(function (c) {
+        if (!c) return;
+        var days = rgTenant.daysUntil(c.effective_date);
+        if (days >= 0 && days <= 60) {
+          attention.push('Your rent changes to ' + fmtMoney(c.rent_amount) + ' a month starting ' + rgTenant.fmtDate(c.effective_date) + '.');
+          showAttention(attention);
+        }
+      });
 
       /* ── Repairs snapshot ── */
       loadRepairsSnapshot(user, tenant, lease ? lease.property_name : propertyFromUrl);

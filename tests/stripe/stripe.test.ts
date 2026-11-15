@@ -31,6 +31,10 @@ ok("bad amount refused", /dollars and cents/.test(String(checkAmount(null, b))))
 ok("unknown lease refused", /No rent schedule/.test(String(checkAmount(1000, payBounds(rows, "L9")))));
 const paidUp = payBounds([{ lease_id: "L3", due_date: "2026-11-01", rent_amount: "2100", balance: "0" }], "L3");
 ok("paid up: one month ahead allowed", checkAmount(210000, paidUp) === null && checkAmount(210001, paidUp) !== null);
+const stepped = payBounds([
+  { lease_id: "L4", due_date: "2026-11-01", rent_amount: "2060", balance: "2060" },
+  { lease_id: "L4", due_date: "2026-10-01", rent_amount: "2000", balance: "0" }], "L4");
+ok("rent change: month ahead at the latest rent", stepped.rentCents === 206000 && stepped.maxCents === 412000, stepped);
 
 // Form encoding
 const f = form({ mode: "payment", line_items: [{ quantity: 1, price_data: { currency: "usd", unit_amount: 150000, product_data: { name: "Rent — Oak St" } } }],

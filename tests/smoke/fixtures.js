@@ -55,6 +55,8 @@ function base() {
       created_at: today + 'T09:00:00Z', archived_at: null }],
     tenant_messages: [{ id: 1, company_id: C, property_id: P1, property_name: 'Oak Street', tenant_id: T1, tenant_email: 'tenant@example.com',
       subject: 'Hello', message: 'Is the gutter work scheduled?', sender: 'tenant', created_at: today + 'T10:00:00Z', read_at: null }],
+    lease_rent_changes: [{ id: '77777777-7777-4777-8777-777777777771', company_id: C, lease_id: L1, effective_date: iso(monthStart(4)),
+      rent_amount: 1545, note: '3% yearly increase', archived_at: null }],
     tenant_documents: [],
     reimbursement_requests: [],
     applications: [],

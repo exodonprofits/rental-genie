@@ -1248,7 +1248,7 @@
         var _fn = document.getElementById('umdFullName'); if (_fn) _fn.textContent = tenant.tenant_name;
       }
     var leaseQ = rgTenant.mine(sb.from('leases')
-          .select('id, property_id, property_name, rent_amount, tenant_name, status, rent_due_day, due_day, grace_period, late_fee_grace_days, lease_start, lease_end, terminated_date, owner_id, company_id, archived_at')
+          .select('id, property_id, property_name, rent_amount, current_rent, tenant_name, status, rent_due_day, due_day, grace_period, late_fee_grace_days, lease_start, lease_end, terminated_date, owner_id, company_id, archived_at')
           .is('archived_at', null), tenant, user.email)
           .order('lease_start', { ascending: false });
 
@@ -1257,7 +1257,7 @@
       var scheduleAvailable = out[1] !== null;
       var schedObj   = out[1];
       var lease      = rgTenant.pickLease(rgTenant.forUrl(res.data, propertyFilterFromUrl, propertyIdFromUrl), schedObj);
-      var rentAmount = lease ? Number(lease.rent_amount || 0) : 0;
+      var rentAmount = lease ? rgTenant.rentNow(lease) : 0;
 
       // Schedule rows for this lease (database figures)
       var todayISO   = ymdLocal(new Date());

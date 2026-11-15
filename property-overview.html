@@ -1266,12 +1266,12 @@ function updateAll() {
    FETCH LATEST LEASE (property_id first, name fallback)
 ============================================================ */
 function fetchLatestLease(propertyId, propertyName) {
-  return client.from('leases').select('*')
+  return client.from('leases').select('*, current_rent')
     .eq('property_id', propertyId)
     .order('lease_start', { ascending: false }).limit(1)
     .then(function (res) {
       if (!res.error) return res;
-      return client.from('leases').select('*')
+      return client.from('leases').select('*, current_rent')
         .eq('property_name', propertyName)
         .order('lease_start', { ascending: false }).limit(1);
     });
@@ -1345,7 +1345,7 @@ function loadQuickPeekAndSnapshots() {
     if (leases && leases.length) {
       var L      = leases[0];
       var status = resolveLeaseStatus(L);
-      var rent   = Number(L.rent_amount || 0);
+      var rent   = Number(L.current_rent != null ? L.current_rent : (L.rent_amount || 0));
       var net    = rent - mortgageAmt;
 
       setText('qp-tenant', L.tenant_name || '—');

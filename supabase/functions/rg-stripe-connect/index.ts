@@ -80,7 +80,7 @@ Deno.serve(async (req: Request) => {
           capabilities: { transfers: { requested: true }, us_bank_account_ach_payments: { requested: true } },
           business_profile: {
             mcc: "6513", // real estate agents and managers: rentals
-            product_description: "Residential rent collected through Rental Genie",
+            product_description: "Rent for residential and commercial properties, collected through Rental Genie",
             url: SITE,
           },
           metadata: { company_id: company.id },

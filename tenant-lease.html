@@ -272,6 +272,7 @@
     letter-spacing: .5px; color: rgba(255,255,255,.45);
   }
   .hero-stat-value { font-size: 1rem; font-weight: 700; color: #fff; font-family: 'DM Mono', monospace; }
+  .hero-stat-note { font-size: .72rem; font-weight: 600; color: rgba(255,255,255,.85); }
   .hero-stat-value.text { font-family: 'DM Sans', sans-serif; font-size: .92rem; }
 
   /* ── Section cards ──────────────────────────────────────────── */
@@ -575,6 +576,7 @@ body { overflow-x: hidden; }
         <div class="hero-stat-item">
           <div class="hero-stat-label">Monthly Rent</div>
           <div class="hero-stat-value" id="heroRent">—</div>
+          <div class="hero-stat-note" id="heroRentNext" hidden></div>
         </div>
         <div class="hero-stat-item">
           <div class="hero-stat-label">Rent Due Day</div>
@@ -909,7 +911,7 @@ body { overflow-x: hidden; }
   /* ── History table row ──────────────────────────────────── */
   function historyRow(l) {
     var period  = fmtDate(l.lease_start) + ' → ' + fmtDate(l.lease_end);
-    var rent    = fmtMoney(l.rent_amount);
+    var rent    = fmtMoney(rgTenant.rentNow(l));
     var status  = l.status || '—';
     var cls     = statusChipClass(status);
     return '<tr>'
@@ -977,7 +979,7 @@ body { overflow-x: hidden; }
       }
       // This tenant's leases (tenant id or email, like RLS); archived ones never show
       var q = rgTenant.mine(sb.from('leases')
-            .select('id, property_id, property_name, tenant_name, tenant_email, tenant_phone, lease_start, lease_end, terminated_date, rent_amount, status, rent_due_day, due_day, grace_period, late_fee_grace_days, late_fee_amount, late_fee, archived_at')
+            .select('id, property_id, property_name, tenant_name, tenant_email, tenant_phone, lease_start, lease_end, terminated_date, rent_amount, current_rent, status, rent_due_day, due_day, grace_period, late_fee_grace_days, late_fee_amount, late_fee, archived_at')
             .is('archived_at', null), tenant, user.email)
             .order('lease_start', { ascending: false });
 
@@ -1013,8 +1015,13 @@ body { overflow-x: hidden; }
         setText('heroStatusText', rgTenant.stateLabel(state));
         applyHeroBadge(rgTenant.stateLabel(state));
 
-        var rentAmt = Number(lease.rent_amount || 0);
+        var rentAmt = rgTenant.rentNow(lease);
         setText('heroRent',   rentAmt ? fmtMoney(rentAmt) : '—');
+        rgTenant.nextRentChange(sb, lease.id).then(function (c) {
+          var n = document.getElementById('heroRentNext'); if (!n) return;
+          if (c) { n.textContent = 'Goes to ' + fmtMoney(c.rent_amount) + ' on ' + rgTenant.fmtDate(c.effective_date); n.hidden = false; }
+          else { n.textContent = ''; n.hidden = true; }
+        });
         var dueDay = lease.rent_due_day || lease.due_day || '';
         setText('heroDueDay', dueDay ? 'Day ' + dueDay : '—');
         setText('heroStart',  fmtDate(lease.lease_start));

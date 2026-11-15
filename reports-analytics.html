@@ -1512,7 +1512,9 @@ async function loadReportsQuickPeek() {
       setText('qp-tenant', lease.tenant_name || 'No tenant');
       var s = lease.lease_start, e2 = lease.lease_end;
       setText('qp-lease-dates', (s || e2) ? fmtDate(s) + ' → ' + (e2 ? fmtDate(e2) : 'month-to-month') : '—');
-      monthlyRent = Number(lease.rent_amount || 0) || null;
+      // The schedule's latest month for the lease in effect carries the current rent (rg_30 rent changes)
+      var lastRow = propSched.length && propSched[propSched.length - 1].lease_id === lease.id ? propSched[propSched.length - 1] : null;
+      monthlyRent = Number(lastRow ? lastRow.rent_amount : (lease.rent_amount || 0)) || null;
       var STATE_LABELS = { active: 'Active', holdover: 'Holdover · still charging', month_to_month: 'Month-to-month', ended: 'Ended' };
       var state = propSched.length ? STATE_LABELS[propSched[propSched.length - 1].lease_state] : null;
       if (!state) state = String(lease.status || '').toLowerCase().indexOf('term') >= 0 ? 'Ended' : 'Not charging rent';

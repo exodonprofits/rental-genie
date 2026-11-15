@@ -265,6 +265,7 @@ main {
 @media(max-width:720px) { .lease-hero-stats { grid-template-columns: repeat(2, 1fr); } }
 .hero-stat-label { font-size: .67rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: rgba(255,255,255,.45); margin-bottom: 4px; }
 .hero-stat-value { font-size: 1rem; font-weight: 700; color: #fff; font-family: 'DM Mono', monospace; }
+.hero-stat-note { font-size: .72rem; font-weight: 600; color: rgba(255,255,255,.85); margin-top: 2px; }
 .hero-stat-value.text-val { font-family: 'DM Sans', sans-serif; font-size: .92rem; }
 
 /* ── Two-column grid ────────────────────────────────────────── */
@@ -774,6 +775,7 @@ window.rgFiles = (function () {
         <div>
           <div class="hero-stat-label">Monthly Rent</div>
           <div class="hero-stat-value" id="heroRent">—</div>
+          <div class="hero-stat-note" id="heroRentNext" hidden></div>
         </div>
         <div>
           <div class="hero-stat-label">Due Day</div>
@@ -1499,6 +1501,26 @@ function rgFillDrawerUser(name) {
     });
   }
 
+  // Rent in effect today (rg_30 rent changes; current_rent is a computed field on leases)
+  function rentOf(L) { return num(L.current_rent != null ? L.current_rent : L.rent_amount); }
+  // "Goes to $X on <date>" under the hero rent when a later change is saved
+  function showNextRentChange(L) {
+    var n = $('heroRentNext'); if (!n) return;
+    n.hidden = true; n.textContent = '';
+    if (!L || !L.id) return;
+    n.dataset.lease = L.id;
+    var today = new Date(); var iso = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+    client.from('lease_rent_changes').select('effective_date, rent_amount')
+      .eq('lease_id', L.id).is('archived_at', null).gt('effective_date', iso)
+      .order('effective_date', { ascending: true }).limit(1)
+      .then(function (res) {
+        var c = res && !res.error && res.data && res.data[0];
+        if (!c || n.dataset.lease !== L.id) return;
+        n.textContent = 'Goes to ' + fmtMoney(c.rent_amount) + ' on ' + fmtDate(c.effective_date);
+        n.hidden = false;
+      }, function () {});
+  }
+
   function loadLeaseInfo(L) {
     /* Hero panel */
     setText('heroProperty', L.property_name || currentProperty || '—');
@@ -1508,9 +1530,10 @@ function rgFillDrawerUser(name) {
     var badge = $('heroBadge');
     if (badge) badge.className = 'hero-badge ' + state.cls;
 
-    var rentAmt = num(L.rent_amount);
+    var rentAmt = num(L.current_rent != null ? L.current_rent : L.rent_amount);
     var dueDay  = num(L.due_day ?? L.rent_due_day);
     setText('heroRent',   rentAmt !== null ? fmtMoney(rentAmt) : '—');
+    showNextRentChange(L);
     setText('heroDueDay', dueDay ? 'Day ' + dueDay : '—');
     setText('heroStart',  fmtDate(L.lease_start));
     setText('heroEnd',    isMonthToMonth(L) && !L.lease_end ? 'Month-to-month' : fmtDate(L.lease_end));
@@ -1624,7 +1647,7 @@ function rgFillDrawerUser(name) {
       var body = el('div', 'timeline-body');
       body.appendChild(el('div', 'timeline-name', L.tenant_name || '—'));
       body.appendChild(el('div', 'timeline-dates', fmtDate(L.lease_start) + ' → ' + (L.lease_end ? fmtDate(L.lease_end) : 'month-to-month')));
-      body.appendChild(el('div', 'timeline-rent', L.rent_amount ? fmtMoney(L.rent_amount) + '/mo' : ''));
+      body.appendChild(el('div', 'timeline-rent', rentOf(L) ? fmtMoney(rentOf(L)) + '/mo' : ''));
       li.appendChild(body);
       li.addEventListener('click', function () { selectLease(L.id); });
       li.addEventListener('keydown', function (ev) { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); selectLease(L.id); } });
@@ -1635,7 +1658,7 @@ function rgFillDrawerUser(name) {
       if (L.id === activeId) tr.style.background = 'var(--sky-soft)';
       tr.appendChild(el('td', 'mono-cell', fmtDate(L.lease_start) + ' → ' + (L.lease_end ? fmtDate(L.lease_end) : 'M2M')));
       tr.appendChild(el('td', 'strong-cell', L.tenant_name || '—'));
-      tr.appendChild(el('td', 'mono-cell strong-cell', L.rent_amount ? fmtMoney(L.rent_amount) : '—'));
+      tr.appendChild(el('td', 'mono-cell strong-cell', rentOf(L) ? fmtMoney(rentOf(L)) : '—'));
       var tdS = el('td'); tdS.appendChild(el('span', 'chip ' + state.cls, state.label)); tr.appendChild(tdS);
       var tdA = el('td');
       var bView = el('button', 'tbl-btn', '🔍 View'); bView.type = 'button';
@@ -1677,7 +1700,7 @@ function rgFillDrawerUser(name) {
   function loadLeaseHistory(propertyName, activeLeaseId, propertyId) {
     currentProperty = propertyName;
     var pid = propertyId || propertyIdParam;
-    var q = client.from('leases').select('*').is('archived_at', null);
+    var q = client.from('leases').select('*, current_rent').is('archived_at', null);
     q = pid ? q.eq('property_id', pid) : q.eq('property_name', propertyName);
     if (companyId) q = q.eq('company_id', companyId);
     return q.order('lease_start', { ascending: false })
@@ -1735,7 +1758,7 @@ function rgFillDrawerUser(name) {
 
       /* Priority 1: load by lease ID */
       if (leaseIdParam) {
-        client.from('leases').select('*').eq('id', leaseIdParam).single()
+        client.from('leases').select('*, current_rent').eq('id', leaseIdParam).single()
           .then(function (res) {
             if (res.error || !res.data) {
               setAlert('danger', 'Could not load that lease — it may have been deleted or you may not have access.');

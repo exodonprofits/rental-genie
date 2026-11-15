@@ -80,7 +80,16 @@ there. Don't point a Rental Genie page, function or workflow at the shared proje
 - `rg_rent_schedule(company_id, as_of)` — one row per due date with rent, paid, and balance.
 - `rg_rent_status(company_id, as_of)` — per-property totals built on the schedule.
 
-Pages call these. Do not recompute balances, due dates, or late status in JavaScript. Three separate
+Pages call these. Do not recompute balances, due dates, or late status in JavaScript.
+
+**Rent changes (rg_30):** `leases.rent_amount` is the STARTING rent. Later changes (yearly increases, commercial
+step rent) are rows in `lease_rent_changes` (lease, effective_date, rent_amount, note; archived, never deleted;
+company_id taken from the lease by `trg_lease_rent_changes_guard`; can't start on or before lease_start). Rent due on
+or after a change's date is the new amount: `rg_rent_schedule` charges each due date at `rg_lease_rent_on(lease, due
+date)`, returns rows ordered by property then due date, and `rg_rent_status.rent_amount` is the current rent. Where a
+page shows a lease's monthly rent, select the `current_rent` computed field (`select('*, current_rent')`) and fall
+back to `rent_amount`. Edited on `lease-form.html` (Rent changes, saved immediately); readable by whoever can read the
+lease. Three separate
 in-page implementations used to disagree with each other and with the ledger; that is what these
 functions replaced.
 

@@ -350,6 +350,33 @@ textarea { resize: vertical; min-height: 88px; }
   display: none;
 }
 
+/* ── Rent changes (rg_30) ───────────────────────────────────── */
+.rc-box { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 16px; }
+.rc-head { font-size: .86rem; font-weight: 800; color: var(--navy); margin: 0 0 4px; }
+.rc-sub { font-size: .78rem; color: var(--muted); margin: 0 0 12px; line-height: 1.45; }
+.rc-list { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.rc-item { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; font-size: .84rem; }
+.rc-item.rc-now { background: var(--success-bg); border-color: var(--success-bdr); }
+.rc-when { font-weight: 700; min-width: 108px; }
+.rc-amt { font-weight: 800; color: var(--navy); }
+.rc-note { color: var(--muted); flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
+.rc-tag { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #065f46; }
+.rc-remove { margin-left: auto; background: none; border: 1px solid var(--border); border-radius: 999px; color: var(--danger-text); font-weight: 700; font-size: .78rem; padding: 0 14px; min-height: 36px; cursor: pointer; font-family: inherit; }
+.rc-remove:hover { background: var(--danger-bg); }
+.rc-form { display: grid; grid-template-columns: 150px 140px 1fr auto; gap: 10px; align-items: end; }
+.rc-form label { display: block; font-size: .72rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; }
+.rc-form input { width: 100%; box-sizing: border-box; }
+.rc-steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; font-size: .8rem; color: var(--muted); }
+.rc-steps input { width: 80px; }
+.rc-steps label { text-transform: none; letter-spacing: 0; font-size: .8rem; font-weight: 600; color: var(--muted); margin: 0; }
+.rc-btn { min-height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); color: var(--navy); font-weight: 700; font-size: .84rem; cursor: pointer; font-family: inherit; }
+.rc-btn:hover:not(:disabled) { background: var(--sky-soft); }
+.rc-btn:disabled { opacity: .55; cursor: not-allowed; }
+.rc-msg { font-size: .8rem; margin-top: 8px; min-height: 1em; }
+.rc-msg.err { color: var(--danger-text); }
+.rc-msg.ok { color: #065f46; }
+@media (max-width: 640px) { .rc-form { grid-template-columns: 1fr 1fr; } .rc-form .rc-note-f, .rc-form .rc-btn { grid-column: 1 / -1; } }
+
 /* ── Date duration indicator ────────────────────────────────── */
 .date-duration {
   grid-column: 1 / -1;
@@ -735,6 +762,24 @@ body { overflow-x: hidden; }
           </div>
           <!-- Deposit total summary -->
           <div class="deposit-summary" id="depositSummary"></div>
+        </div>
+        <div class="rc-box" id="rcBox" hidden>
+          <p class="rc-head">Rent changes</p>
+          <p class="rc-sub" id="rcSub">Monthly Rent above is the rent at the start of the lease. Add a change for a yearly increase or a new rent after renewal: rent due on or after that date is the new amount. Changes save right away.</p>
+          <ul class="rc-list" id="rcList"></ul>
+          <div class="rc-form">
+            <div><label for="rcDate">Starts on</label><input id="rcDate" type="date" /></div>
+            <div><label for="rcAmount">New monthly rent</label><div class="input-wrap"><span class="input-prefix">$</span><input id="rcAmount" type="number" step="0.01" min="0" placeholder="1,545.00" /></div></div>
+            <div class="rc-note-f"><label for="rcNote">Note (optional)</label><input id="rcNote" type="text" maxlength="300" placeholder="3% yearly increase" /></div>
+            <button type="button" class="rc-btn" id="rcAdd">Add change</button>
+          </div>
+          <div class="rc-steps">
+            <label for="rcPct">Or add a yearly increase of</label>
+            <input id="rcPct" type="number" step="0.1" min="0.1" max="50" placeholder="3" />
+            <span>% on each lease anniversary</span>
+            <button type="button" class="rc-btn" id="rcAddSteps">Add yearly steps</button>
+          </div>
+          <div class="rc-msg" id="rcMsg" role="status"></div>
         </div>
       </div>
     </div>
@@ -1157,6 +1202,139 @@ function fmtMoney(v) {
   var n = Number(v);
   return isNaN(n) ? '' : '$' + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
+
+/* ============================================================
+   RENT CHANGES (rg_30) — lease_rent_changes rows for a saved lease.
+   leases.rent_amount stays the starting rent; rg_rent_schedule charges each
+   due date at the rent in effect on it. Saved straight away (not by Save).
+============================================================ */
+var rcLease = null;
+var rcRows  = [];
+function rcToday() {
+  try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date()); }
+  catch (e) { return toISODate(new Date()); }
+}
+function rcFmtDay(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso + 'T00:00:00');
+  return isNaN(d) ? iso : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+function rcMsg(text, kind) {
+  var m = $('rcMsg'); if (!m) return;
+  m.textContent = text || '';
+  m.className = 'rc-msg' + (kind ? ' ' + kind : '');
+}
+function rcErrText(e) {
+  if (!e) return 'Something went wrong.';
+  if (e.code === '23505') return 'There is already a rent change on that date.';
+  if (e.code === '22023' || e.code === '23514') return e.message || 'That change isn’t valid.';
+  if (e.code === '42501') return 'You don’t have permission to change this lease.';
+  return 'Could not save: ' + (e.message || 'unknown error');
+}
+// lease anniversary k years on, clamped to the month's last day (Feb 29 -> Feb 28)
+function rcAnniversary(startIso, k) {
+  var y = Number(startIso.slice(0, 4)) + k, m = Number(startIso.slice(5, 7)), d = Number(startIso.slice(8, 10));
+  var last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  return y + '-' + String(m).padStart(2, '0') + '-' + String(Math.min(d, last)).padStart(2, '0');
+}
+function rcSpan(cls, text) { var e = document.createElement('span'); e.className = cls; e.textContent = text; return e; }
+
+async function loadRentChanges() {
+  if (!rcLease || !rcLease.id) return;
+  $('rcBox').hidden = false;
+  var res = await db.from('lease_rent_changes')
+    .select('id, effective_date, rent_amount, note')
+    .eq('lease_id', rcLease.id).is('archived_at', null)
+    .order('effective_date', { ascending: true });
+  if (res.error) { rcMsg('Could not load rent changes.', 'err'); return; }
+  rcRows = res.data || [];
+  renderRentChanges();
+}
+
+function renderRentChanges() {
+  var list = $('rcList'); list.textContent = '';
+  var today = rcToday(), nowIdx = -1;
+  rcRows.forEach(function (r, i) { if (r.effective_date <= today) nowIdx = i; });
+
+  var first = document.createElement('li');
+  first.className = 'rc-item' + (nowIdx === -1 ? ' rc-now' : '');
+  first.appendChild(rcSpan('rc-when', 'From ' + rcFmtDay(rcLease.lease_start)));
+  first.appendChild(rcSpan('rc-amt', fmtMoney(rcLease.rent_amount) + '/mo'));
+  first.appendChild(rcSpan('rc-note', 'Starting rent'));
+  if (nowIdx === -1) first.appendChild(rcSpan('rc-tag', 'Now'));
+  list.appendChild(first);
+
+  rcRows.forEach(function (r, i) {
+    var li = document.createElement('li');
+    li.className = 'rc-item' + (i === nowIdx ? ' rc-now' : '');
+    li.appendChild(rcSpan('rc-when', 'From ' + rcFmtDay(r.effective_date)));
+    li.appendChild(rcSpan('rc-amt', fmtMoney(r.rent_amount) + '/mo'));
+    li.appendChild(rcSpan('rc-note', r.note || ''));
+    if (i === nowIdx) li.appendChild(rcSpan('rc-tag', 'Now'));
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'rc-remove'; b.textContent = 'Remove';
+    b.setAttribute('aria-label', 'Remove the rent change from ' + rcFmtDay(r.effective_date));
+    b.addEventListener('click', function () { removeRentChange(r); });
+    li.appendChild(b);
+    list.appendChild(li);
+  });
+
+  var lbl = document.querySelector('label[for="rentAmount"]');
+  if (lbl && lbl.firstChild) lbl.firstChild.nodeValue = rcRows.length ? 'Starting Rent ' : 'Monthly Rent ';
+}
+
+async function removeRentChange(r) {
+  if (!confirm('Remove the change to ' + fmtMoney(r.rent_amount) + ' from ' + rcFmtDay(r.effective_date) + '? Balances are recalculated at the rent before it.')) return;
+  rcMsg('Removing…', '');
+  var res = await db.from('lease_rent_changes').update({ archived_at: new Date().toISOString() }).eq('id', r.id).select('id');
+  if (res.error) { rcMsg(rcErrText(res.error), 'err'); return; }
+  if (!res.data || !res.data.length) { rcMsg('You don’t have permission to change this lease.', 'err'); return; }
+  rcMsg('Removed.', 'ok');
+  loadRentChanges();
+}
+
+async function addRentChanges(rows, btn) {
+  btn.disabled = true; rcMsg('Saving…', '');
+  try {
+    var res = await db.from('lease_rent_changes').insert(rows).select('id');
+    if (res.error) { rcMsg(rcErrText(res.error), 'err'); return false; }
+    rcMsg(rows.length === 1 ? 'Rent change saved.' : rows.length + ' rent changes saved.', 'ok');
+    await loadRentChanges();
+    return true;
+  } finally { btn.disabled = false; }
+}
+
+function rcRow(date, amount, note) {
+  return { lease_id: rcLease.id, company_id: rcLease.company_id, effective_date: date,
+           rent_amount: Math.round(amount * 100) / 100, note: note || null };
+}
+
+if ($('rcAdd')) $('rcAdd').addEventListener('click', async function () {
+  var date = $('rcDate').value, amt = Number($('rcAmount').value), note = $('rcNote').value.trim();
+  if (!date) { rcMsg('Pick the date the new rent starts.', 'err'); $('rcDate').focus(); return; }
+  if (rcLease.lease_start && date <= rcLease.lease_start) { rcMsg('A change has to start after the lease does (' + rcFmtDay(rcLease.lease_start) + '). To change the starting rent, edit Monthly Rent and save.', 'err'); return; }
+  if (!(amt > 0)) { rcMsg('Enter the new monthly rent.', 'err'); $('rcAmount').focus(); return; }
+  if (await addRentChanges([rcRow(date, amt, note)], this)) { $('rcDate').value = ''; $('rcAmount').value = ''; $('rcNote').value = ''; }
+});
+
+if ($('rcAddSteps')) $('rcAddSteps').addEventListener('click', async function () {
+  var pct = Number($('rcPct').value);
+  if (!(pct > 0 && pct <= 50)) { rcMsg('Enter the yearly increase as a percent, like 3.', 'err'); $('rcPct').focus(); return; }
+  if (rcRows.length) { rcMsg('This lease already has rent changes. Remove them first, or add the next one above.', 'err'); return; }
+  if (!rcLease.lease_start || !(Number(rcLease.rent_amount) > 0)) { rcMsg('Save the lease with a start date and rent first.', 'err'); return; }
+  var end = rcLease.lease_end || rcAnniversary(rcToday(), 3); // no end date: the next three years
+  var rent = Number(rcLease.rent_amount), rows = [], lines = [];
+  for (var k = 1; k <= 30; k++) {
+    var d = rcAnniversary(rcLease.lease_start, k);
+    if (d > end) break;
+    rent = Math.round(rent * (1 + pct / 100) * 100) / 100;
+    rows.push(rcRow(d, rent, pct + '% yearly increase'));
+    lines.push(rcFmtDay(d) + ': ' + fmtMoney(rent));
+  }
+  if (!rows.length) { rcMsg('The lease ends before its first anniversary, so there is nothing to add.', 'err'); return; }
+  if (!confirm('Add ' + rows.length + ' yearly rent change' + (rows.length > 1 ? 's' : '') + '?\n\n' + lines.join('\n'))) return;
+  if (await addRentChanges(rows, this)) $('rcPct').value = '';
+});
 
 /* ============================================================
    AUTH  (rgWireHeader pattern from dashboard)
@@ -1806,6 +1984,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       }
       applyLeaseToForm(data, isRenew);
       setStatus('', ''); // clear loading message
+      if (isEdit && data.id) { rcLease = data; loadRentChanges(); }
     } catch (e) {
       console.error('Load lease error:', e);
       setStatus('Could not load lease data: ' + (e.message || 'Unknown error'), 'err');

@@ -117,6 +117,53 @@ export async function stripe(secretKey: string, method: "GET" | "POST", path: st
   return json;
 }
 
+// Stripe API v2 (connected accounts and their onboarding links): JSON bodies, a pinned Stripe-Version.
+// New platforms can't create connected accounts with v1 POST /v1/accounts any more (design section 10.1).
+export const STRIPE_V2_VERSION = "2026-10-28.endive";
+export async function stripeV2(secretKey: string, method: "GET" | "POST", path: string, body?: Record<string, unknown>,
+                               opts: { idempotencyKey?: string; fetchImpl?: typeof fetch; query?: string } = {}) {
+  const f = opts.fetchImpl || fetch;
+  const headers: Record<string, string> = { Authorization: "Bearer " + secretKey, "Stripe-Version": STRIPE_V2_VERSION };
+  if (method === "POST") headers["Content-Type"] = "application/json";
+  if (opts.idempotencyKey) headers["Idempotency-Key"] = opts.idempotencyKey;
+  const url = "https://api.stripe.com/v2" + path + (opts.query ? "?" + opts.query : "");
+  const res = await f(url, { method, headers, body: method === "POST" ? JSON.stringify(body || {}) : undefined, signal: AbortSignal.timeout(20000) });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new StripeError(json?.error?.message || "Stripe request failed (" + res.status + ")", res.status, json?.error?.code);
+  return json;
+}
+
+// The new landlord account: Stripe-managed risk (Stripe collects fees and covers losses), full Stripe dashboard,
+// a merchant that takes ACH debits. This is the request Stripe itself proposed for our earlier v1 call.
+export function landlordAccountRequest(email: string | undefined, companyId: string) {
+  return {
+    contact_email: email,
+    identity: { country: "US" },
+    dashboard: "full",
+    defaults: { responsibilities: { fees_collector: "stripe", losses_collector: "stripe" } },
+    configuration: {
+      merchant: { capabilities: { ach_debit_payments: { requested: true } } },
+      recipient: { capabilities: { stripe_balance: { stripe_transfers: { requested: true } } } },
+    },
+    metadata: { company_id: companyId },
+  };
+}
+
+// Flags we keep in companies.stripe_* from a v2 account (retrieved with include configuration.merchant and
+// requirements), or from a v1 account object (account.updated events, the v1 fallback).
+export function accountFlags(acct: any) {
+  if (acct && acct.object === "account" && "charges_enabled" in acct) {
+    return { stripe_charges_enabled: !!acct.charges_enabled, stripe_payouts_enabled: !!acct.payouts_enabled,
+             stripe_details_submitted: !!acct.details_submitted };
+  }
+  const caps = acct?.configuration?.merchant?.capabilities || {};
+  const charges = caps?.ach_debit_payments?.status === "active";
+  const payoutStatus = caps?.stripe_balance?.payouts?.status;
+  const due = (acct?.requirements?.entries || []).filter((e: any) => e?.minimum_deadline?.status === "currently_due" || e?.minimum_deadline?.status === "past_due");
+  return { stripe_charges_enabled: charges, stripe_payouts_enabled: payoutStatus ? payoutStatus === "active" : charges,
+           stripe_details_submitted: charges || (Array.isArray(acct?.requirements?.entries) && due.length === 0) };
+}
+
 // Today's date where the landlords are (rent due dates are Chicago calendar dates)
 export function chicagoDate(d = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);

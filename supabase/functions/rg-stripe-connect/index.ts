@@ -1,8 +1,8 @@
 // Rental Genie — connect a landlord's Stripe account (Edge Function, verify_jwt = true).
-// Design: docs/design/stripe-online-rent.md, section 10. Each landlord gets their own full Stripe account with
-// Stripe-managed risk (controller: losses -> stripe, fees -> account, requirement_collection -> stripe, full
-// dashboard). Stripe refuses the old `type: express` for new platforms (and Express requires the platform to carry
-// negative balances), so rent is a direct charge on the landlord's account; money goes straight to them.
+// Design: docs/design/stripe-online-rent.md, section 10.1. Each landlord gets their own full Stripe account with
+// Stripe-managed risk (Stripe collects fees and covers losses), created with Accounts v2 (POST /v2/core/accounts):
+// Stripe refuses v1 account creation for new platforms at our API version. Onboarding links are v2 account links.
+// Rent is a direct charge on the landlord's account (v1 Checkout with Stripe-Account); money goes straight to them.
 //
 // POST { action: "onboard" | "status" | "dashboard" } with the landlord's JWT.
 //   onboard   — creates the company's Stripe account if it has none (saved in companies.stripe_account_id
@@ -15,7 +15,7 @@
 // Secrets: STRIPE_SECRET_KEY. SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY are injected.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SITE, stripe, StripeError } from "../_shared/stripe.ts";
+import { SITE, accountFlags, landlordAccountRequest, stripe, stripeV2, StripeError } from "../_shared/stripe.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -26,12 +26,19 @@ function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 }
 
+// The account's state: v2 retrieve (merchant capabilities + requirements); v1 retrieve as a fallback
+async function readAccount(key: string, id: string) {
+  try {
+    return await stripeV2(key, "GET", "/core/accounts/" + encodeURIComponent(id),
+      undefined, { query: "include[0]=configuration.merchant&include[1]=requirements" });
+  } catch (e) {
+    console.warn("rg-stripe-connect: v2 retrieve failed, trying v1", e instanceof StripeError ? e.message : String(e));
+    return await stripe(key, "GET", "/accounts/" + encodeURIComponent(id));
+  }
+}
+
 async function syncFlags(db: any, companyId: string, acct: any) {
-  const flags = {
-    stripe_charges_enabled: !!acct.charges_enabled,
-    stripe_payouts_enabled: !!acct.payouts_enabled,
-    stripe_details_submitted: !!acct.details_submitted,
-  };
+  const flags = accountFlags(acct);
   const { data: cur } = await db.from("companies").select("stripe_onboarded_at").eq("id", companyId).maybeSingle();
   const patch: Record<string, unknown> = { ...flags };
   if (flags.stripe_charges_enabled && !cur?.stripe_onboarded_at) patch.stripe_onboarded_at = new Date().toISOString();
@@ -68,7 +75,7 @@ Deno.serve(async (req: Request) => {
   try {
     if (action === "status") {
       if (!company.stripe_account_id) return json(200, { connected: false });
-      const acct = await stripe(key, "GET", "/accounts/" + encodeURIComponent(company.stripe_account_id));
+      const acct = await readAccount(key, company.stripe_account_id);
       const flags = await syncFlags(db, company.id, acct);
       return json(200, { connected: true, ...flags });
     }
@@ -76,32 +83,24 @@ Deno.serve(async (req: Request) => {
     if (action === "onboard") {
       let acctId = company.stripe_account_id as string | null;
       if (!acctId) {
-        const acct = await stripe(key, "POST", "/accounts", {
-          country: "US",
-          email: user.email,
-          controller: {
-            losses: { payments: "stripe" },
-            fees: { payer: "account" },
-            requirement_collection: "stripe",
-            stripe_dashboard: { type: "full" },
-          },
-          capabilities: { transfers: { requested: true }, us_bank_account_ach_payments: { requested: true } },
-          business_profile: {
-            mcc: "6513", // real estate agents and managers: rentals
-            product_description: "Rent for residential and commercial properties, collected through Rental Genie",
-            url: SITE,
-          },
-          metadata: { company_id: company.id },
-        }, { idempotencyKey: "rg-acct-managed-" + company.id });
+        // Stripe's onboarding asks the landlord for their business details (industry, website) itself
+        const acct = await stripeV2(key, "POST", "/core/accounts", landlordAccountRequest(user.email, company.id),
+          { idempotencyKey: "rg-acct-v2-" + company.id });
         acctId = acct.id;
         const { error } = await db.from("companies").update({ stripe_account_id: acctId }).eq("id", company.id);
         if (error) return json(500, { error: "Stripe account created but not saved; try again." });
       }
-      const link = await stripe(key, "POST", "/account_links", {
+      // v2 account link; Stripe decides which configurations need onboarding (no `configurations`, removed in
+      // 2026-09-30.endive)
+      const link = await stripeV2(key, "POST", "/core/account_links", {
         account: acctId,
-        type: "account_onboarding",
-        refresh_url: SITE + "/account.html?tab=workspace&stripe=refresh",
-        return_url: SITE + "/account.html?tab=workspace&stripe=return",
+        use_case: {
+          type: "account_onboarding",
+          account_onboarding: {
+            refresh_url: SITE + "/account.html?tab=workspace&stripe=refresh",
+            return_url: SITE + "/account.html?tab=workspace&stripe=return",
+          },
+        },
       });
       return json(200, { url: link.url });
     }
@@ -116,6 +115,6 @@ Deno.serve(async (req: Request) => {
   } catch (e) {
     const msg = e instanceof StripeError ? e.message : String(e);
     console.error("rg-stripe-connect", action, msg);
-    return json(502, { error: "Stripe: " + msg });
+    return json(502, { error: "Stripe couldn't complete that: " + msg.slice(0, 240) });
   }
 });

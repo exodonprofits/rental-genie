@@ -470,7 +470,7 @@
   border-radius: 9px; background: transparent; border: none; width: auto;
 }
 #mobileDrawer .drawer-grid a:hover { background: #f1f5f9; color: #1a3a6b; }
-#mobileDrawer .drawer-grid a.nav-active { background: #eff4ff; color: #1a3a6b; font-weight: 700; }
+#mobileDrawer .drawer-grid a.nav-active { background: #eff4ff !important; color: #1a3a6b !important; font-weight: 700; }
 #mobileDrawer .drawer-login {
   display: block; padding: 11px 16px; font-weight: 600; color: #0c1e3a;
   font-size: .9rem; border-top: 1px solid #f1f5f9; border-bottom: none; text-decoration: none;
@@ -574,7 +574,9 @@
     <div class="drawer-grid-divider"></div>
     <a href="maintenance-requests.html">🛠 Maintenance</a>
     <a href="tenant-messages.html">💬 Messages</a>
+    <div class="drawer-grid-divider"></div>
     <a href="reports-analytics.html">📈 Reports</a>
+    <a href="account.html" class="nav-active">⚙️ Account</a>
   </div>
   <!-- Guest login link -->
   <a href="login.html" id="mobileLogin" class="drawer-login" style="display:none;">Log in</a>

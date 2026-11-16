@@ -211,3 +211,12 @@ tested in the sandbox; Jimmy chose **Stripe-managed risk**, which replaces decis
   destination listens to `account.updated` plus the nine payment events (signing secret
   `STRIPE_CONNECT_WEBHOOK_SECRET`). The **Your account** destination stays for platform charges (none today).
 - Sections 3.1, 3.2 and the cost estimate in 8 describe the earlier Express design.
+- **Accounts v2 (same day):** at the account's default API version (2026-06-24) Stripe refuses every v1 account
+  creation, controller properties included (the Shell CLI pins an older version, which is why it worked there).
+  Accounts are created with `POST /v2/core/accounts` (`Stripe-Version: 2026-10-28.endive`): `dashboard: full`,
+  `defaults.responsibilities` fees and losses collector `stripe`, `configuration.merchant` with
+  `ach_debit_payments`, plus `configuration.recipient` (`stripe_balance.stripe_transfers`), as Stripe's own error
+  proposed. Onboarding uses `POST /v2/core/account_links` (`use_case.type: account_onboarding`, no
+  `configurations`, removed in 2026-09-30.endive). Status reads `GET /v2/core/accounts/{id}` with
+  `include` configuration.merchant and requirements (falls back to v1). Charges stay v1 (Checkout with
+  `Stripe-Account`).

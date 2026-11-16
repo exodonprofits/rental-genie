@@ -215,8 +215,8 @@ tested in the sandbox; Jimmy chose **Stripe-managed risk**, which replaces decis
   creation, controller properties included (the Shell CLI pins an older version, which is why it worked there).
   Accounts are created with `POST /v2/core/accounts` (`Stripe-Version: 2026-10-28.endive`): `dashboard: full`,
   `defaults.responsibilities` fees and losses collector `stripe`, `configuration.merchant` with
-  `ach_debit_payments`, plus `configuration.recipient` (`stripe_balance.stripe_transfers`), as Stripe's own error
-  proposed. Onboarding uses `POST /v2/core/account_links` (`use_case.type: account_onboarding`, no
+  `ach_debit_payments` only (Stripe's proposed `configuration.recipient` with `stripe_transfers` is refused without
+  `card_payments`, and direct charges don't need transfers). Onboarding uses `POST /v2/core/account_links` (`use_case.type: account_onboarding`, no
   `configurations`, removed in 2026-09-30.endive). Status reads `GET /v2/core/accounts/{id}` with
   `include` configuration.merchant and requirements (falls back to v1). Charges stay v1 (Checkout with
   `Stripe-Account`).

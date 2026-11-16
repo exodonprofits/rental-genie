@@ -192,3 +192,22 @@ Estimated work: migration + 3 Edge Functions + 4 page changes ≈ 3–4 sessions
    other business. Jimmy creates it and turns on Connect (Express); its test-mode secret key and webhook
    signing secrets go into Supabase Edge Function secrets, never into chat or a page.
 5. **Cards:** not in version 1.
+
+### 10.1 Change (Jimmy, 2026-11-16): Stripe-managed risk, direct charges
+
+Stripe now refuses `type: express` for new platforms ("account_creation_losses_collector_unavailable_typed") and
+allows the Express dashboard only when the platform carries negative balances and collects fees. Both options were
+tested in the sandbox; Jimmy chose **Stripe-managed risk**, which replaces decision 2 and sections 3.1–3.2:
+
+- **Accounts:** created with controller properties, no `type`: `losses.payments = stripe`, `fees.payer = account`,
+  `requirement_collection = stripe`, `stripe_dashboard.type = full`. Stripe, not Rental Genie, covers a landlord's
+  negative balance (ACH returns after payout, disputes). Landlords get a full Stripe account and sign in at
+  dashboard.stripe.com (no Express login links).
+- **Charges:** **direct charges** — the Checkout Session is created on the landlord's account (`Stripe-Account`
+  header). The landlord is the merchant of record and Stripe takes its ACH fee from them (decision 1 unchanged).
+  **No application fee**: the old one only reimbursed the platform for Stripe's fee, which the platform no longer
+  pays. `online_payments.fee_amount` keeps an estimate of Stripe's fee.
+- **Webhooks:** the payment's events now come from the connected account, so the **Connected accounts**
+  destination listens to `account.updated` plus the nine payment events (signing secret
+  `STRIPE_CONNECT_WEBHOOK_SECRET`). The **Your account** destination stays for platform charges (none today).
+- Sections 3.1, 3.2 and the cost estimate in 8 describe the earlier Express design.

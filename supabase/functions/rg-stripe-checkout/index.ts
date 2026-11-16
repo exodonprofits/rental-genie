@@ -9,9 +9,10 @@
 //   - the lease is the signed-in tenant's and can be paid online now (rg_my_online_pay_options, tenant JWT);
 //   - the amount is between $1 and what's owed plus one month's rent (rg_my_rent_schedule as of today);
 //   - no other payment for this lease is still processing (stops paying the same balance twice).
-// Then an online_payments row (service role) and a Checkout Session: a destination charge to the landlord's
-// connected account with on_behalf_of (the landlord is the merchant of record) and the ACH fee as the
-// application fee (the landlord absorbs it, design decision 1).
+// Then an online_payments row (service role) and a Checkout Session created ON the landlord's connected account
+// (Stripe-Account header): a direct charge, so the landlord is the merchant of record, Stripe takes its ACH fee
+// from the landlord (design decision 1) and carries negative balances (Stripe-managed risk, design section 10).
+// No application fee. The payment's events come from the connected account (the Connect webhook destination).
 //
 // Secrets: STRIPE_SECRET_KEY. SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY are injected.
 
@@ -79,7 +80,7 @@ Deno.serve(async (req: Request) => {
   }
   const { data: lease } = await db.from("leases").select("id, tenant_id, tenant_email").eq("id", leaseId).maybeSingle();
 
-  const fee = achFeeCents(amountCents!);
+  const fee = achFeeCents(amountCents!); // Stripe's fee, paid by the landlord; recorded as an estimate
   const { data: row, error: iErr } = await db.from("online_payments").insert({
     company_id: opt.company_id,
     property_id: opt.property_id,
@@ -109,16 +110,13 @@ Deno.serve(async (req: Request) => {
         },
       }],
       payment_intent_data: {
-        on_behalf_of: company.stripe_account_id,
-        transfer_data: { destination: company.stripe_account_id },
-        application_fee_amount: fee,
         description: "Rent — " + (opt.property_name || "rental"),
         metadata: { online_payment_id: row.id, lease_id: leaseId },
       },
       metadata: { online_payment_id: row.id, lease_id: leaseId },
       success_url: SITE + "/tenant-payments.html?paid={CHECKOUT_SESSION_ID}",
       cancel_url: SITE + "/tenant-payments.html?canceled=1",
-    }, { idempotencyKey: "rg-cs-" + row.id });
+    }, { idempotencyKey: "rg-cs-" + row.id, stripeAccount: company.stripe_account_id });
 
     await db.from("online_payments").update({ stripe_checkout_session_id: session.id, updated_at: new Date().toISOString() }).eq("id", row.id);
     return json(200, { url: session.url, online_payment_id: row.id });

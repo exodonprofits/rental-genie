@@ -4744,7 +4744,9 @@ async function updateAll() {
   if (selectedLease && currentLease && getLeaseIdentityKey(selectedLease) === getLeaseIdentityKey(currentLease)) {
     selectedLease = null;
   }
-  await loadPayments();
+  // The attention list and its chips (Attention / Unpaid / Partial / Late) come from rg_rent_status for all
+  // properties; refresh it too, or a payment just recorded keeps showing as unpaid until a page reload.
+  await Promise.all([loadPayments(), computeAndStoreRentAttention()]);
   await updateQuickPeek();
   await updateLeasePanel();
   await renderDueLedger();

@@ -78,6 +78,7 @@ ok("v2 url + headers", seen.url === "https://api.stripe.com/v2/core/accounts" &&
    && seen.init.headers["Content-Type"] === "application/json" && seen.init.headers["Idempotency-Key"] === "k2", seen);
 ok("v2 account: Stripe-managed risk, full dashboard, ACH", sent.dashboard === "full" && sent.defaults.responsibilities.losses_collector === "stripe"
    && sent.defaults.responsibilities.fees_collector === "stripe" && sent.configuration.merchant.capabilities.ach_debit_payments.requested === true
+   && sent.configuration.merchant.capabilities.card_payments.requested === true && !("recipient" in sent.configuration)
    && sent.metadata.company_id === "C1" && !("type" in sent), sent);
 await stripeV2("sk_test_x", "GET", "/core/accounts/acct_1", undefined, { query: "include=configuration.merchant", fetchImpl: fake });
 ok("v2 GET query, no body", seen.url.endsWith("/v2/core/accounts/acct_1?include=configuration.merchant") && seen.init.body === undefined);

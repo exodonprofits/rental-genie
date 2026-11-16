@@ -134,7 +134,7 @@ export async function stripeV2(secretKey: string, method: "GET" | "POST", path: 
 }
 
 // The new landlord account: Stripe-managed risk (Stripe collects fees and covers losses), full Stripe dashboard,
-// a merchant that takes ACH debits (Stripe's own proposed request, without the recipient configuration).
+// a merchant that takes ACH debits (Stripe requires card_payments alongside; checkout offers bank payments only).
 export function landlordAccountRequest(email: string | undefined, companyId: string) {
   return {
     contact_email: email,
@@ -142,9 +142,10 @@ export function landlordAccountRequest(email: string | undefined, companyId: str
     dashboard: "full",
     defaults: { responsibilities: { fees_collector: "stripe", losses_collector: "stripe" } },
     configuration: {
-      // Direct charges only need the merchant configuration. (A recipient configuration for transfers isn't
-      // needed and Stripe refuses stripe_transfers without card_payments.)
-      merchant: { capabilities: { ach_debit_payments: { requested: true } } },
+      // Direct charges only need the merchant configuration (no recipient/transfers). Stripe refuses
+      // ach_debit_payments without card_payments, so both are requested; tenants still can't pay by card
+      // because rg-stripe-checkout only offers us_bank_account (design decision 5).
+      merchant: { capabilities: { card_payments: { requested: true }, ach_debit_payments: { requested: true } } },
     },
     metadata: { company_id: companyId },
   };

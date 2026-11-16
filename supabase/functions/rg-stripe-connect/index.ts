@@ -1,12 +1,15 @@
 // Rental Genie — connect a landlord's Stripe account (Edge Function, verify_jwt = true).
-// Design: docs/design/stripe-online-rent.md (Stripe Connect Express; money goes straight to the landlord).
+// Design: docs/design/stripe-online-rent.md, section 10. Each landlord gets their own full Stripe account with
+// Stripe-managed risk (controller: losses -> stripe, fees -> account, requirement_collection -> stripe, full
+// dashboard). Stripe refuses the old `type: express` for new platforms (and Express requires the platform to carry
+// negative balances), so rent is a direct charge on the landlord's account; money goes straight to them.
 //
 // POST { action: "onboard" | "status" | "dashboard" } with the landlord's JWT.
-//   onboard   — creates the company's Express account if it has none (saved in companies.stripe_account_id
+//   onboard   — creates the company's Stripe account if it has none (saved in companies.stripe_account_id
 //               by the service role; signed-in users can't write it, rg_28), then returns a Stripe-hosted
 //               onboarding link { url }. Re-running it continues an unfinished onboarding.
 //   status    — reads the account from Stripe, syncs companies.stripe_* and returns the flags.
-//   dashboard — returns a one-time link to the landlord's Stripe Express dashboard { url }.
+//   dashboard — { url } of the Stripe dashboard (full accounts sign in there with their own Stripe login).
 // Only the company owner (companies.owner_user_id) can connect: the payouts go to their bank account.
 //
 // Secrets: STRIPE_SECRET_KEY. SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY are injected.
@@ -74,9 +77,14 @@ Deno.serve(async (req: Request) => {
       let acctId = company.stripe_account_id as string | null;
       if (!acctId) {
         const acct = await stripe(key, "POST", "/accounts", {
-          type: "express",
           country: "US",
           email: user.email,
+          controller: {
+            losses: { payments: "stripe" },
+            fees: { payer: "account" },
+            requirement_collection: "stripe",
+            stripe_dashboard: { type: "full" },
+          },
           capabilities: { transfers: { requested: true }, us_bank_account_ach_payments: { requested: true } },
           business_profile: {
             mcc: "6513", // real estate agents and managers: rentals
@@ -84,7 +92,7 @@ Deno.serve(async (req: Request) => {
             url: SITE,
           },
           metadata: { company_id: company.id },
-        }, { idempotencyKey: "rg-acct-" + company.id });
+        }, { idempotencyKey: "rg-acct-managed-" + company.id });
         acctId = acct.id;
         const { error } = await db.from("companies").update({ stripe_account_id: acctId }).eq("id", company.id);
         if (error) return json(500, { error: "Stripe account created but not saved; try again." });
@@ -100,8 +108,8 @@ Deno.serve(async (req: Request) => {
 
     if (action === "dashboard") {
       if (!company.stripe_account_id) return json(400, { error: "Connect your Stripe account first." });
-      const link = await stripe(key, "POST", "/accounts/" + encodeURIComponent(company.stripe_account_id) + "/login_links");
-      return json(200, { url: link.url });
+      // Full-dashboard accounts have no one-time login links (that's Express); the landlord signs in to Stripe.
+      return json(200, { url: "https://dashboard.stripe.com/" });
     }
 
     return json(400, { error: "Unknown action." });

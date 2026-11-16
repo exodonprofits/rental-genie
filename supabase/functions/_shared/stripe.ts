@@ -10,8 +10,9 @@
 export const SITE = "https://rentalgenieai.com";
 
 // ACH Direct Debit: 0.8%, capped at $5 (Stripe US pricing as recorded in the design doc; re-check before
-// launch). The landlord absorbs it (design decision 1): the checkout sets it as the application fee, so the
-// platform's Stripe fee is covered and the landlord receives the rest.
+// launch). Rent is a direct charge on the landlord's own Stripe account (Stripe-managed risk, design section 10),
+// so Stripe takes this fee from the landlord's side itself (design decision 1: the landlord absorbs it). We only
+// estimate it for online_payments.fee_amount; no application fee is charged.
 export const ACH_FEE_RATE = 0.008;
 export const ACH_FEE_CAP_CENTS = 500;
 
@@ -97,15 +98,19 @@ export class StripeError extends Error {
   constructor(message: string, status: number, code?: string) { super(message); this.status = status; this.code = code; }
 }
 
-// One Stripe API call. `idempotencyKey` makes retries safe (same key -> same result, never a second object).
+// One Stripe API call. `idempotencyKey` makes retries safe (same key -> same result, never a second object);
+// `stripeAccount` makes the call on a landlord's connected account.
 export async function stripe(secretKey: string, method: "GET" | "POST", path: string,
-                             params?: Record<string, unknown>, opts: { idempotencyKey?: string; fetchImpl?: typeof fetch } = {}) {
+                             params?: Record<string, unknown>,
+                             opts: { idempotencyKey?: string; fetchImpl?: typeof fetch; stripeAccount?: string } = {}) {
   const f = opts.fetchImpl || fetch;
   const body = params ? form(params).toString() : undefined;
   const url = "https://api.stripe.com/v1" + path + (method === "GET" && body ? "?" + body : "");
   const headers: Record<string, string> = { Authorization: "Bearer " + secretKey };
   if (method === "POST") headers["Content-Type"] = "application/x-www-form-urlencoded";
   if (opts.idempotencyKey) headers["Idempotency-Key"] = opts.idempotencyKey;
+  // A request made on a connected account (direct charges): Stripe-Account: acct_…
+  if (opts.stripeAccount) headers["Stripe-Account"] = opts.stripeAccount;
   const res = await f(url, { method, headers, body: method === "POST" ? body : undefined, signal: AbortSignal.timeout(20000) });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new StripeError(json?.error?.message || "Stripe request failed (" + res.status + ")", res.status, json?.error?.code);

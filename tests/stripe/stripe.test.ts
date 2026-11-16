@@ -63,6 +63,9 @@ const r = await stripe("sk_test_x", "POST", "/accounts", { type: "express", capa
 ok("api result", r.id === "acct_1");
 ok("api headers", seen.init.headers.Authorization === "Bearer sk_test_x" && seen.init.headers["Idempotency-Key"] === "acct-1" && seen.init.headers["Content-Type"] === "application/x-www-form-urlencoded");
 ok("api body", seen.init.body.includes("capabilities%5Btransfers%5D%5Brequested%5D=true"), seen.init.body);
+ok("no Stripe-Account by default", !("Stripe-Account" in seen.init.headers));
+await stripe("sk_test_x", "POST", "/checkout/sessions", { mode: "payment" }, { stripeAccount: "acct_landlord", fetchImpl: fake });
+ok("connected-account call sends Stripe-Account", seen.init.headers["Stripe-Account"] === "acct_landlord", seen.init.headers);
 let err: any = null;
 try { await stripe("sk_test_x", "GET", "/accounts/fail", undefined, { fetchImpl: fake }); } catch (e) { err = e; }
 ok("api error surfaces Stripe message", err && err.status === 404 && err.message === "No such account" && err.code === "resource_missing", err && err.message);

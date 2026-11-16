@@ -3,11 +3,12 @@
 //
 // Register two endpoints in the Stripe dashboard, both at
 //   https://xqmnaeujwumlcoyhgzuk.supabase.co/functions/v1/rg-stripe-webhook
-//   1. "Your account": checkout.session.completed, checkout.session.async_payment_succeeded,
+//   1. "Connected accounts" (rent is a direct charge on the landlord's account, so its events come from there):
+//      account.updated, checkout.session.completed, checkout.session.async_payment_succeeded,
 //      checkout.session.async_payment_failed, checkout.session.expired, payment_intent.succeeded,
 //      payment_intent.processing, payment_intent.payment_failed, charge.refunded, charge.dispute.created
-//      -> signing secret in STRIPE_WEBHOOK_SECRET
-//   2. "Connected accounts": account.updated -> signing secret in STRIPE_CONNECT_WEBHOOK_SECRET
+//      -> signing secret in STRIPE_CONNECT_WEBHOOK_SECRET
+//   2. "Your account": the same payment events (platform charges, none today) -> STRIPE_WEBHOOK_SECRET
 // A request is accepted if its signature matches either secret and is under 5 minutes old.
 //
 // Responses: 200 handled or ignored; 400 bad signature or body; 500 on a database error so Stripe retries

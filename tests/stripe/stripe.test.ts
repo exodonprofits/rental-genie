@@ -1,6 +1,6 @@
 // Stripe helper tests (invented data only). Run: node --experimental-strip-types tests/stripe/stripe.test.ts
 import { achFeeCents, toCents, payBounds, checkAmount, form, verifyStripeSignature, stripe, chicagoDate,
-         stripeV2, STRIPE_V2_VERSION, landlordAccountRequest, accountFlags } from "../../supabase/functions/_shared/stripe.ts";
+         stripeV2, STRIPE_V2_VERSION, landlordAccountRequest, accountFlags, siteFor } from "../../supabase/functions/_shared/stripe.ts";
 import { createHmac } from "node:crypto";
 let fails = 0;
 const ok = (n: string, c: boolean, i?: unknown) => { console.log((c ? "PASS " : "FAIL ") + n + (c ? "" : " " + JSON.stringify(i))); if (!c) fails++; };
@@ -87,6 +87,10 @@ ok("flags: v2 active", JSON.stringify(accountFlags({ object: "v2.core.account", 
 ok("flags: v2 pending with due items", accountFlags({ configuration: { merchant: { capabilities: { ach_debit_payments: { status: "pending" } } } },
    requirements: { entries: [{ minimum_deadline: { status: "currently_due" } }] } }).stripe_details_submitted === false);
 ok("flags: v1 account object", accountFlags({ object: "account", charges_enabled: true, payouts_enabled: false, details_submitted: true }).stripe_payouts_enabled === false);
+
+ok("siteFor: www kept", siteFor("https://www.rentalgenieai.com") === "https://www.rentalgenieai.com");
+ok("siteFor: bare host kept", siteFor("https://rentalgenieai.com/") === "https://rentalgenieai.com");
+ok("siteFor: other origins fall back", siteFor("https://evil.example") === "https://rentalgenieai.com" && siteFor(null) === "https://rentalgenieai.com");
 
 ok("chicago date", chicagoDate(new Date("2026-11-12T03:00:00Z")) === "2026-11-11", chicagoDate(new Date("2026-11-12T03:00:00Z")));
 

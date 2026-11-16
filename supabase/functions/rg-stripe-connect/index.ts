@@ -15,7 +15,7 @@
 // Secrets: STRIPE_SECRET_KEY. SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY are injected.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SITE, accountFlags, landlordAccountRequest, stripe, stripeV2, StripeError } from "../_shared/stripe.ts";
+import { accountFlags, landlordAccountRequest, siteFor, stripe, stripeV2, StripeError } from "../_shared/stripe.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -90,6 +90,7 @@ Deno.serve(async (req: Request) => {
         const { error } = await db.from("companies").update({ stripe_account_id: acctId }).eq("id", company.id);
         if (error) return json(500, { error: "Stripe account created but not saved; try again." });
       }
+      const site = siteFor(req.headers.get("Origin")); // back to the host (www or not) they're signed in on
       // v2 account link; Stripe decides which configurations need onboarding (no `configurations`, removed in
       // 2026-09-30.endive)
       const link = await stripeV2(key, "POST", "/core/account_links", {
@@ -97,8 +98,8 @@ Deno.serve(async (req: Request) => {
         use_case: {
           type: "account_onboarding",
           account_onboarding: {
-            refresh_url: SITE + "/account.html?tab=workspace&stripe=refresh",
-            return_url: SITE + "/account.html?tab=workspace&stripe=return",
+            refresh_url: site + "/account.html?tab=workspace&stripe=refresh",
+            return_url: site + "/account.html?tab=workspace&stripe=return",
           },
         },
       });

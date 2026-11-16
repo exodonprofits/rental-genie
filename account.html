@@ -1060,9 +1060,10 @@ function renderPayOnline(c, isOwner) {
     badge.className = 'badge ' + (c.stripe_account_id ? 'badge-amber' : 'badge-slate');
     body.appendChild(payEl('p', null, 'Let tenants pay rent from their bank account through Rental Genie.'));
     var ul = payEl('ul');
-    ['The money goes straight to your bank through Stripe. Rental Genie never holds it.',
+    ['The money goes straight to your bank through your own Stripe account. Rental Genie never holds it.',
      'Stripe\'s bank-payment fee (0.8%, at most $5 per payment) comes out of the payout.',
      'Payments are recorded in your ledger automatically when they clear, oldest unpaid month first.',
+     'You sign in to Stripe with your own login to see payouts or refund a payment.',
      'You can switch it off for any lease on the lease form.'].forEach(function (t) { ul.appendChild(payEl('li', null, t)); });
     body.appendChild(ul);
     if (isOwner) row.appendChild(btn(c.stripe_account_id ? 'Continue setup on Stripe' : 'Set up online payments', 'btn-primary', 'onboard'));
@@ -1233,7 +1234,7 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
     }
   }catch(err){console.warn('Workspace load error:',err);}
 
-  // Online payments (Stripe Connect Express; docs/design/stripe-online-rent.md)
+  // Online payments (Stripe Connect, Stripe-managed risk; docs/design/stripe-online-rent.md, section 10.1)
   try { await loadPayOnline(user); } catch (err) { console.warn('Online payments load error:', err); }
 
   // Dismiss overlay

@@ -154,9 +154,11 @@ setup in `payment-inbox.md`; the old Postmark/n8n workflow JSON was never connec
 place that turns a payment into `rent_log` rows: unpaid months oldest first, then prepayment in rent-sized pieces,
 stamped with the lease, tenant id and email of the lease in effect (so tenants see them). The payment inbox's
 confirm calls it; online payments will too (`source = 'stripe'`, `online_payment_id`). Don't write another split.
-**Online payments (design in `docs/design/stripe-online-rent.md`; rg_28/rg_29; not live until the Stripe keys are set
-and the landlord connects):** Stripe Connect Express, destination charges with `on_behalf_of`, ACH only, the ACH fee taken as
-the application fee (landlord absorbs it). `rg-stripe-connect` (landlord JWT, owner only: onboard / status / dashboard),
+**Online payments (design in `docs/design/stripe-online-rent.md`, section 10.1; rg_28/rg_29; sandbox only until the pilot):**
+Stripe Connect with Stripe-managed risk (accounts created with controller properties: losses → stripe, fees → account,
+full dashboard; Stripe refuses `type: express` for new platforms), **direct charges** on the landlord's account
+(`Stripe-Account` header), ACH only, Stripe's fee paid by the landlord, no application fee. Payment events therefore
+arrive on the **Connected accounts** webhook destination. `rg-stripe-connect` (landlord JWT, owner only: onboard / status / dashboard),
 `rg-stripe-checkout` (tenant JWT: checks `rg_my_online_pay_options` and that the amount is $1 to balance + one month from
 `rg_my_rent_schedule`, one processing payment per lease, then a Checkout Session), `rg-stripe-webhook` (verify_jwt false,
 Stripe-Signature checked against `STRIPE_WEBHOOK_SECRET` / `STRIPE_CONNECT_WEBHOOK_SECRET`; event logic in `handle.ts`).

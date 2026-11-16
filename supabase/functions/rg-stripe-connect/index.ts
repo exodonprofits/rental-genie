@@ -76,6 +76,13 @@ Deno.serve(async (req: Request) => {
     if (action === "status") {
       if (!company.stripe_account_id) return json(200, { connected: false });
       const acct = await readAccount(key, company.stripe_account_id);
+      // What Stripe reports, without personal data: capability statuses and what it still needs
+      const caps = acct?.configuration?.merchant?.capabilities;
+      const reqs = (acct?.requirements?.entries || []).slice(0, 12).map((e: any) => ({
+        d: e?.description, s: e?.minimum_deadline?.status, w: e?.awaiting_action_from }));
+      console.log("rg-stripe-connect status", JSON.stringify({ object: acct?.object, caps, reqs,
+        v1: acct?.object === "account" ? { ch: acct.charges_enabled, po: acct.payouts_enabled, ds: acct.details_submitted,
+          due: acct.requirements?.currently_due } : undefined }).slice(0, 3000));
       const flags = await syncFlags(db, company.id, acct);
       return json(200, { connected: true, ...flags });
     }

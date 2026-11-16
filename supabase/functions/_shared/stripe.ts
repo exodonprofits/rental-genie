@@ -9,6 +9,15 @@
 
 export const SITE = "https://rentalgenieai.com";
 
+// The site serves both rentalgenieai.com and www.rentalgenieai.com, and a browser keeps a separate sign-in for
+// each. Return links (Stripe onboarding, Checkout) go back to the host the person came from, so they land
+// signed in; anything else falls back to SITE.
+const SITE_HOSTS = ["https://rentalgenieai.com", "https://www.rentalgenieai.com"];
+export function siteFor(origin: string | null | undefined): string {
+  const o = String(origin || "").trim().replace(/\/+$/, "").toLowerCase();
+  return SITE_HOSTS.includes(o) ? o : SITE;
+}
+
 // ACH Direct Debit: 0.8%, capped at $5 (Stripe US pricing as recorded in the design doc; re-check before
 // launch). Rent is a direct charge on the landlord's own Stripe account (Stripe-managed risk, design section 10),
 // so Stripe takes this fee from the landlord's side itself (design decision 1: the landlord absorbs it). We only

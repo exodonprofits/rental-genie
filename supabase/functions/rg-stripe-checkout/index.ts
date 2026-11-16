@@ -17,7 +17,7 @@
 // Secrets: STRIPE_SECRET_KEY. SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY are injected.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { SITE, achFeeCents, checkAmount, chicagoDate, payBounds, stripe, StripeError, toCents } from "../_shared/stripe.ts";
+import { siteFor, achFeeCents, checkAmount, chicagoDate, payBounds, stripe, StripeError, toCents } from "../_shared/stripe.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -114,8 +114,8 @@ Deno.serve(async (req: Request) => {
         metadata: { online_payment_id: row.id, lease_id: leaseId },
       },
       metadata: { online_payment_id: row.id, lease_id: leaseId },
-      success_url: SITE + "/tenant-payments.html?paid={CHECKOUT_SESSION_ID}",
-      cancel_url: SITE + "/tenant-payments.html?canceled=1",
+      success_url: siteFor(req.headers.get("Origin")) + "/tenant-payments.html?paid={CHECKOUT_SESSION_ID}",
+      cancel_url: siteFor(req.headers.get("Origin")) + "/tenant-payments.html?canceled=1",
     }, { idempotencyKey: "rg-cs-" + row.id, stripeAccount: company.stripe_account_id });
 
     await db.from("online_payments").update({ stripe_checkout_session_id: session.id, updated_at: new Date().toISOString() }).eq("id", row.id);

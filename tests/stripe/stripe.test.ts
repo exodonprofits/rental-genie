@@ -1,5 +1,6 @@
 // Stripe helper tests (invented data only). Run: node --experimental-strip-types tests/stripe/stripe.test.ts
-import { achFeeCents, toCents, payBounds, checkAmount, form, verifyStripeSignature, stripe, chicagoDate } from "../../supabase/functions/_shared/stripe.ts";
+import { achFeeCents, toCents, payBounds, checkAmount, form, verifyStripeSignature, stripe, chicagoDate,
+         stripeV2, STRIPE_V2_VERSION, landlordAccountRequest, accountFlags } from "../../supabase/functions/_shared/stripe.ts";
 import { createHmac } from "node:crypto";
 let fails = 0;
 const ok = (n: string, c: boolean, i?: unknown) => { console.log((c ? "PASS " : "FAIL ") + n + (c ? "" : " " + JSON.stringify(i))); if (!c) fails++; };
@@ -69,6 +70,22 @@ ok("connected-account call sends Stripe-Account", seen.init.headers["Stripe-Acco
 let err: any = null;
 try { await stripe("sk_test_x", "GET", "/accounts/fail", undefined, { fetchImpl: fake }); } catch (e) { err = e; }
 ok("api error surfaces Stripe message", err && err.status === 404 && err.message === "No such account" && err.code === "resource_missing", err && err.message);
+
+// v2 wrapper: JSON body, pinned version, idempotency, query string
+await stripeV2("sk_test_x", "POST", "/core/accounts", landlordAccountRequest("l@example.com", "C1"), { idempotencyKey: "k2", fetchImpl: fake });
+const sent = JSON.parse(seen.init.body);
+ok("v2 url + headers", seen.url === "https://api.stripe.com/v2/core/accounts" && seen.init.headers["Stripe-Version"] === STRIPE_V2_VERSION
+   && seen.init.headers["Content-Type"] === "application/json" && seen.init.headers["Idempotency-Key"] === "k2", seen);
+ok("v2 account: Stripe-managed risk, full dashboard, ACH", sent.dashboard === "full" && sent.defaults.responsibilities.losses_collector === "stripe"
+   && sent.defaults.responsibilities.fees_collector === "stripe" && sent.configuration.merchant.capabilities.ach_debit_payments.requested === true
+   && sent.metadata.company_id === "C1" && !("type" in sent), sent);
+await stripeV2("sk_test_x", "GET", "/core/accounts/acct_1", undefined, { query: "include=configuration.merchant", fetchImpl: fake });
+ok("v2 GET query, no body", seen.url.endsWith("/v2/core/accounts/acct_1?include=configuration.merchant") && seen.init.body === undefined);
+ok("flags: v2 active", JSON.stringify(accountFlags({ object: "v2.core.account", configuration: { merchant: { capabilities: { ach_debit_payments: { status: "active" } } } }, requirements: { entries: [] } }))
+   === JSON.stringify({ stripe_charges_enabled: true, stripe_payouts_enabled: true, stripe_details_submitted: true }));
+ok("flags: v2 pending with due items", accountFlags({ configuration: { merchant: { capabilities: { ach_debit_payments: { status: "pending" } } } },
+   requirements: { entries: [{ minimum_deadline: { status: "currently_due" } }] } }).stripe_details_submitted === false);
+ok("flags: v1 account object", accountFlags({ object: "account", charges_enabled: true, payouts_enabled: false, details_submitted: true }).stripe_payouts_enabled === false);
 
 ok("chicago date", chicagoDate(new Date("2026-11-12T03:00:00Z")) === "2026-11-11", chicagoDate(new Date("2026-11-12T03:00:00Z")));
 

@@ -15,7 +15,7 @@
 // (every step is idempotent, see handle.ts).
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { chicagoDate, verifyStripeSignature } from "../_shared/stripe.ts";
+import { accountFlags, chicagoDate, verifyStripeSignature } from "../_shared/stripe.ts";
 import { handleEvent } from "./handle.ts";
 
 function json(status: number, body: unknown) {
@@ -49,12 +49,8 @@ Deno.serve(async (req: Request) => {
       syncAccount: async (acct) => {
         const { data: cur } = await db.from("companies").select("id, stripe_onboarded_at").eq("stripe_account_id", acct.id).maybeSingle();
         if (!cur) return;
-        const patch: Record<string, unknown> = {
-          stripe_charges_enabled: !!acct.charges_enabled,
-          stripe_payouts_enabled: !!acct.payouts_enabled,
-          stripe_details_submitted: !!acct.details_submitted,
-        };
-        if (acct.charges_enabled && !cur.stripe_onboarded_at) patch.stripe_onboarded_at = new Date().toISOString();
+        const patch: Record<string, unknown> = accountFlags(acct);
+        if (patch.stripe_charges_enabled && !cur.stripe_onboarded_at) patch.stripe_onboarded_at = new Date().toISOString();
         const { error } = await db.from("companies").update(patch).eq("id", cur.id);
         if (error) throw new Error("account sync: " + error.message);
       },

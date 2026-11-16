@@ -85,7 +85,7 @@ Deno.serve(async (req: Request) => {
       if (!acctId) {
         // Stripe's onboarding asks the landlord for their business details (industry, website) itself
         const acct = await stripeV2(key, "POST", "/core/accounts", landlordAccountRequest(user.email, company.id),
-          { idempotencyKey: "rg-acct-v2m-" + company.id });
+          { idempotencyKey: "rg-acct-v2mc-" + company.id });
         acctId = acct.id;
         const { error } = await db.from("companies").update({ stripe_account_id: acctId }).eq("id", company.id);
         if (error) return json(500, { error: "Stripe account created but not saved; try again." });

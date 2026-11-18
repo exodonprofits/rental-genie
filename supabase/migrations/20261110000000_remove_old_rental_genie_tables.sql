@@ -4,7 +4,9 @@
 -- were locked read-only on Oct 2 (20261002000000) and have sat unused since, still holding a stale copy
 -- of tenants, leases and payments inside the database the other products use.
 --
--- Checked on 2026-11-10 before writing this:
+-- Checked on 2026-11-10 before writing this, and again on 2026-11-18 (no writes since the lock; the only
+-- API calls to these names in the last 48 hours are Salon Genie's GETs of `expenses`, which resolve to
+-- salon.expenses: they filter on business_id, a column public.expenses doesn't have, and return 200):
 --   - Every row in the 20 copied tables exists in the RentalGenie project (id fingerprints match per
 --     table), except 15 rent_log rows from Apr-Sep 2026 that the landlord deleted there and re-entered
 --     on Oct 11 2026; each of those due dates is logged in the RentalGenie project.
@@ -37,6 +39,9 @@ end $$;
 drop policy rg_tenant_docs_select    on storage.objects;
 drop policy rg_receipts_reimb_select on storage.objects;
 drop policy rg_maint_photos_select   on storage.objects;
+-- tenants' policy reads leases while leases has a foreign key to tenants: neither table can go first
+-- with the policy in place (found by the 2026-11-18 rolled-back run).
+drop policy tenants_rw_company_member_via_leases on public.tenants;
 
 drop view public.public_listings;
 drop view public.property_monthly_costs;

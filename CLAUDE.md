@@ -253,8 +253,11 @@ of the name, which is what tenants see.
   removed along with the legacy duplicate pages (rent-log, rent-payments, manage-properties,
   lease-center, rental-tracker, tenant-history, submit-request, landing, rent-analyzer).
 - No plan limits are enforced anywhere; the pricing on the homepage is marketing copy only.
-- The old Rental Genie tables are still in the shared project, locked read-only since 2026-10-02,
-  until they're dropped (not before mid-October 2026, two clean weeks after the Oct 1 cutover). The shared project's RLS state (Sept 2026
+- Rental Genie is fully out of the shared project since 2026-11-18: its old tables, views, storage policies and
+  functions were dropped (`supabase/migrations/20261110000000_…tables.sql`, `20261118000000_…functions.sql`). Left on
+  purpose: `companies` / `company_members` (other products use them), `rg_set_company_owner` (fills
+  `companies.owner_user_id` on insert), `is_company_member`, the empty buckets and the vault secret
+  `rg_maintenance_webhook_secret`. Salon Genie has its own `salon.expenses`. The shared project's RLS state (Sept 2026
   audit): RLS on for every exposed table, views run as the caller, anon reads only public columns of
   `business_profiles`, `follow_up_requests` is service-role only.
 - When adding a policy, never add a `using (true)` catch-all: RLS grants access if any policy

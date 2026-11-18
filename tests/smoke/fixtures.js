@@ -77,6 +77,7 @@ function base() {
       rg_rent_status: [{ property_id: P1, property_name: 'Oak Street', company_id: C, lease_id: L1, tenant_name: 'Test Tenant', lease_state: 'active',
         rent_amount: 1500, total_due: 4500, total_paid: 3500, balance: 1000, past_due: 1000, months_unpaid: 1, last_paid_date: sched[2].due_date }],
       rg_claim_tenant_row: T1,
+      rg_my_plan: [{ plan: 'free', effective_plan: 'pro', early_access: true, max_properties: null, active_properties: 2 }],
       rg_my_online_pay_options: [{ lease_id: L1, company_id: C, property_id: P1, property_name: 'Oak Street', can_pay_online: true }],
       rg_dismiss_notification: true
     }

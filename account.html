@@ -889,6 +889,10 @@ html body nav.mobile-nav .mnav[aria-current="page"] { background: rgba(255,255,2
           <div class="info-item-label">Member Since</div>
           <div class="info-item-value" id="wsMemberSince">—</div>
         </div>
+        <div class="info-item">
+          <div class="info-item-label">Plan</div>
+          <div class="info-item-value" id="wsPlan">—</div>
+        </div>
       </div>
       <div class="btn-row" style="margin-top:16px;">
         <a href="invite-tenant.html" class="btn-secondary">✉️ Invite Tenant</a>
@@ -1254,6 +1258,17 @@ document.querySelectorAll('.tab-btn').forEach(function(btn){
         setText('wsRole',rr.charAt(0).toUpperCase()+rr.slice(1));
         setText('wsMemberSince',fmt(mRes.data.created_at));
       }
+      // Plan and usage (rg_31): Free covers 3 active properties; everyone is Pro during early access.
+      try{
+        var pr=await client.rpc('rg_my_plan',{p_company_id:companyId});
+        var pl=pr.data&&pr.data[0];
+        if(pl){
+          var n=Number(pl.active_properties)||0, props=n+' propert'+(n===1?'y':'ies');
+          setText('wsPlan', pl.effective_plan==='pro'
+            ? 'Pro'+(pl.early_access&&pl.plan!=='pro'?' (free during early access)':'')+' · '+props
+            : 'Free · '+n+' of '+pl.max_properties+' properties');
+        }
+      }catch(e){console.warn('Plan load error:',e);}
     } else {
       var cbadge=document.getElementById('companyBadge');
       if(cbadge){cbadge.textContent='No workspace';cbadge.className='badge badge-slate';}

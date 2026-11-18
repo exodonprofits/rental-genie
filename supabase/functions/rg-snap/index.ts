@@ -123,6 +123,20 @@ function leaseSchema(propertyNames: string[]) {
       lease_end: nullable({ type: "string", format: "date" }),
       lease_type: { type: "string", enum: ["fixed_term", "month_to_month"] },
       rent_amount: num,
+      // Scheduled changes after the start (yearly increases, commercial step rent); becomes lease_rent_changes rows.
+      rent_changes: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            effective_date: { type: "string", format: "date" },
+            rent_amount: { type: "number" },
+            note: str,
+          },
+          required: ["effective_date", "rent_amount", "note"],
+        },
+      },
       due_day: int,
       late_fee: num,
       grace_period: int,
@@ -137,7 +151,7 @@ function leaseSchema(propertyNames: string[]) {
           type: "string",
           enum: [
             "tenant_name", "tenant_email", "tenant_phone", "lease_start", "lease_end", "lease_type",
-            "rent_amount", "due_day", "late_fee", "grace_period", "security_deposit", "pet_deposit",
+            "rent_amount", "rent_changes", "due_day", "late_fee", "grace_period", "security_deposit", "pet_deposit",
             "property",
           ],
         },
@@ -145,7 +159,7 @@ function leaseSchema(propertyNames: string[]) {
     },
     required: [
       "is_lease", "not_lease_reason", "tenant_name", "tenant_email", "tenant_phone", "lease_start",
-      "lease_end", "lease_type", "rent_amount", "due_day", "late_fee", "grace_period",
+      "lease_end", "lease_type", "rent_amount", "rent_changes", "due_day", "late_fee", "grace_period",
       "security_deposit", "pet_deposit", "property_address", "property_name", "key_terms", "unsure",
     ],
   };
@@ -164,7 +178,8 @@ ${list}
 
 - tenant_name: every tenant named on the lease, joined with " & ". If the tenant is a business, its legal name (add "d/b/a" if the lease gives one). tenant_email / tenant_phone: the first tenant's, if the lease lists them.
 - lease_start / lease_end: the term dates. A month-to-month lease has no end date: set lease_type "month_to_month" and lease_end null.
-- rent_amount: the monthly rent at the start of the term (base rent for a commercial lease). If the rent changes during the term, put the schedule in key_terms; if there are extra monthly charges (CAM, taxes, insurance), mention them in key_terms and do not add them to rent_amount. due_day: the day of the month rent is due (1 if it says "the first").
+- rent_amount: the monthly rent at the start of the term (base rent for a commercial lease). If there are extra monthly charges (CAM, taxes, insurance), mention them in key_terms and do not add them to rent_amount. due_day: the day of the month rent is due (1 if it says "the first").
+- rent_changes: every change to the monthly base rent the lease schedules during the term, after the start (a rent table by lease year, step rent, "rent increases by 3% each year"), oldest first: effective_date (the first day the new rent applies; "year 2" of a lease starting 2026-03-01 is 2027-03-01), rent_amount (the new monthly rent in dollars; work out percentage increases from the previous rent and round to the cent), note (short, e.g. "Year 2" or "3% yearly increase"). Only rent the tenant is already committed to: rent for an unexercised renewal or extension option goes in key_terms instead. Empty if the rent never changes. List rent_changes in unsure if you had to calculate or infer any of them.
 - late_fee: the flat late fee in dollars; if it is a percentage or daily amount, give the first-month dollar figure and list late_fee in unsure. grace_period: days after the due date before the late fee applies.
 - security_deposit / pet_deposit: dollar amounts, or null if none.
 - property_address: the rented premises as written. property_name: the matching property above, or null if none matches.
@@ -192,6 +207,28 @@ function mediaTypeFor(blobType: string, path: string) {
   if (ext === "webp") return "image/webp";
   if (ext === "gif") return "image/gif";
   return null;
+}
+
+// Rent changes the page can save as lease_rent_changes rows: real dates after the start, positive amounts,
+// one per date, oldest first (the table refuses a change on or before lease_start).
+function realDate(d: string) {   // 2027-02-30 parses in JS (as March 2); refuse it
+  const t = new Date(d + "T00:00:00Z");
+  return !isNaN(t.getTime()) && t.toISOString().slice(0, 10) === d;
+}
+function cleanRentChanges(rows: unknown, leaseStart: unknown) {
+  if (!Array.isArray(rows)) return [];
+  const start = typeof leaseStart === "string" && /^\d{4}-\d{2}-\d{2}$/.test(leaseStart) ? leaseStart : "";
+  const byDate = new Map<string, { effective_date: string; rent_amount: number; note: string | null }>();
+  for (const r of rows as any[]) {
+    const d = String(r?.effective_date || "");
+    const amt = Math.round(Number(r?.rent_amount) * 100) / 100;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !realDate(d)) continue;
+    if (start && d <= start) continue;
+    if (!(amt > 0) || amt > 10000000) continue;
+    const note = r?.note ? String(r.note).replace(/\s+/g, " ").trim().slice(0, 300) || null : null;
+    byDate.set(d, { effective_date: d, rent_amount: amt, note });
+  }
+  return [...byDate.values()].sort((a, b) => a.effective_date.localeCompare(b.effective_date)).slice(0, 40);
 }
 
 async function extract(
@@ -249,6 +286,7 @@ async function extract(
   }
   // Belt and braces: never hand back a property the caller can't see.
   if (draft.property_name && !names.includes(draft.property_name)) draft.property_name = null;
+  if (kind === "lease") draft.rent_changes = cleanRentChanges(draft.rent_changes, draft.lease_start);
   return { draft, model: response.model, usage: response.usage };
 }
 

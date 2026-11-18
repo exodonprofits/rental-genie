@@ -252,7 +252,12 @@ of the name, which is what tenants see.
 - Escrow reconciliation doesn't exist. The old page read tables that were never created and was
   removed along with the legacy duplicate pages (rent-log, rent-payments, manage-properties,
   lease-center, rental-tracker, tenant-history, submit-request, landing, rent-analyzer).
-- No plan limits are enforced anywhere; the pricing on the homepage is marketing copy only.
+- Plan limits (rg_31) are built but switched off: `rg_settings.early_access` is on, so every company is Pro. Free =
+  3 active properties (`plan_limits`), enforced by `trg_properties_plan_limit` on insert, restore or company change
+  (error hint `plan_limit`, which `add-property.html` shows as is); Pro features aren't gated. A company's plan is a
+  `company_plans` row (service role only; no row = free; the founder company is Pro). Pages read
+  `rg_my_plan(company_id)` (Account > Workspace shows it). End early access with
+  `update rg_settings set enabled = false where name = 'early_access'`. No billing exists yet.
 - Rental Genie is fully out of the shared project since 2026-11-18: its old tables, views, storage policies and
   functions were dropped (`supabase/migrations/20261110000000_…tables.sql`, `20261118000000_…functions.sql`). Left on
   purpose: `companies` / `company_members` (other products use them), `rg_set_company_owner` (fills

@@ -5050,6 +5050,22 @@ function setProgress(pct, statusText, activeStep) {
 
   // ── Auth UI ──────────────────────────────────────────────────
   const user = _authUser;
+
+  // A tenant who lands here (an old sign-in link, or Supabase falling back to the Site URL) belongs in the
+  // tenant portal, not an empty landlord workspace. Someone with a company (owner or member) always stays;
+  // so does a new landlord with nothing yet (the create-workspace step below handles them).
+  try {
+    const [mem, own] = await Promise.all([
+      sb.from("company_members").select("company_id").eq("user_id", user.id).limit(1).maybeSingle(),
+      sb.from("companies").select("id").eq("owner_user_id", user.id).limit(1).maybeSingle()
+    ]);
+    const hasCompany = !!(mem.data && mem.data.company_id) || !!(own.data && own.data.id);
+    if (!hasCompany && !mem.error && !own.error) {
+      // leases RLS shows a tenant their own leases (tenant id or email)
+      const t = await sb.from("leases").select("id").is("archived_at", null).limit(1);
+      if (!t.error && t.data && t.data.length) { location.replace("tenant-portal.html"); return; }
+    }
+  } catch (_) { /* stay on the dashboard */ }
   const displayName =
     user.user_metadata?.full_name ||
     user.user_metadata?.name ||

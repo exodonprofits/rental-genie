@@ -1090,6 +1090,7 @@ function renderPayOnline(c, isOwner) {
      'Stripe\'s bank-payment fee (0.8%, at most $5 per payment) comes out of the payout.',
      'Payments are recorded in your ledger automatically when they clear, oldest unpaid month first.',
      'You sign in to Stripe with your own login to see payouts or refund a payment.',
+     'During Stripe\'s setup you can skip the optional extras: Climate contributions, Stripe Tax and paid fraud protection (choose Radar Lite). Rent doesn\'t need them, and some charge a fee on every payment.',
      'You can switch it off for any lease on the lease form.'].forEach(function (t) { ul.appendChild(payEl('li', null, t)); });
     body.appendChild(ul);
     if (isOwner) row.appendChild(btn(c.stripe_account_id ? 'Continue setup on Stripe' : 'Set up online payments', 'btn-primary', 'onboard'));

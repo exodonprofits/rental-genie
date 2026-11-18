@@ -1657,7 +1657,9 @@ $('addPropertyForm').addEventListener('submit', function (e) {
     setTimeout(function () { window.location.href = 'property-management.html'; }, 1200);
   }).catch(function (err) {
     console.error('Save error:', err);
-    setStatus('❌ Save failed: ' + (err.message || 'Unexpected error.'), 'err');
+    // Over the Free plan's property limit (rg_31): the database's message already says what to do.
+    if (err && err.hint === 'plan_limit') setStatus('🔒 ' + err.message, 'err');
+    else setStatus('❌ Save failed: ' + (err.message || 'Unexpected error.'), 'err');
     btn.disabled = false;
     btn.textContent = propertyId ? '💾 Save Changes' : '➕ Add Property';
   });

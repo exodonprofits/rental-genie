@@ -137,7 +137,9 @@ many existing pages still filter by name, which is safe only because the names a
 receipt (`kind: "receipt"`, bucket `receipts`, path `expenses/<company_id>/…`) or lease (`kind:
 "lease"`, bucket `tenant-documents`, path `<company_id>/…`) with the caller's JWT and returns a
 draft for the page to prefill. It never writes; the landlord saves. Used by `add-expense.html` and
-`lease-form.html`. A repair's "📸 Invoice" button on `maintenance-requests.html` opens
+`lease-form.html`. A lease draft carries `rent_changes` (scheduled increases / step rent, cleaned by the
+function: real dates after the start, one per date), which `lease-form.html` lists under Rent changes and inserts
+into `lease_rent_changes` after the lease saves. A repair's "📸 Invoice" button on `maintenance-requests.html` opens
 `add-expense.html?repair=<id>`, which sends the repair description as an optional `hint` and saves the
 expense with `maintenance_request_id` (composite FK with `company_id`, rg_16); the repair page shows
 the invoiced total from those rows. Needs the `ANTHROPIC_API_KEY` secret (shared with `rental-genie-ai-proxy`), which

@@ -375,6 +375,9 @@ textarea { resize: vertical; min-height: 88px; }
 .rc-msg { font-size: .8rem; margin-top: 8px; min-height: 1em; }
 .rc-msg.err { color: var(--danger-text); }
 .rc-msg.ok { color: #065f46; }
+.rc-snap { margin: 0 0 12px; border-radius: var(--radius-md); }
+.rc-snap.snap-unsure { padding: 8px; }
+.rc-snap-head { font-size: .78rem; font-weight: 700; color: var(--navy); margin: 0 0 8px; }
 @media (max-width: 640px) { .rc-form { grid-template-columns: 1fr 1fr; } .rc-form .rc-note-f, .rc-form .rc-btn { grid-column: 1 / -1; } }
 
 /* ── Date duration indicator ────────────────────────────────── */
@@ -791,14 +794,18 @@ html body nav.mobile-nav .mnav[aria-current="page"] { background: rgba(255,255,2
         <div class="rc-box" id="rcBox" hidden>
           <p class="rc-head">Rent changes</p>
           <p class="rc-sub" id="rcSub">Monthly Rent above is the rent at the start of the lease. Add a change for a yearly increase or a new rent after renewal: rent due on or after that date is the new amount. Changes save right away.</p>
+          <div class="rc-snap" id="rcSnap" hidden>
+            <p class="rc-snap-head" id="rcSnapHead">From the uploaded lease, saved when you press Save Lease:</p>
+            <ul class="rc-list" id="rcSnapList"></ul>
+          </div>
           <ul class="rc-list" id="rcList"></ul>
-          <div class="rc-form">
+          <div class="rc-form" id="rcForm">
             <div><label for="rcDate">Starts on</label><input id="rcDate" type="date" /></div>
             <div><label for="rcAmount">New monthly rent</label><div class="input-wrap"><span class="input-prefix">$</span><input id="rcAmount" type="number" step="0.01" min="0" placeholder="1,545.00" /></div></div>
             <div class="rc-note-f"><label for="rcNote">Note (optional)</label><input id="rcNote" type="text" maxlength="300" placeholder="3% yearly increase" /></div>
             <button type="button" class="rc-btn" id="rcAdd">Add change</button>
           </div>
-          <div class="rc-steps">
+          <div class="rc-steps" id="rcSteps">
             <label for="rcPct">Or add a yearly increase of</label>
             <input id="rcPct" type="number" step="0.1" min="0.1" max="50" placeholder="3" />
             <span>% on each lease anniversary</span>
@@ -1047,6 +1054,8 @@ function $(id) { return document.getElementById(id); }
    linked to the tenant's documents as "Signed lease".
 ============================================================ */
 var snapLeasePath = null;
+var snapRentChanges = [];   // [{effective_date, rent_amount, note}] read from the lease, saved after the lease
+var snapRentUnsure = false;
 
 function snapStatus(text, isError) {
   var el = $('snapStatus');
@@ -1116,6 +1125,14 @@ async function snapApplyLease(d) {
   set('security_deposit', 'securityDeposit', d.security_deposit != null ? Number(d.security_deposit).toFixed(2) : null);
   set('pet_deposit', 'petDeposit', d.pet_deposit != null ? Number(d.pet_deposit).toFixed(2) : null);
   if (d.key_terms && !$('leaseNotes').value) { $('leaseNotes').value = d.key_terms; snapMark('leaseNotes', false); }
+  // Rent changes the lease schedules (rg_30): held here and saved with the lease, not before.
+  var have = {};
+  rcRows.forEach(function (r) { have[r.effective_date] = true; });
+  snapRentChanges = (d.rent_changes || []).filter(function (r) {
+    return r && r.effective_date && Number(r.rent_amount) > 0 && !have[r.effective_date];
+  });
+  snapRentUnsure = unsure.indexOf('rent_changes') >= 0;
+  renderSnapRentChanges();
   // Attach the property when the page was opened without one.
   if (!propertyId && d.property_name) {
     var p = await db.from('properties').select('id,name').eq('company_id', companyId).eq('name', d.property_name).limit(1).maybeSingle();
@@ -1156,8 +1173,10 @@ async function snapLease(file) {
     }
     var n = await snapApplyLease(d);
     var unsureCount = (d.unsure || []).length;
+    var rc = snapRentChanges.length;
     snapStatus('✅ Genie filled in ' + n + ' field' + (n === 1 ? '' : 's') + '. ' +
       (unsureCount ? 'Check the amber ones, then ' : 'Check them, then ') + 'press Save.' +
+      (rc ? '\n📈 ' + rc + ' rent change' + (rc === 1 ? '' : 's') + ' from the lease, listed under Rent changes.' : '') +
       (d.key_terms ? '\n📌 ' + d.key_terms : ''));
   } catch (err) {
     console.error('snap error', err);
@@ -1185,6 +1204,54 @@ function snapLinkLeaseDoc(user) {
     if (r.error) console.warn('Lease saved; linking the PDF failed:', r.error.message);
     snapLeasePath = null;
   });
+}
+
+// The rent changes read from the lease, under Rent changes. On a new lease there is no saved lease to add
+// changes to yet, so only this list shows; on an edit it sits above the saved changes.
+function renderSnapRentChanges() {
+  var box = $('rcSnap'), list = $('rcSnapList');
+  if (!box || !list) return;
+  list.textContent = '';
+  snapRentChanges.forEach(function (r, i) {
+    var li = document.createElement('li');
+    li.className = 'rc-item';
+    li.appendChild(rcSpan('rc-when', 'From ' + rcFmtDay(r.effective_date)));
+    li.appendChild(rcSpan('rc-amt', fmtMoney(r.rent_amount) + '/mo'));
+    li.appendChild(rcSpan('rc-note', r.note || ''));
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'rc-remove'; b.textContent = 'Remove';
+    b.setAttribute('aria-label', 'Don’t save the rent change from ' + rcFmtDay(r.effective_date));
+    b.addEventListener('click', function () { snapRentChanges.splice(i, 1); renderSnapRentChanges(); });
+    li.appendChild(b);
+    list.appendChild(li);
+  });
+  var any = snapRentChanges.length > 0;
+  box.hidden = !any;
+  box.classList.toggle('snap-unsure', any && snapRentUnsure);
+  $('rcSnapHead').textContent = snapRentUnsure
+    ? 'From the uploaded lease (Genie worked some of these out, so check them), saved when you press Save Lease:'
+    : 'From the uploaded lease, saved when you press Save Lease:';
+  var saved = !!(rcLease && rcLease.id);
+  if (saved || any) $('rcBox').hidden = false;
+  else $('rcBox').hidden = true;
+  // Before the lease exists the add/steps controls can't save anything.
+  ['rcSub', 'rcList', 'rcForm', 'rcSteps'].forEach(function (id) { if ($(id)) $(id).style.display = saved ? '' : 'none'; });
+}
+
+// After the lease is saved: add the rent changes read from it. Resolves to an error message, or '' when fine.
+function snapSaveRentChanges(lease) {
+  if (!snapRentChanges.length || !lease || !lease.id) return Promise.resolve('');
+  var start = lease.lease_start || '';
+  var rows = snapRentChanges.filter(function (r) { return !start || r.effective_date > start; }).map(function (r) {
+    return { lease_id: lease.id, company_id: lease.company_id || companyId || null, effective_date: r.effective_date,
+             rent_amount: Math.round(Number(r.rent_amount) * 100) / 100, note: r.note || null };
+  });
+  if (!rows.length) return Promise.resolve('');
+  return db.from('lease_rent_changes').insert(rows).then(function (r) {
+    if (r.error) return rcErrText(r.error);
+    snapRentChanges = [];
+    return '';
+  }, function (e) { return (e && e.message) || 'network error'; });
 }
 
 (function wireSnap() {
@@ -1756,9 +1823,17 @@ function saveLease() {
     }
     var user = res.data.user;
 
-    function doRedirect() { snapLinkLeaseDoc(user).then(doRedirectNow, doRedirectNow); }
-    function doRedirectNow() {
-      setStatus('✅ Lease saved successfully! Redirecting…', 'ok');
+    var savedLease = isEdit && leaseId
+      ? { id: leaseId, company_id: (rcLease && rcLease.company_id) || companyId, lease_start: fullPayload.lease_start }
+      : null;
+    function doRedirect() {
+      snapSaveRentChanges(savedLease).then(function (rcErr) {
+        return snapLinkLeaseDoc(user).then(function () { doRedirectNow(rcErr); }, function () { doRedirectNow(rcErr); });
+      });
+    }
+    function doRedirectNow(rcErr) {
+      if (rcErr) setStatus('⚠️ Lease saved, but the rent changes from the lease weren’t (' + rcErr + '). Add them under Rent changes when you edit the lease. Redirecting…', 'err');
+      else setStatus('✅ Lease saved successfully! Redirecting…', 'ok');
       btn.innerHTML = '✅ Saved';
       setTimeout(function () {
         var q = new URLSearchParams();
@@ -1767,7 +1842,7 @@ function saveLease() {
         if (companyId)    q.set('company_id', companyId);
         q.set('tab', 'lease');
         location.href = 'lease-rent-center.html?' + q.toString();
-      }, 1400);
+      }, rcErr ? 6000 : 1400);
     }
 
     function onSaveError(e) {
@@ -1814,16 +1889,22 @@ function saveLease() {
     } else {
       // Insert: try with full payload, fallback to probed columns on PGRST204
       fullPayload.created_by = user.id;
-      db.from('leases').insert([fullPayload])
+      // The new lease's id is needed only to add rent changes read from the uploaded lease.
+      var ins = function (payload) {
+        var q = db.from('leases').insert([payload]);
+        return snapRentChanges.length ? q.select('id, company_id, lease_start').single() : q;
+      };
+      ins(fullPayload)
         .then(function(result) {
-          if (!result.error) { return unlistIfAsked().then(doRedirect); }
+          if (!result.error) { savedLease = result.data || null; return unlistIfAsked().then(doRedirect); }
           if (result.error.code !== 'PGRST204') throw result.error;
           // Column missing — probe then retry
           return probeLeaseColumns().then(function(knownCols) {
             var safePayload = filterToKnownColumns(fullPayload, knownCols);
-            return db.from('leases').insert([safePayload]);
+            return ins(safePayload);
           }).then(function(result2) {
             if (result2 && result2.error) throw result2.error;
+            savedLease = (result2 && result2.data) || null;
             return unlistIfAsked().then(doRedirect);
           });
         })

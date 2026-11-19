@@ -219,7 +219,11 @@ upload by `rg_company_access` on the first folder; no update or delete) and `pro
 taken from the property by `trg_property_photos_guard`, path must match, max 40 active per property; archived, never
 deleted or restored). The cover is the first by (sort_order, created_at); "Make cover" sets sort_order below the
 rest. Uploaded on Edit Property (`add-property.html`, resized to 1600px JPEG in the page, saved right away); covers
-show on `property-management.html` via one `createSignedUrls` call. Listings still use pasted `listing_photos` URLs.
+show on `property-management.html` via one `createSignedUrls` call. **Listing photos (rg_36):** on `publish-listing.html`
+the landlord ticks property photos to use; the page copies each to the PUBLIC bucket `listing-photos`
+(`<company_id>/<property_id>/<property_photo_id>.jpg`, company access to list/upload/overwrite/remove) and adds its
+public URL to `listing_photos` beside any pasted links. After a successful save it removes copies no longer listed, so
+an unticked photo stops being public.
 **Vendors (rg_24):** `vendors` (company_id, name unique per company, trade, phone, email, archived_at;
 no deletes) backs the vendor suggestions and the Vendors window on `maintenance-requests.html`; a new
 name typed on a repair is saved automatically. `maintenance_requests.assigned_vendor` stays a text copy

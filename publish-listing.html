@@ -80,6 +80,15 @@ h1{font-size:1.6rem; font-weight:800; color:var(--navy); margin-bottom:4px;}
 .field input, .field textarea{width:100%; min-width:0; box-sizing:border-box; padding:9px 12px; border-radius:10px; border:1px solid #cbd5e1; font-family:'DM Sans',sans-serif; font-size:.9rem;}
 .field textarea{min-height:100px; resize:vertical;}
 .field-hint{font-size:.75rem; color:var(--muted);}
+/* Pick from the property's own photos (rg_36) */
+.pp-wrap{margin-bottom:12px;}
+.pp-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; margin-top:6px;}
+.pp-tile{border:1px solid #cbd5e1; border-radius:12px; overflow:hidden; background:#f8fafc;}
+.pp-tile.on{border-color:#2563eb; box-shadow:0 0 0 2px #bfdbfe;}
+.pp-tile img{display:block; width:100%; aspect-ratio:4/3; object-fit:cover; background:#eef2f6;}
+.field .pp-pick{display:flex; align-items:center; gap:8px; padding:8px 10px; min-height:40px; cursor:pointer; text-transform:none; letter-spacing:0; font-size:.82rem; font-weight:600; color:var(--text); margin:0;}
+.field .pp-pick input{width:auto; min-width:0; margin:0; padding:0; accent-color:#2563eb;}
+.pp-msg{font-size:.78rem; color:var(--muted); min-height:1em; margin-top:6px;}
 .apply-modes{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px;}
 @media(max-width:760px){ .apply-modes{grid-template-columns:1fr;} }
 .field .apply-mode{display:flex; gap:10px; align-items:flex-start; padding:12px; border:1px solid #cbd5e1; border-radius:12px; cursor:pointer; text-transform:none; letter-spacing:0; font-size:.9rem; font-weight:500; color:var(--text);}
@@ -227,8 +236,13 @@ html body nav.mobile-nav .mnav[aria-current="page"] { background: rgba(255,255,2
         <div class="field-hint" id="aiStatus" style="min-height:16px;"></div>
       </div>
       <div class="field full">
-        <label>Photo URLs</label>
-        <div class="field-hint" style="margin-bottom:6px;">Paste image URLs (one per row). The first photo is used as the cover image.</div>
+        <label>Photos</label>
+        <div class="pp-wrap" id="ppWrap" hidden>
+          <div class="field-hint">Use photos you've added to this property. The ones you tick become public on the listing; the rest stay private.</div>
+          <div class="pp-grid" id="ppGrid"></div>
+          <div class="pp-msg" id="ppMsg" role="status"></div>
+        </div>
+        <div class="field-hint" style="margin-bottom:6px;">Or paste image links (one per row). The first photo in the list below is the cover image.</div>
         <div id="photoRows"></div>
         <button type="button" class="add-photo-btn" id="addPhotoBtn">+ Add photo URL</button>
       </div>
@@ -480,6 +494,78 @@ async function loadProperty(){
   try { photos = Array.isArray(p.listing_photos) ? p.listing_photos : JSON.parse(p.listing_photos || "[]"); } catch(e){}
   if (!photos.length) photos = [""];
   photos.forEach(addPhotoRow);
+  ppLoad();
+}
+
+/* ============================================================
+   PROPERTY PHOTOS → LISTING (rg_36)
+   Property photos are private (rg_33). A ticked one is copied to the public bucket listing-photos at
+   <company>/<property>/<photo id>.jpg and its public URL goes into the photo list (saved as listing_photos).
+   After a successful save, copies no longer on the list are removed so they stop being public.
+============================================================ */
+function ppPublicUrl(photo){
+  const path = CURRENT_PROPERTY.company_id + "/" + propertyId + "/" + photo.id + ".jpg";
+  return { path, url: sb.storage.from("listing-photos").getPublicUrl(path).data.publicUrl };
+}
+function ppListed(url){ return getPhotoUrls().includes(url); }
+function ppAddUrl(url){
+  if (ppListed(url)) return;
+  const empty = Array.from(document.querySelectorAll(".photo-url")).find(i => !i.value.trim());
+  if (empty) empty.value = url; else addPhotoRow(url);
+}
+function ppRemoveUrl(url){
+  document.querySelectorAll(".photo-url").forEach(i => { if (i.value.trim() === url) i.closest(".photo-row").remove(); });
+  if (!document.querySelector(".photo-url")) addPhotoRow("");
+}
+async function ppLoad(){
+  if (!CURRENT_PROPERTY || !CURRENT_PROPERTY.company_id) return;
+  const res = await sb.from("property_photos").select("id, storage_path, caption")
+    .eq("property_id", propertyId).is("archived_at", null)
+    .order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+  if (res.error || !res.data || !res.data.length) return;
+  const signed = await sb.storage.from("property-photos").createSignedUrls(res.data.map(r => r.storage_path), 3600);
+  const urls = {};
+  (signed.data || []).forEach(x => { if (x && x.signedUrl) urls[x.path] = x.signedUrl; });
+  const grid = $("ppGrid");
+  grid.textContent = "";
+  res.data.forEach((photo, i) => {
+    const pub = ppPublicUrl(photo);
+    const tile = h("div", { class: "pp-tile" + (ppListed(pub.url) ? " on" : "") });
+    const img = h("img", { alt: photo.caption || ("Property photo " + (i + 1)), loading: "lazy" });
+    if (urls[photo.storage_path]) img.src = urls[photo.storage_path];
+    const box = h("input", { type: "checkbox" });
+    box.checked = ppListed(pub.url);
+    box.addEventListener("change", () => ppToggle(photo, urls[photo.storage_path], box, tile));
+    tile.append(img, h("label", { class: "pp-pick" }, box, "Use on listing"));
+    grid.appendChild(tile);
+  });
+  $("ppWrap").hidden = false;
+}
+async function ppToggle(photo, signedUrl, box, tile){
+  const pub = ppPublicUrl(photo);
+  if (!box.checked){ ppRemoveUrl(pub.url); tile.classList.remove("on"); $("ppMsg").textContent = "Removed. Save the listing to take it off the public page."; return; }
+  box.disabled = true; $("ppMsg").textContent = "Adding photo…";
+  try {
+    if (!signedUrl) throw new Error("photo link unavailable");
+    const blob = await (await fetch(signedUrl)).blob();
+    const up = await sb.storage.from("listing-photos").upload(pub.path, blob, { contentType: blob.type || "image/jpeg", upsert: true });
+    if (up.error) throw up.error;
+    ppAddUrl(pub.url); tile.classList.add("on");
+    $("ppMsg").textContent = "Added. Save the listing to publish it.";
+  } catch (e) {
+    box.checked = false;
+    $("ppMsg").textContent = "Couldn't add that photo: " + ((e && e.message) || "try again.");
+  } finally { box.disabled = false; }
+}
+// After a save: remove public copies that are no longer on the listing.
+async function ppCleanup(savedUrls){
+  if (!CURRENT_PROPERTY || !CURRENT_PROPERTY.company_id) return;
+  const folder = CURRENT_PROPERTY.company_id + "/" + propertyId;
+  const list = await sb.storage.from("listing-photos").list(folder, { limit: 100 });
+  if (list.error || !list.data) return;
+  const stale = list.data.map(f => folder + "/" + f.name)
+    .filter(path => !savedUrls.includes(sb.storage.from("listing-photos").getPublicUrl(path).data.publicUrl));
+  if (stale.length) await sb.storage.from("listing-photos").remove(stale);
 }
 
 $("saveBtn").addEventListener("click", async () => {
@@ -569,6 +655,7 @@ $("saveBtn").addEventListener("click", async () => {
     return;
   }
   CURRENT_PROPERTY = Object.assign(CURRENT_PROPERTY || {}, payload, saved[0]);
+  ppCleanup(payload.listing_photos).catch(e => console.warn("listing photo cleanup:", e));
   // The database unlists an occupied property unless its Available Date is in the future
   if (isPublic && !saved[0].is_public_listing){
     $("publicToggle").checked = false;

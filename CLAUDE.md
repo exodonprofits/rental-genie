@@ -93,6 +93,13 @@ lease. Three separate
 in-page implementations used to disagree with each other and with the ledger; that is what these
 functions replaced.
 
+**Occupancy (rg_34):** `properties.occupancy_status` (what pages show: tenant_occupied / owner_occupied / vacant /
+renovation / off_market) follows the leases through `rg_sync_property_status` (leases trigger, plus pg_cron
+`rg-property-status-sync` nightly at 06:03 UTC): no lease in force → tenant_occupied becomes vacant; a lease in force →
+vacant/unset becomes tenant_occupied. The landlord's other choices never change, and a property with no lease records
+is left alone. A lease replaced by a later one that has started doesn't count; a termination dated in the future
+counts until that date. `properties.status` (occupied/vacant) is the older internal copy. The Properties card prompts
+"Lease ended · set the property to Vacant" for anything left over.
 **Lease states:** `active`; `holdover` (past the end date, still charging, because rent is still
 owed when a tenant stays); `month_to_month`; `ended` (terminated, no rent accrues after the
 termination date).

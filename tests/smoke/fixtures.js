@@ -65,6 +65,9 @@ function base() {
     online_payments: [
       { id: '88888888-8888-4888-8888-888888888881', company_id: C, property_id: P1, lease_id: L1, tenant_id: T1, amount: 1500, status: 'processing', created_at: today + 'T15:00:00Z', paid_at: null, failure_reason: null },
       { id: '88888888-8888-4888-8888-888888888882', company_id: C, property_id: P1, lease_id: L1, tenant_id: T1, amount: 1500, status: 'failed', created_at: today + 'T09:00:00Z', paid_at: null, failure_reason: 'Insufficient funds' }],
+    property_photos: [
+      { id: '99999999-9999-4999-8999-999999999991', company_id: C, property_id: P1, storage_path: C + '/' + P1 + '/1_0.jpg', caption: null, sort_order: 0, created_at: today + 'T10:00:00Z', archived_at: null },
+      { id: '99999999-9999-4999-8999-999999999992', company_id: C, property_id: P1, storage_path: C + '/' + P1 + '/2_0.jpg', caption: null, sort_order: 0, created_at: today + 'T11:00:00Z', archived_at: null }],
     vendors: [{ id: '77777777-7777-4777-8777-777777777771', company_id: C, name: 'Ace Plumbing', trade: 'Plumbing', phone: '555-0142', email: 'office@ace.example.com', archived_at: null }],
     notifications: [{ id: 1, company_id: C, event_key: 'maint_ack:1', kind: 'maintenance_ack', channel: 'email', maintenance_request_id: 1,
       property_id: P1, tenant_id: T1, recipient: 'tenant@example.com', status: 'failed', attempts: 1, dismissed_at: null,

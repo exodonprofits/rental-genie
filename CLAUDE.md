@@ -204,6 +204,12 @@ Tenant repair updates (rg_25): `trg_repair_update` (after update of status, sche
 sends the tenant one email plus in-app message per save when a tenant-filed repair is scheduled or
 rescheduled, assigned a vendor, moved to In Progress or Resolved (`repair_update:<id>:<md5 of state>`,
 same recipient rules as the acknowledgment; owner switch `tenantRepairUpdates`, missing = on).
+**Property photos (rg_33):** private bucket `property-photos` (path `<company_id>/<property_id>/<file>`, read and
+upload by `rg_company_access` on the first folder; no update or delete) and `property_photos` rows (company_id
+taken from the property by `trg_property_photos_guard`, path must match, max 40 active per property; archived, never
+deleted or restored). The cover is the first by (sort_order, created_at); "Make cover" sets sort_order below the
+rest. Uploaded on Edit Property (`add-property.html`, resized to 1600px JPEG in the page, saved right away); covers
+show on `property-management.html` via one `createSignedUrls` call. Listings still use pasted `listing_photos` URLs.
 **Vendors (rg_24):** `vendors` (company_id, name unique per company, trade, phone, email, archived_at;
 no deletes) backs the vendor suggestions and the Vendors window on `maintenance-requests.html`; a new
 name typed on a repair is saved automatically. `maintenance_requests.assigned_vendor` stays a text copy

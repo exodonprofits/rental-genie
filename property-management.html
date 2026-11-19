@@ -1744,6 +1744,8 @@ body.portfolio-workspace main.page { width:100% !important; max-width:none !impo
 .portfolio-results { color:#52647a; font-size:.85rem; margin:22px 0 14px; }
 .portfolio-workspace .cards { grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr)) !important; gap:20px !important; align-items:start; }
 .portfolio-workspace .portfolio-property { padding:24px !important; border:1px solid #dce3eb !important; border-radius:16px !important; box-shadow:none !important; min-width:0; }
+.portfolio-cover { display:block; aspect-ratio:16 / 9; margin:0 0 18px; border-radius:14px; overflow:hidden; background:#eef2f6; }
+.portfolio-cover img { width:100%; height:100%; object-fit:cover; display:block; }
 .portfolio-card-head { display:flex; align-items:start; justify-content:space-between; gap:14px; flex-wrap:wrap; }
 .portfolio-card-head > div { min-width:0; flex:1 1 180px; }
 .portfolio-card-head h2 { margin:0; font-size:1.2rem; overflow-wrap:anywhere; }
@@ -2378,6 +2380,48 @@ function renderCards(list){
     more.appendChild(links);
     card.append(actions, more);
     cardsEl.appendChild(card);
+  });
+  applyCovers();
+  if (coversLoadedFor !== selectedCompanyId) { coversLoadedFor = selectedCompanyId; loadCovers(); }
+}
+
+/* Cover photos (rg_33): the first active photo per property, opened through signed links in one request. */
+var coverUrlByProperty = new Map();
+var coversLoadedFor = null;
+async function loadCovers() {
+  const company = selectedCompanyId;
+  if (!company) return;
+  try {
+    const res = await sb.from("property_photos").select("property_id, storage_path, sort_order, created_at")
+      .eq("company_id", company).is("archived_at", null)
+      .order("sort_order", { ascending: true }).order("created_at", { ascending: true });
+    if (res.error || company !== selectedCompanyId) return;
+    const first = new Map();
+    (res.data || []).forEach(function(r) { if (!first.has(r.property_id)) first.set(r.property_id, r.storage_path); });
+    coverUrlByProperty = new Map();
+    if (first.size) {
+      const signed = await sb.storage.from("property-photos").createSignedUrls(Array.from(first.values()), 3600);
+      const byPath = new Map((signed.data || []).filter(function(x) { return x && x.signedUrl; }).map(function(x) { return [x.path, x.signedUrl]; }));
+      first.forEach(function(path, pid) { if (byPath.has(path)) coverUrlByProperty.set(pid, byPath.get(path)); });
+    }
+    if (company === selectedCompanyId) applyCovers();
+  } catch (e) { console.warn("Cover photos unavailable:", e); }
+}
+function applyCovers() {
+  document.querySelectorAll("#propertyCards .portfolio-property").forEach(function(card) {
+    if (card.querySelector(".portfolio-cover")) return;
+    const url = coverUrlByProperty.get(card.dataset.propertyId);
+    if (!url) return;
+    const titleLink = card.querySelector(".portfolio-property-title");
+    const link = document.createElement("a");
+    link.className = "portfolio-cover";
+    link.href = titleLink ? titleLink.href : "#";
+    link.tabIndex = -1;
+    link.setAttribute("aria-hidden", "true");   // decorative: the title link beside it goes to the same place
+    const img = document.createElement("img");
+    img.alt = ""; img.loading = "lazy"; img.src = url;
+    link.appendChild(img);
+    card.prepend(link);
   });
 }
 

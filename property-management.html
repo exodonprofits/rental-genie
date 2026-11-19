@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
 <!-- ══ PWA / iOS standalone shell (matches index.html & login.html) ══ -->
+<link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32.png?v=2">
+<link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16.png?v=2">
+<link rel="shortcut icon" href="/images/favicon.ico?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png?v=2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2516,13 +2519,16 @@ async function loadActiveLeases(propertyIds){
   const { data, error } = await sb.rpc("rg_rent_schedule", { p_company_id: selectedCompanyId, p_as_of: asOf });
   if(error) throw error;
 
+  // Rows come oldest due date first (rg_30), so keep each property's latest row: that's the lease in
+  // force now and the rent charged now (rent changes apply from their date), not the starting rent.
   const wanted = new Set((propertyIds || []).filter(Boolean));
+  const latestDue = new Map();
   for(const row of (data || [])){
     if(row.lease_state === "ended") continue;
     if(wanted.size && !wanted.has(row.property_id)) continue;
-    if(!activeLeaseByProperty.has(row.property_id)){
-      activeLeaseByProperty.set(row.property_id, { tenant_name: row.tenant_name, rent_amount: row.rent_amount, lease_state: row.lease_state });
-    }
+    if(latestDue.has(row.property_id) && String(row.due_date) < latestDue.get(row.property_id)) continue;
+    latestDue.set(row.property_id, String(row.due_date));
+    activeLeaseByProperty.set(row.property_id, { tenant_name: row.tenant_name, rent_amount: row.rent_amount, lease_state: row.lease_state });
   }
 }
 

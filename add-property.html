@@ -230,6 +230,20 @@ main {
 }
 .section-body { padding: 14px 22px 22px; }
 
+/* ── Photos (rg_33) ─────────────────────────────────────────── */
+.ph-sub { margin: 0 0 12px; font-size: .84rem; color: var(--muted); line-height: 1.45; }
+.ph-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.ph-grid:empty { display: none; }
+.ph-tile { margin: 0; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--bg); display: flex; flex-direction: column; }
+.ph-img-wrap { position: relative; aspect-ratio: 4 / 3; background: var(--bg); }
+.ph-img-wrap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ph-cover { position: absolute; top: 8px; left: 8px; background: var(--navy); color: #fff; font-size: .7rem; font-weight: 700; border-radius: 999px; padding: 3px 9px; }
+.ph-tile-actions { display: flex; gap: 6px; padding: 8px; flex-wrap: wrap; }
+.ph-tile-actions .btn { flex: 1 1 auto; min-height: 36px; justify-content: center; }
+.ph-msg { font-size: .82rem; min-height: 1em; margin-top: 8px; color: var(--muted); }
+.ph-msg.err { color: var(--danger-text); }
+.ph-msg.ok { color: #065f46; }
+
 /* ── Form grid & fields ─────────────────────────────────────── */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
@@ -709,6 +723,20 @@ html body nav.mobile-nav .mnav[aria-current="page"] { background: rgba(255,255,2
             <textarea id="propertyNotes" rows="3" placeholder="Insurance company, rental conditions, key location…"></textarea>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- ── Photos (rg_33): saved right away, not by Save ─────── -->
+    <div class="section-card" id="photoSection">
+      <div class="section-head">
+        <div class="section-title">📷 Photos</div>
+      </div>
+      <div class="section-body">
+        <p class="ph-sub" id="phSub">Save the property first, then add photos here.</p>
+        <div class="ph-grid" id="phGrid"></div>
+        <button type="button" class="btn" id="phAddBtn" hidden>📷 Add photos</button>
+        <input type="file" id="phFile" accept="image/*" multiple hidden />
+        <div class="ph-msg" id="phMsg" role="status"></div>
       </div>
     </div>
 
@@ -1666,6 +1694,126 @@ $('addPropertyForm').addEventListener('submit', function (e) {
 });
 
 /* ============================================================
+   PHOTOS (rg_33) — private bucket property-photos, rows in property_photos.
+   Saved as soon as they're added; the cover is the first by (sort_order, created_at).
+============================================================ */
+var phRows = [], phCompany = null, phBusy = false;
+function phMsg(text, kind) { var m = $('phMsg'); m.textContent = text || ''; m.className = 'ph-msg' + (kind ? ' ' + kind : ''); }
+
+// Phone photos are several MB: shrink to 1600px JPEG before upload. Falls back to the original file.
+function phResize(file) {
+  return new Promise(function (resolve) {
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function () {
+      var max = 1600, w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, max / Math.max(w, h));
+      var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(function (b) { resolve(b ? { blob: b, type: 'image/jpeg', ext: 'jpg' } : { blob: file, type: file.type, ext: 'img' }); }, 'image/jpeg', 0.82);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); resolve({ blob: file, type: file.type, ext: (file.name.split('.').pop() || 'img').toLowerCase() }); };
+    img.src = url;
+  });
+}
+
+async function phLoad() {
+  if (!propertyId) return;
+  $('phSub').textContent = 'Private to you and your team. The first photo is the cover on your Properties page.';
+  $('phAddBtn').hidden = false;
+  var res = await sb.from('property_photos').select('id, storage_path, caption, sort_order, created_at')
+    .eq('property_id', propertyId).is('archived_at', null)
+    .order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+  if (res.error) { phMsg('Could not load photos.', 'err'); return; }
+  phRows = res.data || [];
+  var urls = {};
+  if (phRows.length) {
+    var signed = await sb.storage.from('property-photos').createSignedUrls(phRows.map(function (r) { return r.storage_path; }), 3600);
+    (signed.data || []).forEach(function (x) { if (x && x.signedUrl) urls[x.path] = x.signedUrl; });
+  }
+  phRender(urls);
+}
+
+function phRender(urls) {
+  var grid = $('phGrid'); grid.textContent = '';
+  var name = ($('propertyName') && $('propertyName').value) || 'property';
+  phRows.forEach(function (r, i) {
+    var fig = document.createElement('figure'); fig.className = 'ph-tile';
+    var wrap = document.createElement('div'); wrap.className = 'ph-img-wrap';
+    var img = document.createElement('img');
+    img.alt = r.caption || ('Photo ' + (i + 1) + ' of ' + name); img.loading = 'lazy';
+    if (urls[r.storage_path]) img.src = urls[r.storage_path];
+    wrap.appendChild(img);
+    if (i === 0) { var tag = document.createElement('span'); tag.className = 'ph-cover'; tag.textContent = 'Cover'; wrap.appendChild(tag); }
+    var acts = document.createElement('div'); acts.className = 'ph-tile-actions';
+    if (i > 0) {
+      var cover = document.createElement('button'); cover.type = 'button'; cover.className = 'btn sm'; cover.textContent = 'Make cover';
+      cover.setAttribute('aria-label', 'Make photo ' + (i + 1) + ' the cover');
+      cover.addEventListener('click', function () { phMakeCover(r); });
+      acts.appendChild(cover);
+    }
+    var rm = document.createElement('button'); rm.type = 'button'; rm.className = 'btn sm'; rm.textContent = 'Remove';
+    rm.setAttribute('aria-label', 'Remove photo ' + (i + 1));
+    rm.addEventListener('click', function () { phRemove(r); });
+    acts.appendChild(rm);
+    fig.append(wrap, acts);
+    grid.appendChild(fig);
+  });
+}
+
+async function phMakeCover(r) {
+  if (phBusy) return; phBusy = true;
+  var min = phRows.reduce(function (m, x) { return Math.min(m, Number(x.sort_order) || 0); }, 0);
+  var res = await sb.from('property_photos').update({ sort_order: min - 1 }).eq('id', r.id).select('id');
+  phBusy = false;
+  if (res.error || !res.data || !res.data.length) { phMsg('Could not change the cover.', 'err'); return; }
+  phMsg('Cover updated.', 'ok'); phLoad();
+}
+
+async function phRemove(r) {
+  if (phBusy) return;
+  if (!confirm('Remove this photo?')) return;
+  phBusy = true;
+  var res = await sb.from('property_photos').update({ archived_at: new Date().toISOString() }).eq('id', r.id).select('id');
+  phBusy = false;
+  if (res.error || !res.data || !res.data.length) { phMsg('Could not remove the photo.', 'err'); return; }
+  phMsg('Photo removed.', 'ok'); phLoad();
+}
+
+async function phUpload(files) {
+  if (!propertyId || !files.length || phBusy) return;
+  phBusy = true; $('phAddBtn').disabled = true;
+  try {
+    if (!phCompany) {
+      var p = await sb.from('properties').select('company_id').eq('id', propertyId).single();
+      if (p.error || !p.data) { phMsg('Could not find this property.', 'err'); return; }
+      phCompany = p.data.company_id;
+    }
+    var done = 0, failed = 0;
+    for (var i = 0; i < files.length; i++) {
+      phMsg('Uploading ' + (i + 1) + ' of ' + files.length + '…', '');
+      try {
+        var f = await phResize(files[i]);
+        var path = phCompany + '/' + propertyId + '/' + Date.now() + '_' + i + '.' + f.ext;
+        var up = await sb.storage.from('property-photos').upload(path, f.blob, { contentType: f.type, upsert: false });
+        if (up.error) throw up.error;
+        var ins = await sb.from('property_photos').insert([{ property_id: propertyId, storage_path: path }]);
+        if (ins.error) throw ins.error;
+        done++;
+      } catch (e) { console.warn('photo upload failed', e); failed++; var last = (e && e.message) || ''; }
+    }
+    phMsg(failed ? (done + ' added, ' + failed + ' failed' + (last ? ' (' + last + ')' : '') + '.') : (done === 1 ? 'Photo added.' : done + ' photos added.'), failed ? 'err' : 'ok');
+    await phLoad();
+  } finally { phBusy = false; $('phAddBtn').disabled = false; }
+}
+
+$('phAddBtn').addEventListener('click', function () { $('phFile').click(); });
+$('phFile').addEventListener('change', function () {
+  var files = Array.prototype.slice.call(this.files || []);
+  this.value = '';
+  phUpload(files);
+});
+
+/* ============================================================
    INIT
 ============================================================ */
 document.getElementById('footerYear').textContent = new Date().getFullYear();
@@ -1681,6 +1829,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (propertyId) {
       try { await loadPropertyForEdit(); }
       catch(e) { console.error('loadPropertyForEdit error:', e); setStatus('❌ Error loading property data.', 'err'); }
+      try { await phLoad(); } catch (e) { console.warn('photos load error:', e); }
     } else {
       setFinanceButtonsEnabled(false);
     }

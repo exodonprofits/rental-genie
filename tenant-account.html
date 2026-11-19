@@ -498,8 +498,11 @@ body { overflow-x: hidden; }
         }
       });
     }
-    function doSignOut() {
-      try { sb.auth.signOut(); } catch (e) {}
+    async function doSignOut() {
+      // Wait for sign-out before leaving: login.html sends a signed-in user straight back in.
+      try { await Promise.race([sb.auth.signOut(), new Promise(function (r) { setTimeout(r, 5000); })]); } catch (e) {}
+      // If the sign-out request failed, supabase-js keeps the saved session: drop it here too.
+      try { Object.keys(localStorage).forEach(function (k) { if (/^sb-.*-auth-token/.test(k)) localStorage.removeItem(k); }); } catch (e) {}
       location.href = 'login.html?role=tenant';
     }
     var so = $('navSignOut'); if (so) so.addEventListener('click', function (e) { e.preventDefault(); doSignOut(); });

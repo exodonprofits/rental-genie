@@ -2020,6 +2020,7 @@ let portfolioSignalsReady = false;
 const statusFilter = document.getElementById("statusFilter");
 statusFilter.value = new URLSearchParams(location.search).get("filter") === "vacant" ? "vacant" : "all";
 let activeLeaseByProperty = new Map(); // property_id -> {tenant_name, rent_amount}
+let endedLeaseProperties = new Set();   // properties whose latest lease has ended
 let lastRentByProperty = new Map(); // property_id -> {date_paid, amount}
 let ytdByProperty = new Map();      // property_id -> {rent, exp, net} for this year (was all-properties-summary)
 
@@ -2323,6 +2324,8 @@ function propertyNextStep(property) {
   if (portfolioSignalsReady && balance > 0) return {text: money(balance) + " outstanding rent to review", label: "Review rent", page: "lease-rent-center.html", attention: true};
   if (portfolioSignalsReady && repairs > 0) return {text: repairs + " open repair" + (repairs === 1 ? "" : "s") + " to follow up", label: "Review repairs", page: "maintenance-requests.html", attention: true};
   if (status === "vacant") return {text: "Vacant · review your listing", label: "Manage listing", page: "publish-listing.html", attention: true};
+  // Occupancy normally follows the leases (rg_34); this catches what's left, e.g. a status set by hand.
+  if (status === "tenant_occupied" && !activeLeaseByProperty.has(property.id) && endedLeaseProperties.has(property.id)) return {text: "Lease ended · set the property to Vacant or add the new lease", label: "Update property", page: "add-property.html", attention: true};
   if (status === "tenant_occupied" && !activeLeaseByProperty.has(property.id)) return {text: "Tenant occupied · add the lease record", label: "Review lease", page: "lease-rent-center.html", attention: true};
   if (!portfolioSignalsReady) return {text: "Follow-up data unavailable", label: "Open workspace", page: "property-overview.html", attention: false};
   return {text: "Open the workspace for property details", label: "Open workspace", page: "property-overview.html", attention: false};
@@ -2369,6 +2372,7 @@ function renderCards(list){
     const actions = el("div", "portfolio-card-actions");
     const primary = el("a", "btn btn-primary", next.label);
     primary.href = propertyLink(next.page, property);
+    if (next.page === "add-property.html") primary.href += "&edit=1";
     actions.appendChild(primary);
     if(next.page !== "property-overview.html") { const overview = el("a", "btn btn-secondary", "Workspace"); overview.href = propertyLink("property-overview.html", property); actions.appendChild(overview); }
     const more = el("details", "portfolio-more");
@@ -2509,6 +2513,7 @@ async function loadProperties(){
 
 async function loadActiveLeases(propertyIds){
   activeLeaseByProperty = new Map();
+  endedLeaseProperties = new Set();
   if(!selectedCompanyId || properties.length === 0) return;
 
   // The lease in force per property, from the database rent schedule: active, holdover and
@@ -2524,7 +2529,7 @@ async function loadActiveLeases(propertyIds){
   const wanted = new Set((propertyIds || []).filter(Boolean));
   const latestDue = new Map();
   for(const row of (data || [])){
-    if(row.lease_state === "ended") continue;
+    if(row.lease_state === "ended") { endedLeaseProperties.add(row.property_id); continue; }
     if(wanted.size && !wanted.has(row.property_id)) continue;
     if(latestDue.has(row.property_id) && String(row.due_date) < latestDue.get(row.property_id)) continue;
     latestDue.set(row.property_id, String(row.due_date));

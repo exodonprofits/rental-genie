@@ -197,7 +197,10 @@ Daily reminders (rg_22/rg_23): pg_cron job `rg-daily-reminders` (14:05 UTC) runs
 with today in America/Chicago, built on `rg_rent_schedule`: one email per company per kind —
 `rent_due:<company>:<due date>` (unpaid rent due in 3 days, switch `rentDue`), `rent_overdue:<company>:<day>`
 (rent whose grace period ended yesterday, still unpaid; once per due date, switch `overdue`),
-`lease_expiry:<company>:<day>` (fixed-term leases ending in 30 days, switch `lease`). Holdover leases keep
+`lease_expiry:<company>:<day>` (fixed-term leases ending in 30 days, switch `lease`), `lease_expired:<company>:<day>`
+(rg_35: fixed-term leases whose end date was yesterday and that no later started lease replaced, i.e. the first day of
+holdover; switch `lease`). The Properties card says "Lease expired · renew, go month-to-month, or end it" while a
+lease is in holdover. Holdover leases keep
 charging, so they keep producing reminders until the lease is ended.
 Monthly summary (rg_26): pg_cron job `rg-monthly-summary` (1st of the month, 14:10 UTC) runs
 `rg_monthly_summary()` for the month just ended: per property rent collected (by date received), due,
@@ -216,7 +219,11 @@ upload by `rg_company_access` on the first folder; no update or delete) and `pro
 taken from the property by `trg_property_photos_guard`, path must match, max 40 active per property; archived, never
 deleted or restored). The cover is the first by (sort_order, created_at); "Make cover" sets sort_order below the
 rest. Uploaded on Edit Property (`add-property.html`, resized to 1600px JPEG in the page, saved right away); covers
-show on `property-management.html` via one `createSignedUrls` call. Listings still use pasted `listing_photos` URLs.
+show on `property-management.html` via one `createSignedUrls` call. **Listing photos (rg_36):** on `publish-listing.html`
+the landlord ticks property photos to use; the page copies each to the PUBLIC bucket `listing-photos`
+(`<company_id>/<property_id>/<property_photo_id>.jpg`, company access to list/upload/overwrite/remove) and adds its
+public URL to `listing_photos` beside any pasted links. After a successful save it removes copies no longer listed, so
+an unticked photo stops being public.
 **Vendors (rg_24):** `vendors` (company_id, name unique per company, trade, phone, email, archived_at;
 no deletes) backs the vendor suggestions and the Vendors window on `maintenance-requests.html`; a new
 name typed on a repair is saved automatically. `maintenance_requests.assigned_vendor` stays a text copy

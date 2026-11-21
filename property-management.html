@@ -2317,11 +2317,20 @@ function propertyLink(page, property) {
   return url.pathname + url.search;
 }
 
+// "2026-07-15" -> "Jul 15, 2026" (a calendar date, so no time-zone shift)
+function fmtShortDate(iso) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso || ""));
+  if (!m) return String(iso || "");
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
 function propertyNextStep(property) {
   const balance = Number(rentStatusByProperty.get(property.id)?.balance || 0);
   const repairs = repairCountByProperty.get(property.id) || 0;
   const status = String(property.occupancy_status || "").toLowerCase();
   if (portfolioSignalsReady && balance > 0) return {text: money(balance) + " outstanding rent to review", label: "Review rent", page: "lease-rent-center.html", attention: true};
+  // Past its end date and still charging (holdover): ask the landlord to renew, go month-to-month or end it.
+  const lease = activeLeaseByProperty.get(property.id);
+  if (lease && lease.lease_state === "holdover") return {text: "Lease expired" + (lease.lease_end ? " " + fmtShortDate(lease.lease_end) : "") + " · renew, go month-to-month, or end it", label: "Review lease", page: "lease-rent-center.html", attention: true};
   if (portfolioSignalsReady && repairs > 0) return {text: repairs + " open repair" + (repairs === 1 ? "" : "s") + " to follow up", label: "Review repairs", page: "maintenance-requests.html", attention: true};
   if (status === "vacant") return {text: "Vacant · review your listing", label: "Manage listing", page: "publish-listing.html", attention: true};
   // Occupancy normally follows the leases (rg_34); this catches what's left, e.g. a status set by hand.
@@ -2533,7 +2542,7 @@ async function loadActiveLeases(propertyIds){
     if(wanted.size && !wanted.has(row.property_id)) continue;
     if(latestDue.has(row.property_id) && String(row.due_date) < latestDue.get(row.property_id)) continue;
     latestDue.set(row.property_id, String(row.due_date));
-    activeLeaseByProperty.set(row.property_id, { tenant_name: row.tenant_name, rent_amount: row.rent_amount, lease_state: row.lease_state });
+    activeLeaseByProperty.set(row.property_id, { tenant_name: row.tenant_name, rent_amount: row.rent_amount, lease_state: row.lease_state, lease_end: row.lease_end });
   }
 }
 
